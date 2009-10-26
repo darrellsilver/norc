@@ -1,0 +1,27 @@
+
+
+#########################################
+#
+# Settings local to the current run environment
+# Includes private data like 
+#  - email & db server passwords
+#  - AWS keys
+#
+#
+#Darrell
+#08/24/2009
+##########################################
+
+
+# Make this unique, and don't share it with anybody.
+SECRET_KEY = '...'
+
+# Database password
+DATABASE_PASSWORD = '...'
+
+# Email password for account used to send TMS alerts
+EMAIL_HOST_PASSWORD = '...'
+
+# Amazon *secret* S3 login info
+AWS_ACCESS_KEY_ID = '...'
+AWS_SECRET_ACCESS_KEY = '...'

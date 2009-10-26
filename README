@@ -1,0 +1,22 @@
+
+README for Norc
+A replacement for Cron that manages logging, error reporting, dependencies, resource management and historical run times.  Tasks are not host specific and can be administered through a web interface.
+
+DESCRIPTION:
+
+Norc is designed as a replacement for Unix Cron 
+
+EXAMPLE:
+...
+
+CURRENT DEVELOPMENT STATUS:
+...
+
+VERSION:
+...
+
+LICENSE:
+...
+
+INSTALL:
+...
