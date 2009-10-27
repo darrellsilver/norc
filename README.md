@@ -49,9 +49,9 @@ Jobs:
 
 Iterations:
  * Each run of each Job does so as a distinct Iteration.  Iterations can either be RUNNING (Tasks will be run as they become available), PAUSED (The iteration has not completed but new Tasks will not be started) or 'DONE' (No more tasks will be run for this job).  Iterations have a few options:
-   * Iteration Type defines whether an Iteration is 
-     * EPHEMERAL: The Iteration should run as long as Tasks in that Job for that iteration are incomplete.  Once all Tasks are complete (see Task Statuses below for details), the Iteration is marked as 'DONE'.  This is best used for a series of Tasks that run once a day, such as a data download Task followed by a data processes Task.  This is the most common type of Iteration.
-     * PERSISTENT: The Iteration will remain running indefinitely, starting Tasks as they become available.  This is best used for Tasks that run once, such as EPHEMERAL Tasks.
+ * Iteration Type defines whether an Iteration is 
+   * EPHEMERAL: The Iteration should run as long as Tasks in that Job for that iteration are incomplete.  Once all Tasks are complete (see Task Statuses below for details), the Iteration is marked as 'DONE'.  This is best used for a series of Tasks that run once a day, such as a data download Task followed by a data processes Task.  This is the most common type of Iteration.
+   * PERSISTENT: The Iteration will remain running indefinitely, starting Tasks as they become available.  This is best used for Tasks that run once, such as EPHEMERAL Tasks.
 
 
 Resources & Resource Relationships:
@@ -80,7 +80,7 @@ Dependency Types:
  * Norc has three primary command line tools that let you control and view Tasks, Jobs and Daemons in Norc:
    * tmsdctl.py: Allows stopping, killing, viewing of all Daemons in Norc.  It also allows an overview of Tasks run by each Daemon.  Here's some sample output:
 
-        $ tmsdctl 
+     $ tmsdctl 
         Status as of 10/27/2009 19:47:27
         6 INTERESTING tms daemon(s):
         ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
