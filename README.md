@@ -1,23 +1,22 @@
 
 <h1>Norc</h1>
+Norc is a task management system that replaces Unix cron.  It allows Tasks to be created, managed and audited in a flexible, user-friendly way.  Norc was first developed by Darrell Silver for use as the scheduling system for Perpetually.com, the web archiving company.  It was open-sourced in October, 2009.
 
- * Norc is a task management system that replaces Unix cron.  It allows Tasks to be created, managed and audited in a flexible, user-friendly way.  Norc was first developed by Darrell Silver for use as the scheduling system for Perpetually.com, the web archiving company.  It was open-sourced in October, 2009.
-
----------------------------------------
+---
 MAJOR FEATURES
 
- * Dependency Management: Norc allows you to define a specific run-order for Tasks, ensuring that Task 'C' only runs after 'A' and 'B' have completed successfully.
- * Resource Management: Norc can throttle resource usage by tasks, preventing too many tasks from simultaneously using a single resource.
- * Error Reporting: Exit statuses (or return values) of tasks can generate alerts over email, or through a monitoring tool
- * Log Management: Output from Tasks (stdin & stderr) are centrally managed and available.
- * Scheduling: Tasks in Norc can be scheduled with the same flexibility as any cron task
- * Decentralized (-ish): Unlike cron, tasks in Norc are not tied to a single host. Rather, all state and task information is stored in a database.
- * Auditing: All task exit statuses, run times and durations are stored allowing historical analysis of expected compute time for repetitive tasks, error rates, etc.
- * Timeouts: Norc supports Task-specific timeouts.
- * Web/Terminal Administration: Norc's state is entirely database driven, allowing Tasks to be fully and externally controlled.  Currently this is limited to a command-line interface and Django's built-in admin console.  There is a huge opportunity to improve this area to make a fully-functional web interface for Norc.
- * SQS Plugin: Use Amazon's Simple Queue Service as an alternative source of Tasks, employing the rest of Norc's monitoring, daemon and management infrastructure.
+ * **Dependency Management**: Norc allows you to define a specific run-order for Tasks, ensuring that Task 'C' only runs after 'A' and 'B' have completed successfully.
+ * **Resource Management**: Norc can throttle resource usage by tasks, preventing too many tasks from simultaneously using a single resource.
+ * **Error Reporting**: Exit statuses (or return values) of tasks can generate alerts over email, or through a monitoring tool
+ * **Log Management**: Output from Tasks (stdin & stderr) are centrally managed and available.
+ * **Scheduling**: Tasks in Norc can be scheduled with the same flexibility as any cron task
+ * **Decentralized (-ish)**: Unlike cron, tasks in Norc are not tied to a single host. Rather, all state and task information is stored in a database.
+ * **Auditing**: All task exit statuses, run times and durations are stored allowing historical analysis of expected compute time for repetitive tasks, error rates, etc.
+ * **Timeouts**: Norc supports Task-specific timeouts.
+ * **Web/Terminal Administration**: Norc's state is entirely database driven, allowing Tasks to be fully and externally controlled.  Currently this is limited to a command-line interface and Django's built-in admin console.  There is a huge opportunity to improve this area to make a fully-functional web interface for Norc.
+ * **SQS Plugin**: Use Amazon's Simple Queue Service as an alternative source of Tasks, employing the rest of Norc's monitoring, daemon and management infrastructure.
 
----------------------------------------
+---
 ARCHITECTURE & TERMINOLOGY OVERVIEW:
 
 Norc is written entirely in Python/Django.  It has been tested and rolled for Perpetually.com, running on OS X and Linux, using MySQL, Python 2.4, 2.5, 2.6 and Django-1.0.
@@ -25,8 +24,8 @@ Norc is written entirely in Python/Django.  It has been tested and rolled for Pe
 
 Tasks:
  * A Task is a runnable unit of work. It is exactly analogous to a Unix 'cronjob'.  In Norc, Tasks are implemented by subclassing either the Task or ScheduleableTask interfaces.  There are several pre-built subclasses in Norc that cover common use cases:
-   * RunCommand: allows running a single command.
-   * ScheduledRunCommand: allows running a single command on a schedule
+   * **RunCommand**: allows running a single command.
+   * **ScheduledRunCommand**: allows running a single command on a schedule
 
   These classes are Django models, and as such each map to a table in the databse. All these base interfaces and subclasses are defined norc.core.models.py
   Subclasses of Task & SchedulableTask must implement a few methods, and can safely override others:
