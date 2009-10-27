@@ -2,7 +2,7 @@
 # Norc
 Norc is a task management system that replaces Unix cron.  It allows Tasks to be created, managed and audited in a flexible, user-friendly way.  Norc was first developed by Darrell Silver for use as the scheduling system for Perpetually.com, the web archiving company.  It was open-sourced in October, 2009.
 
-## MAJOR FEATURES
+### MAJOR FEATURES
 
  * **Dependency Management**: Norc allows you to define a specific run-order for Tasks, ensuring that Task 'C' only runs after 'A' and 'B' have completed successfully.
  * **Resource Management**: Norc can throttle resource usage by tasks, preventing too many tasks from simultaneously using a single resource.
@@ -16,7 +16,7 @@ Norc is a task management system that replaces Unix cron.  It allows Tasks to be
  * **SQS Plugin**: Use Amazon's Simple Queue Service as an alternative source of Tasks, employing the rest of Norc's monitoring, daemon and management infrastructure.
 
 
-## ARCHITECTURE & TERMINOLOGY OVERVIEW:
+### ARCHITECTURE & TERMINOLOGY OVERVIEW:
 
 Norc is written entirely in Python/Django.  It has been tested and rolled for Perpetually.com, running on OS X and Linux, using MySQL, Python 2.4, 2.5, 2.6 and Django-1.0.
 
@@ -74,36 +74,36 @@ Dependency Types:
    * DEP_TYPE_FLOW: Child Tasks run as soon as the parent has completed, regardless of the parent's exit status.
 
 
-## INTERACTING & MONITORING NORC:
+### INTERACTING & MONITORING NORC:
 
  * Norc could support a web front end that allows full administration of the entire system, but none currently exists. Instead, Norc makes use of Django's excellent Admin interface.
  * Norc has three primary command line tools that let you control and view Tasks, Jobs and Daemons in Norc:
    * tmsdctl.py: Allows stopping, killing, viewing of all Daemons in Norc.  It also allows an overview of Tasks run by each Daemon.  Here's some sample output:
 
-    $ tmsdctl 
-    Status as of 10/27/2009 19:47:27
-    6 INTERESTING tms daemon(s):
-    ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
-    409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
-    413     TMS     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
+        $ tmsdctl 
+        Status as of 10/27/2009 19:47:27
+        6 INTERESTING tms daemon(s):
+        ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
+        409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
+        413     TMS     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
 
-    $ tmsdctl --det 410
-    Status as of 10/27/2009 19:50:00
-    1 INTERESTING tms daemon(s):
-    ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
-    409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
+        $ tmsdctl --det 410
+        Status as of 10/27/2009 19:50:00
+        1 INTERESTING tms daemon(s):
+        ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
+        409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
 
-    TMS Daemon perp1:410 (RUNNING) manages 3 task(s):
+        TMS Daemon perp1:410 (RUNNING) manages 3 task(s):
 
-    Task ID      Status               Started                 Ended
-    7546134    TIMEDOUT   2009-10-25 00:05:30   2009-10-25 00:20:30
-    7546188       ERROR   2009-10-25 00:08:55   2009-10-25 00:10:05
-    7546048       ERROR   2009-10-25 00:09:48   2009-10-25 00:09:48
-    7546205     RUNNING   2009-10-25 00:18:54   2009-10-25 00:18:55
+        Task ID      Status               Started                 Ended
+        7546134    TIMEDOUT   2009-10-25 00:05:30   2009-10-25 00:20:30
+        7546188       ERROR   2009-10-25 00:08:55   2009-10-25 00:10:05
+        7546048       ERROR   2009-10-25 00:09:48   2009-10-25 00:09:48
+        7546205     RUNNING   2009-10-25 00:18:54   2009-10-25 00:18:55
 
 
 
-## CODE BASE & DEVELOPMENT STATUS:
+### CODE BASE & DEVELOPMENT STATUS:
 
 Norc is stable, but there are known issues & limitations:
  * Log files are currently stored only on the host on which the Task ran.
@@ -115,22 +115,22 @@ Norc is stable, but there are known issues & limitations:
 Norc was first developed by Darrell Silver (darrell@perpetually.com) to be the archiving scheduling system for Perpetually.com's archiving system, and is currently in production.   Perpetually.com lets you capture and archive any web site with a single click. It's the history of the internet made useful.  A core feature of Perpetually's offering is repeated, scheduled archives, a Task for which Norc has proven a good fit.
 
 
-## INSTALL:
+### INSTALL:
 
 
 
-## EXAMPLE:
+### EXAMPLE:
 
 
 
-## CURRENT DEVELOPMENT STATUS:
+### CURRENT DEVELOPMENT STATUS:
 
 
 
-## VERSION:
+### VERSION:
 
 
 
-## LICENSE:
+### LICENSE:
 
 
