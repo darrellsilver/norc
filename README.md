@@ -108,10 +108,8 @@ Dependency Types:
 ### CODE BASE & DEVELOPMENT STATUS:
 
 Norc is stable, but there are known issues & limitations:
- * Log files are currently stored only on the host on which the Task ran.
-   This limits their accessibility, and could be remedied through pushing them to S3, or other central service. They're just text files.
- * Processes instead of threading
-   Tasks
+ * Log files are currently stored only on the host on which the Task ran.  This limits their accessibility, and could be remedied through pushing them to S3, or other central service. They're just text files.
+ * Processes instead of threading Tasks
  * No configurable environments
 
 Norc was first developed by Darrell Silver (darrell@perpetually.com) to be the archiving scheduling system for Perpetually.com's archiving system, and is currently in production.   Perpetually.com lets you capture and archive any web site with a single click. It's the history of the internet made useful.  A core feature of Perpetually's offering is repeated, scheduled archives, a Task for which Norc has proven a good fit.
