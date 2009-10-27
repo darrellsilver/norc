@@ -2,7 +2,7 @@
 # Norc
 Norc is a task management system that replaces Unix cron.  It allows Tasks to be created, managed and audited in a flexible, user-friendly way.  Norc was first developed by Darrell Silver for use as the scheduling system for Perpetually.com, the web archiving company.  It was open-sourced in October, 2009.
 
-### MAJOR FEATURES
+### Features
 
  * **Dependency Management**: Norc allows you to define a specific run-order for Tasks, ensuring that Task 'C' only runs after 'A' and 'B' have completed successfully.
  * **Resource Management**: Norc can throttle resource usage by tasks, preventing too many tasks from simultaneously using a single resource.
@@ -16,7 +16,7 @@ Norc is a task management system that replaces Unix cron.  It allows Tasks to be
  * **SQS Plugin**: Use Amazon's Simple Queue Service as an alternative source of Tasks, employing the rest of Norc's monitoring, daemon and management infrastructure.
 
 
-### ARCHITECTURE & TERMINOLOGY OVERVIEW:
+### Architecture & Terminology Overview
 
 Norc is written entirely in Python/Django.  It has been tested and rolled for Perpetually.com, running on OS X and Linux, using MySQL, Python 2.4, 2.5, 2.6 and Django-1.0.
 
@@ -74,7 +74,7 @@ Dependency Types:
    * DEP_TYPE_FLOW: Child Tasks run as soon as the parent has completed, regardless of the parent's exit status.
 
 
-### INTERACTING & MONITORING NORC:
+### Interacting & Monitoring:
 
  * Norc could support a web front end that allows full administration of the entire system, but none currently exists. Instead, Norc makes use of Django's excellent Admin interface.
  * tmsdctl.py: Allows stopping, killing, viewing of all Daemons in Norc.  It also allows an overview of Tasks run by each Daemon.  
@@ -105,7 +105,7 @@ Dependency Types:
         ...
 
 
-### CODE BASE & DEVELOPMENT STATUS:
+### Code Base & Development Status:
 
 Norc is stable, but there are known issues & limitations:
  * Log files are currently stored only on the host on which the Task ran.  This limits their accessibility, and could be remedied through pushing them to S3, or other central service. They're just text files.
@@ -115,22 +115,18 @@ Norc is stable, but there are known issues & limitations:
 Norc was first developed by Darrell Silver (darrell@perpetually.com) to be the archiving scheduling system for Perpetually.com's archiving system, and is currently in production.   Perpetually.com lets you capture and archive any web site with a single click. It's the history of the internet made useful.  A core feature of Perpetually's offering is repeated, scheduled archives, a Task for which Norc has proven a good fit.
 
 
-### INSTALL:
+### Install:
 
 
 
-### EXAMPLE:
+### Example:
 
 
 
-### CURRENT DEVELOPMENT STATUS:
+### Version:
 
 
 
-### VERSION:
-
-
-
-### LICENSE:
+### License:
 
 
