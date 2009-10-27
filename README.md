@@ -80,18 +80,18 @@ Dependency Types:
  * Norc has three primary command line tools that let you control and view Tasks, Jobs and Daemons in Norc:
    * tmsdctl.py: Allows stopping, killing, viewing of all Daemons in Norc.  It also allows an overview of Tasks run by each Daemon.  Here's some sample output:
 
-	$ tmsdctl 
-	Status as of 10/27/2009 19:47:27
-	6 INTERESTING tms daemon(s):
-	ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
-	409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
-	413     TMS     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
+		$ tmsdctl 
+		Status as of 10/27/2009 19:47:27
+		6 INTERESTING tms daemon(s):
+		ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
+		409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
+		413     TMS     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
 
-	$ tmsdctl --det 410
-	Status as of 10/27/2009 19:50:00
-	1 INTERESTING tms daemon(s):
-	ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
-	409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
+		$ tmsdctl --det 410
+		Status as of 10/27/2009 19:50:00
+		1 INTERESTING tms daemon(s):
+		ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
+		409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
 	
 	TMS Daemon perp1:410 (RUNNING) manages 3 task(s):
 	
