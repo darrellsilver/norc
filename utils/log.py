@@ -12,8 +12,7 @@ class Log(object):
     
     def __init__(self, logging_debug=None):
         if logging_debug == None:
-            # TODO this is crap!
-            from permalink import settings
+            from norc import settings
             logging_debug = settings.LOGGING_DEBUG
         self.logging_debug = logging_debug
     def set_logging_debug(self, logging_debug):
@@ -83,8 +82,7 @@ class FileLogger(Log):
         if kwargs.has_key('output_file'):
             output_file = kwargs['output_file']
         else:
-            from permalink import settings# this is total crap!
-            output_file = settings.FILE_LOGGER_PATH
+            output_file = '/tmp/norc_filelogger.log'
         self.output_fh = open(output_file, 'a')
     def __get_stream_out__(self):
         return self.output_fh
