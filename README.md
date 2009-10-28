@@ -147,14 +147,8 @@ Norc is stable, but there are known issues & limitations:
 Norc was first developed by [Darrell Silver](http://darrellsilver.com/) as the archiving scheduling system for [Perpetually.com's](http://www.perpetually.com/) archiving system, and is currently in production.   [Perpetually.com](http://www.perpetually.com/) lets you capture and archive any web site with a single click. It's the history of the internet made useful.  A core feature of [Perpetually's](http://www.perpetually.com/) offering is repeated, scheduled archives, a Task for which Norc has proven a good fit.
 
 
-### Install:
+### Install & Example:
 
-
-
-### Example:
-
-
-
-### License:
+See ./INSTALL.md
 
 
