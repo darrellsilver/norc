@@ -15,7 +15,7 @@
 
 from norc import settings
 
-from utils import log
+from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 

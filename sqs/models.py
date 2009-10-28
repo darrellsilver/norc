@@ -19,7 +19,7 @@ from django.db import models
 from norc import settings
 from norc.core import models as core
 
-from utils import log
+from norc.utils import log
 log = log.Log()
 
 #

@@ -25,7 +25,7 @@ from django.core.mail import send_mail
 from norc import settings
 
 from norc.core import django_extras
-from utils import log
+from norc.utils import log
 log = log.Log()
 
 #

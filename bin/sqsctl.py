@@ -19,8 +19,8 @@ from permalink.tms_impl import models
 from boto.sqs.connection import SQSConnection
 from boto.exception import SQSError
 
-from utils import formatting
-from utils import log
+from norc.utils import formatting
+from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 

@@ -16,7 +16,7 @@ import sys
 from norc.core import models as core
 from optparse import OptionParser
 
-from utils import log
+from norc.utils import log
 log = log.Log()
 
 

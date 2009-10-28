@@ -19,7 +19,7 @@ from norc import settings
 from norc.core import models as core
 from norc.sqs import models as sqs
 
-from utils import log
+from norc.utils import log
 log = log.Log()
 
 #

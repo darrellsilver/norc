@@ -19,7 +19,7 @@ from norc import settings
 from norc.bin import tmsd
 from norc.core import models as tms_models
 
-from utils import log
+from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 #

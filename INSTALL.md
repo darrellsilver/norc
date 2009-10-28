@@ -1,4 +1,4 @@
-# Norc Install
+# Installing Norc
 
 The goal of this install script is to setup a simple Norc environment that can run a sample Task.  Much of the power of Norc is in its extensibility beyond simple Task management, so the more hack-happy you are, the better!
 
@@ -10,6 +10,7 @@ Other environments will probably work, but we've not tested too many different c
  * Django 1.0.  We haven't tested on Django 1.1, and it may just work. We're not doing anything tricky.
  * A semi-recent version of MySQL (5.x or greater).  If you're not using MySQL everything should still work.  You'll just have to replace the mysql steps with whatever database backend your using and change the configuration in Django's settings.py as necessary.
 
+
 ## Download:
 
         $ git clone git://github.com/darrellsilver/norc.git
@@ -19,11 +20,11 @@ Other environments will probably work, but we've not tested too many different c
         remote: Total 90 (delta 40), reused 0 (delta 0)
         Receiving objects: 100% (90/90), 59.70 KiB, done.
         Resolving deltas: 100% (40/40), done.
+        $
 
 We'll be inside the norc/ directory for the rest of the tutorial.
 
         $ cd norc/
-        $ cp -p settings_local.py.example settings_local.py         
 
 
 ## Prepare the Database
@@ -113,4 +114,20 @@ The full config file:
             },
         }
 
+
+## Setup the run environment
+
+In your shell environment, Django & Norc require a few variables:
+
+        # The environment used in the settings.py file, as defined above.
+        export NORC_ENVIRONMENT='darrell-dsmbp'
+        # Import path to the settings.py file
+        export DJANGO_SETTINGS_MODULE='norc.settings'
+        # Norc source code must be in your PYTHONPATH
+        export PYTHONPATH=$PYTHONPATH:/Users/darrell/projects/norc/demo
+
+
+## Sync Django models to the DB
+
+This is also the first t
 
