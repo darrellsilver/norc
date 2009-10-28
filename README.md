@@ -32,27 +32,27 @@ These classes are Django models, and as such each map to a table in the databse.
 
 Subclasses of Task & SchedulableTask must implement a few methods, and can safely override others:
 
- * run(): Mandatory: Action taken when this Task is run. Main processing happens here.
- * get_library_name(): Mandatory: The string path to this Task class name. This shouldn't be necessary, but it currently is.
- * has_timeout(): Mandatory boolean; True if this Task should timeout. False otherwise.
- * get_timeout(): Mandatory integer (seconds); return the number of seconds before this Task times out.  Must be defined if has_timeout() returns True.
- * is_due_to_run(): Boolean; defaults to True but can be overridden.  SchedulableTask has its own time-based implementation of this method.
- * alert_on_failure(): Boolean; defaults to True.
+ * **run()**: Mandatory: Action taken when this Task is run. Main processing happens here.
+ * **get_library_name()**: Mandatory: The string path to this Task class name. This shouldn't be necessary, but it currently is.
+ * **has_timeout()**: Mandatory boolean; True if this Task should timeout. False otherwise.
+ * **get_timeout()**: Mandatory integer (seconds); return the number of seconds before this Task times out.  Must be defined if has_timeout() returns True.
+ * **is_due_to_run()**: Boolean; defaults to True but can be overridden.  SchedulableTask has its own time-based implementation of this method.
+ * **alert_on_failure()**: Boolean; defaults to True.
 
 Most Tasks are designed to be run multiple times, such as on a daily our hourly basis. However, Norc provides flexibility on this:
 
- * PERSISTENT: Run each time it is due_to_run().  This applies to most tasks.
- * EPHEMERAL: Run once, and never again.  This is similar to an @ job, and is often paired with PERSISTENT Iterations (see below).
+ * **PERSISTENT**: Run each time it is due_to_run().  This applies to most tasks.
+ * **EPHEMERAL**: Run once, and never again.  This is similar to an @ job, and is often paired with PERSISTENT Iterations (see below).
 
 Task Statuses define the status of a single run of a single Task.  They are the the equivalent of exit statuses.  They are
 
- * SKIPPED: Task has been skipped; it ran and failed or did not run before being skipped
- * RUNNING: Task is running now.. OMG exciting!
- * ERROR: Task ran but ended in error
- * TIMEDOUT: Task timed out while running, and was killed by the Norc daemon that launched it.
- * CONTINUE: Task ran and failed. Child Tasks will still run allowed to run as though this Task succeeded.  This is the equivalent of if the dependency between this Task and its child was of type 'FLOW' (see details below).
- * RETRY: Task has been asked to be retried, but has yet to run again.
- * SUCCESS: Task ran successfully. Yay!
+ * **SKIPPED**: Task has been skipped; it ran and failed or did not run before being skipped
+ * **RUNNING**: Task is running now.. OMG exciting!
+ * **ERROR**: Task ran but ended in error
+ * **TIMEDOUT**: Task timed out while running, and was killed by the Norc daemon that launched it.
+ * **CONTINUE**: Task ran and failed. Child Tasks will still run allowed to run as though this Task succeeded.  This is the equivalent of if the dependency between this Task and its child was of type 'FLOW' (see details below).
+ * **RETRY**: Task has been asked to be retried, but has yet to run again.
+ * **SUCCESS**: Task ran successfully. Yay!
 
 
 #### Jobs:
@@ -64,10 +64,16 @@ Task Statuses define the status of a single run of a single Task.  They are the 
 
 #### Iterations:
 
- * Each run of each Job does so as a distinct Iteration.  Iterations can either be RUNNING (Tasks will be run as they become available), PAUSED (The iteration has not completed but new Tasks will not be started) or 'DONE' (No more tasks will be run for this job).  Iterations have a few options:
- * Iteration Type defines whether an Iteration is 
-   * EPHEMERAL: The Iteration should run as long as Tasks in that Job for that iteration are incomplete.  Once all Tasks are complete (see Task Statuses below for details), the Iteration is marked as 'DONE'.  This is best used for a series of Tasks that run once a day, such as a data download Task followed by a data processes Task.  This is the most common type of Iteration.
-   * PERSISTENT: The Iteration will remain running indefinitely, starting Tasks as they become available.  This is best used for Tasks that run once, such as EPHEMERAL Tasks.
+Each run of each Job does so as a distinct Iteration.  Iterations have three possible statuses: 
+
+ * **RUNNING** (Tasks will be run as they become available)
+ * **PAUSED** (The iteration has not completed but new Tasks will not be started)
+ * **DONE** (No more tasks will be run for this job).
+
+**Iteration Types** defines whether an Iteration is 
+
+   * **EPHEMERAL**: The Iteration should run as long as Tasks in that Job for that iteration are incomplete.  Once all Tasks are complete (see Task Statuses below for details), the Iteration is marked as 'DONE'.  This is best used for a series of Tasks that run once a day, such as a data download Task followed by a data processes Task.  This is the most common type of Iteration.
+   * **PERSISTENT**: The Iteration will remain running indefinitely, starting Tasks as they become available.  This is best used for Tasks that run once, such as EPHEMERAL Tasks.
 
 
 #### Resources & Resource Relationships:
@@ -89,10 +95,11 @@ Task Statuses define the status of a single run of a single Task.  They are the 
 
 #### Dependency Types:
 
- * Tasks in the same Job can define Dependencies that create a parent -> child relationship between Tasks.  Child Tasks will only run once all their Parent's have satisfactorily completed.
- * Typically a child Task only runs once its parents have completed successfully, but this can be altered using Dependency Types:
-   * DEP_TYPE_STRICT: Child Tasks only run when the parent has completed successfully.  This is the most common type of dependency.
-   * DEP_TYPE_FLOW: Child Tasks run as soon as the parent has completed, regardless of the parent's exit status.
+Tasks in the same Job can define Dependencies that create a parent -> child relationship between Tasks.  Child Tasks will only run once all their Parent's have satisfactorily completed.
+
+Typically a child Task only runs once its parents have completed successfully, but this can be altered using Dependency Types:
+ * **DEP_TYPE_STRICT**: Child Tasks only run when the parent has completed successfully.  This is the most common type of dependency.
+ * **DEP_TYPE_FLOW**: Child Tasks run as soon as the parent has completed, regardless of the parent's exit status.
 
 
 ### Interacting & Monitoring:
