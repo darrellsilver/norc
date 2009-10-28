@@ -89,9 +89,9 @@ The full config file:
                 , 'LOGGING_DEBUG' : os.environ.get('NORC_LOGGING_DEBUG', False) in ('True', 'true')
                 , 'ADMINS' : (('Darrell', 'contact@darrellsilver.com'),)
                 , 'TIME_ZONE' : 'America/New-York'
-                , 'TMS_CODE_ROOT' : '/Users/darrell/projects/norc/demo/norc/'
-                , 'TMS_LOG_DIR' : '/Users/darrell/projects/norc/demo/norc/'
-                , 'TMS_TMP_DIR' : '/Users/darrell/projects/norc/demo/norc/'
+                , 'TMS_CODE_ROOT' : '/Users/darrell/projects/norc/demo/norc'
+                , 'TMS_LOG_DIR' : '/Users/darrell/projects/norc/demo/norc_log'
+                , 'TMS_TMP_DIR' : '/Users/darrell/projects/norc/demo/norc_tmp'
         
                 # DB connection
                 , 'DATABASE_ENGINE' : 'mysql'
@@ -126,7 +126,10 @@ In your shell environment, Django & Norc require a few variables:
         export DJANGO_SETTINGS_MODULE='norc.settings'
         # Norc source code must be in your PYTHONPATH
         export PYTHONPATH=$PYTHONPATH:/Users/darrell/projects/norc/demo
-
+        # Norc has a few binaries that need to be in your PATH
+        # As shipped, these are symbolic links, and can thus can be moved from 
+        # this location if you wish.
+        export PATH=$PATH:/Users/darrell/projects/norc/demo/norc/bin
 
 ## Sync Django models to the DB
 
@@ -180,3 +183,95 @@ This is the output log of Django creating the tables in MySQL.  Because we've al
         Installing index for core.RunCommand model
         Installing index for core.ScheduledRunCommand model
         Installing index for sqs.SQSTaskRunStatus model
+
+
+## Start up Django development enviroment
+
+Now that we've created the tables in the DB, we can start the Django development server:
+
+        $ python manage.py runserver  
+        Validating models...
+        0 errors found
+
+        Django version 1.0-rc_1-SVN-unknown, using settings 'norc.settings'
+        Development server is running at http://127.0.0.1:8000/
+        Quit the server with CONTROL-C.
+
+When you go to
+
+        http://localhost:8000/
+
+you should see the "Django administration" login screen, on which you can login using your Django admin password.
+
+
+## Add some basic data to the DB
+
+* Home > Core > Jobs > Add: **DEMO_JOB**
+* Home > Core > Resource regions > Add: **MY_REGION**
+* Home > Core > Resources > Add: **DATABASE_CONNECTION**
+
+We want MY_REGION to offer 10 DATABASE_CONNECTION Resources
+
+* Home > Core > Region resource relationships > Add:
+   * Region: MY_REGION, Resource: DATABASE_CONNECTION, Units in Existence: 10
+* Home > Core > Task class implementations > Add:
+   * Status: **ACTIVE**
+   * Library name: **norc.core.models**
+   * Class name: **RunCommand**
+
+(In the future this should be automated as part of an install process)
+
+
+## Start a Daemon
+
+Now we're ready to start a Norc Daemon!  In a new terminal session, or the same one if you want to quit the Django dev server, run 
+
+        $ ./bin/tmsdctl.py --status
+        Status as of 10/28/2009 22:25:56
+        No INTERESTING tms daemons
+
+This indicates that no Daemons are running, which should be obvious because we haven't started any.  So, let's start one:
+
+        $ ./bin/tmsd.py --region MY_REGION
+        [10/28/2009 22:27:14.059850] (info) TMSD stderr & stdout will be in '/Users/darrell/projects/norc/demo/norc_log/_tmsd/tmsd.1'
+
+Output for this daemon, starting of each task and errors, will be sent to the file indicated.  "Ctl-C" will exit the daemon.  But before exiting, rerun tmsdctl.py and you'll see:
+
+        $ ./bin/tmsdctl.py --status
+        Status as of 10/28/2009 22:27:23
+        1 INTERESTING tms daemon(s):
+        ID    Type      Region          Host     PID   Running   Success   Error    Status               Started   Ended
+        1      TMS   MY_REGION   DSmbp.local   12084         0         0       0   RUNNING   2009-10-28 22:27:14       -
+
+
+## Define A New Task
+
+We'll define a simple Task that executes on the command line and prints out the current time:
+
+* Home > Core > Run commands > Add: 
+   * Task Type: **PERSISTENT** (This Task will be run again and again, rather than a one-off)
+   * Job: **DEMO_JOB** (As we defined earlier)
+   * Status: **ACTIVE**
+   * Cmd: **echo "Hello, Norc! Local time is $LOCAL_MM/DD/YYYY"**
+   * Nice: **3** (We'll arbitrarily 'nice' this process to 3.
+   * Timeout: **60** (We'll timeout after 1 minute, though this Task should be almost instant)
+
+Because Norc uses the database, it automatically adds itself as consuming 1 DATABASE_CONNECTION Resource.  After adding this Task, this can be seen (or changed, I suppose) in 
+
+ * Home > Core > Task resource relationships
+
+## Run A Task
+
+In order to run our Task, we must have
+
+ 1. A running Daemon
+ 2. A Task that is due to run
+ 3. A running Iteration
+
+We've set up 1 & 2, so we now have to do 3.  The simplest way to do this is to manually add a new Iteration from the Django admin system:
+
+ * Home > Core > Iterations > Add:
+    * Job: **DEMO_JOB**
+    * Status: **RUNNING**
+    * Iteration type: **EPHEMERAL** (this Iteration of this Job will run once and end)
+
