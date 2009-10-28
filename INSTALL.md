@@ -2,6 +2,7 @@
 
 The goal of this install script is to setup a simple Norc environment that can run a sample Task.  Much of the power of Norc is in its extensibility beyond simple Task management, so the more hack-happy you are, the better!
 
+
 ## Environments tested for this example.
 Other environments will probably work, but we've not tested too many different configurations.
 
@@ -129,5 +130,53 @@ In your shell environment, Django & Norc require a few variables:
 
 ## Sync Django models to the DB
 
-This is also the first t
+This is also the first time you'll be running the full app, so any errors in configuration so far will show up here.
 
+This is the output log of Django creating the tables in MySQL.  Because we've also never setup an admin account, Django also prompts us to setup an admin user.
+
+        $ python manage.py syncdb
+        Creating table django_admin_log
+        Creating table auth_permission
+        Creating table auth_group
+        Creating table auth_user
+        Creating table auth_message
+        Creating table django_content_type
+        Creating table django_session
+        Creating table django_site
+        Creating table norc_job
+        Creating table norc_taskdependency
+        Creating table norc_iteration
+        Creating table norc_taskrunstatus
+        Creating table norc_taskclassimplementation
+        Creating table norc_resourceregion
+        Creating table norc_resource
+        Creating table norc_resourcereservation
+        Creating table norc_taskresourcerelationship
+        Creating table norc_regionresourcerelationship
+        Creating table norc_daemonstatus
+        Creating table norc_startiteration
+        Creating table norc_generic_runcommand
+        Creating table norc_generic_scheduledruncommand
+        Creating table norc_sqstaskrunstatus
+
+        You just installed Django's auth system, which means you don't have any superusers defined.
+        Would you like to create one now? (yes/no): yes
+        Username (Leave blank to use 'darrell'): 
+        E-mail address: darrell@perpetually.com
+        Password: 
+        Password (again): 
+        Superuser created successfully.
+        Installing index for admin.LogEntry model
+        Installing index for auth.Permission model
+        Installing index for auth.Message model
+        Installing index for core.TaskDependency model
+        Installing index for core.Iteration model
+        Installing index for core.TaskRunStatus model
+        Installing index for core.ResourceReservation model
+        Installing index for core.TaskResourceRelationship model
+        Installing index for core.RegionResourceRelationship model
+        Installing index for core.NorcDaemonStatus model
+        Installing index for core.StartIteration model
+        Installing index for core.RunCommand model
+        Installing index for core.ScheduledRunCommand model
+        Installing index for sqs.SQSTaskRunStatus model
