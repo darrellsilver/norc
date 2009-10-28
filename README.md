@@ -77,8 +77,10 @@ Dependency Types:
 ### Interacting & Monitoring:
 
  * Norc could support a web front end that allows full administration of the entire system, but none currently exists. Instead, Norc makes use of Django's excellent Admin interface.
- * tmsdctl.py: Allows stopping, killing, viewing of all Daemons in Norc.  It also allows an overview of Tasks run by each Daemon.  
-   * This sample from www.perpetually.com shows two daemons running on two distinct hosts in two distinct regions:
+
+#### tmsdctl.py: 
+ * Allows stopping, killing, viewing of all Daemons in Norc.  It also allows an overview of Tasks run by each Daemon.  
+ * This sample from www.perpetually.com shows two daemons running on two distinct hosts in two distinct regions:
 
         $ tmsdctl 
         Status as of 10/27/2009 19:47:27
@@ -87,7 +89,7 @@ Dependency Types:
         409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
         413     TMS     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
 
-   * This sample from www.perpetually.com shows a snippet of details for daemon ID 409.  We see the status of just four Tasks in this daemon:
+ * This sample from www.perpetually.com shows a snippet of details for daemon ID 409.  We see the status of just four Tasks in this daemon:
 
         $ tmsdctl --det 410
         Status as of 10/27/2009 19:50:00
