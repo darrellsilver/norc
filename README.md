@@ -23,7 +23,8 @@ Norc is written entirely in Python/Django.  It has been tested and rolled for Pe
 
 #### Tasks:
 
- A Task is a runnable unit of work. It is exactly analogous to a Unix 'cronjob'.  In Norc, Tasks are implemented by subclassing either the Task or ScheduleableTask interfaces.  There are several pre-built subclasses in Norc that cover common use cases:
+A Task is a runnable unit of work. It is exactly analogous to a Unix 'cronjob'.  In Norc, Tasks are implemented by subclassing either the Task or ScheduleableTask interfaces.  There are several pre-built subclasses in Norc that cover common use cases:
+
  * **RunCommand**: allows running a single command.
  * **ScheduledRunCommand**: allows running a single command on a schedule
 
@@ -53,10 +54,12 @@ Task Statuses define the status of a single run of a single Task.  They are the 
  * RETRY: Task has been asked to be retried, but has yet to run again.
  * SUCCESS: Task ran successfully. Yay!
 
+
 #### Jobs:
 
  * Each Task in Norc belongs to exactly 1 Job.  Dependencies between Tasks can only be defined within a single Job.
  * Jobs may be started on a schedule, such as midnight.  Norc uses a Job (TMS_ADMIN) to start all Jobs in Norc.
+
 
 
 #### Iterations:
@@ -72,6 +75,7 @@ Task Statuses define the status of a single run of a single Task.  They are the 
  * Norc allows usage of shared resources to be throttled, preventing too many Tasks from accessing a single resource, such as a web site or database with limited available connections.  Tasks can only be run in any Region that offers sufficient resources available at run time.
  * In addition to throttling limited resources, Resources are often used to target certain environments.  For example, if you have Tasks that can only run on Linux, then you should define a 'Linux' Resource, define a TaskResourceRelationship between this Task and 'Linux'.  This Task will then never run on any non-Linux host (see section on Daemons & Regions for how this works).
  * By default, each Task consumes 1 DATABASE_CONNECTION Resource.
+
 
 #### Daemons:
 
@@ -98,7 +102,7 @@ Norc could support a web front end that allows full administration of the entire
 #### tmsdctl.py:
 
  * Allows stopping, killing, viewing of all Daemons in Norc.  It also allows an overview of Tasks run by each Daemon.  
- * This sample from www.perpetually.com shows two daemons running on two distinct hosts in two distinct regions:
+ * This sample from [perpetually.com](http://www.perpetually.com/) shows two daemons running on two distinct hosts in two distinct regions:
 
         $ tmsdctl 
         Status as of 10/27/2009 19:47:27
@@ -107,7 +111,7 @@ Norc could support a web front end that allows full administration of the entire
         409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
         413     TMS     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
 
- * This sample from www.perpetually.com shows a snippet of details for daemon ID 409.  We see the status of just four Tasks in this daemon:
+ * This sample from [perpetually.com](http://www.perpetually.com/) shows a snippet of details for daemon ID 409.  We see the status of just four Tasks in this daemon:
 
         $ tmsdctl --det 410
         Status as of 10/27/2009 19:50:00
