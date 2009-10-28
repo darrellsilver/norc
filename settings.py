@@ -6,7 +6,7 @@ from norc.settings_local import *
 
 ALL_ENVIRONMENTS = {
     #
-    # Environment settings thanorct aren't private go here.
+    # Environment settings that aren't private go here.
     #
     # This structure replaces Django's default settings.py with this
     # because it allows us to more easily support multiple environments
