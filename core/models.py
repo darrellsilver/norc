@@ -36,7 +36,7 @@ class Job(models.Model):
     """A collection of Tasks across which dependencies can be defined."""
     
     class Meta:
-        db_table = "tms_job"
+        db_table = "norc_job"
     
     name = models.CharField(max_length=128, unique=True)
     description = models.CharField(max_length=512, blank=True, null=True)
@@ -93,7 +93,7 @@ class TaskDependency(models.Model):
     ALL_DEP_TYPES = (DEP_TYPE_STRICT, DEP_TYPE_FLOW)
     
     class Meta:
-        db_table = 'tms_taskdependency'
+        db_table = 'norc_taskdependency'
         unique_together = (('_parent_task_content_type', '_parent_task_object_id'
                             , '_child_task_content_type', '_child_task_object_id'),)
     
@@ -537,7 +537,7 @@ class Iteration(models.Model):
     ALL_ITER_TYPES = (ITER_TYPE_PERSISTENT, ITER_TYPE_EPHEMERAL)
     
     class Meta:
-        db_table = 'tms_iteration'
+        db_table = 'norc_iteration'
     
     job = models.ForeignKey(Job)
     status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
@@ -625,7 +625,7 @@ class TaskRunStatus(models.Model):
                     , STATUS_RETRY, STATUS_SUCCESS)
     
     class Meta:
-        db_table = 'tms_taskrunstatus'
+        db_table = 'norc_taskrunstatus'
     
     # @see http://docs.djangoproject.com/en/dev/ref/contrib/contenttypes/
     # or the lesser @see http://www.djangoproject.com/documentation/models/generic_relations/
@@ -985,7 +985,7 @@ class TaskClassImplementation(models.Model):
     ALL_STATUSES = (STATUS_ACTIVE, STATUS_INACTIVE)
     
     class Meta:
-        db_table = 'tms_taskclassimplementation'
+        db_table = 'norc_taskclassimplementation'
     
     status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
     library_name = models.CharField(max_length=1024)
@@ -1013,7 +1013,7 @@ class ResourceRegion(models.Model):
     """
     
     class Meta:
-        db_table = 'tms_resourceregion'
+        db_table = 'norc_resourceregion'
     
     name = models.CharField(max_length=128, unique=True)
     date_added = models.DateTimeField(default=datetime.datetime.utcnow)
@@ -1048,7 +1048,7 @@ class Resource(models.Model):
     """
     
     class Meta:
-        db_table = 'tms_resource'
+        db_table = 'norc_resource'
     
     name = models.CharField(max_length=128)
     # maximum units available for reservation regardless of region. If > -1, 
@@ -1103,7 +1103,7 @@ class ResourceReservation(models.Model):
     """
     
     class Meta:
-        db_table = 'tms_resourcereservation'
+        db_table = 'norc_resourcereservation'
         unique_together = (('region', 'task_resource_relationship'),)
     
     objects = django_extras.LockingManager()
@@ -1142,7 +1142,7 @@ class ResourceReservation(models.Model):
                                  FROM `%s` 
                                 WHERE `region_id` = %s
                                   AND `resource_id` = %s
-                            """ % ('tms_resourcereservation', region_id, resource_id))
+                            """ % ('norc_resourcereservation', region_id, resource_id))
             row = cursor.fetchone()
             units_reserved = row[0]
             if units_reserved == None:# TODO How do you do this in the SQL?
@@ -1192,7 +1192,7 @@ class TaskResourceRelationship(models.Model):
     namely, how much of this resource does this Task demand to run.
     """
     class Meta:
-        db_table = 'tms_taskresourcerelationship'
+        db_table = 'norc_taskresourcerelationship'
         unique_together = (('_task_content_type', '_task_object_id', 'resource'),)
     
     _task_content_type = models.ForeignKey(ContentType)
@@ -1261,7 +1261,7 @@ class RegionResourceRelationship(models.Model):
     """Defines the availability of resources in a given region"""
     
     class Meta:
-        db_table = 'tms_regionresourcerelationship'
+        db_table = 'norc_regionresourcerelationship'
         unique_together = (('region','resource'),)
     
     region = models.ForeignKey('ResourceRegion')
@@ -1334,7 +1334,7 @@ class NorcDaemonStatus(models.Model):
         , STATUS_DELETED)
     
     class Meta:
-        db_table = 'tms_daemonstatus'
+        db_table = 'norc_daemonstatus'
     
     region = models.ForeignKey('ResourceRegion')
     host = models.CharField(max_length=124)
@@ -1460,7 +1460,7 @@ class StartIteration(SchedulableTask):
     """Schedule on which new TMS Iterations are started"""
     
     class Meta:
-        db_table = 'tms_startiteration'
+        db_table = 'norc_startiteration'
     
     target_job = models.ForeignKey(Job, related_name="_ignore_target_job_set")
     target_iteration_type = models.CharField(choices=(zip(Iteration.ALL_ITER_TYPES, Iteration.ALL_ITER_TYPES)), max_length=16)
@@ -1485,7 +1485,7 @@ class RunCommand(Task):
     """Run an arbitrary command line as a Task"""
     
     class Meta:
-        db_table = 'tms_generic_runcommand'
+        db_table = 'norc_generic_runcommand'
     
     cmd = models.CharField(max_length=1024)
     nice = models.IntegerField(default=0)
@@ -1556,6 +1556,6 @@ class ScheduledRunCommand(SchedulableTask, RunCommand):
     """Run an arbitrary command on a schedule"""
     
     class Meta:
-        db_table = 'tms_generic_scheduledruncommand'
+        db_table = 'norc_generic_scheduledruncommand'
 
 #

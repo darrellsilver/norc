@@ -42,7 +42,7 @@ class SQSTaskRunStatus(models.Model):
                     , STATUS_RETRY, STATUS_SUCCESS)
     
     class Meta:
-        db_table = "tms_sqstaskrunstatus"
+        db_table = "norc_sqstaskrunstatus"
     
     queue_name = models.CharField(max_length=128)
     task_id = models.PositiveIntegerField()
