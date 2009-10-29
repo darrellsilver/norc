@@ -5,21 +5,28 @@ Norc is a Task Management System that replaces Unix cron.  Its goal is to allow 
 
 ### Features
 
- * **Dependency Management**: Norc allows you to define a specific run-order for Tasks, ensuring that Task 'C' only runs after 'A' and 'B' have completed successfully.
- * **Resource Management**: Norc can throttle resource usage by tasks, preventing too many tasks from simultaneously using a single resource.
- * **Error Reporting**: Exit statuses (or return values) of tasks can generate alerts over email, or through a monitoring tool
- * **Log Management**: Output from Tasks (stdin & stderr) are centrally managed and available.
- * **Scheduling**: Tasks in Norc can be scheduled with the same flexibility as any cron task
- * **Decentralized (-ish)**: Unlike cron, tasks in Norc are not tied to a single host. Rather, all state and task information is stored in a database.
- * **Auditing**: All task exit statuses, run times and durations are stored allowing historical analysis of expected compute time for repetitive tasks, error rates, etc.
- * **Timeouts**: Norc supports Task-specific timeouts.
- * **Web/Terminal Administration**: Norc's state is entirely database driven, allowing Tasks to be fully and externally controlled.  Currently this is limited to a command-line interface and Django's built-in admin console.  There is a huge opportunity to improve this area to make a fully-functional web interface for Norc.
- * **SQS Plugin**: Use Amazon's Simple Queue Service as an alternative source of Tasks, employing the rest of Norc's monitoring, daemon and management infrastructure.
+ * Define **Task dependencies**, ensuring that Task 'C' only runs after 'A' and 'B' have completed successfully.
+ * Throttle limited resource with **resource management**, preventing processes from overloading a database, or other service.
+ * Receive **email notification** when a Task fails. Full status is stored in the DB, allowing analysis of Task run times and success rates.
+ * All output for Tasks is managed in **normalized logs**.
+ * **Schedule** Tasks, just like Cron. 
+ * Run Tasks on **any number of hosts**.  Task state is shared in a single DB, making Norc as scalable as its underlying database.
+ * Set **timeouts** and **nice** values for any Task, catching errors and prevent runaway processing.
+ * Because Task state is stored in a DB, it can be **administered through a web interface**.  These tools are currently limited to Django's administration tools and some custom command-line tools.
+ * We built a plugin for **Amazon's SQS** that allows us to use all the auditing of Tasks, but using SQS as the source of Tasks to run.
+
+
+### What Norc is Good at & What it's Not
+
+* Norc is not SQS or RabbitMQ or Celery.  These systems are excellent at processing thousands or millions of the same Task, allowing background processing of repetitive actions.  Norc is better at handling arbitrary, diverse Tasks.  
+* If you're encoding video that users upload, you're better off with a queueing system.  If you're currently using wrapper scripts, or want more transparency in complex, discreet processes, Norc can prove an excellent fit.
+* At [Perpetually](http://www.perpetually.com/), we use Norc to kick off each scheduled crawl for each user, as well as several system administration Tasks.  When these Tasks run, all it does is put URLs into a queueing service for processing by any available worker.  Crawls can grow to several thousand URLs, and this process makes efficient use of Norc, which provides flexible editing and auditing, as well as queues, which offer excellent scalability and repeatability, but less run-time control.
 
 
 ### Architecture & Terminology Overview
 
 Norc is written entirely in Python/Django.  It has been tested and rolled for Perpetually.com, running on OS X and Linux, using MySQL, Python 2.4, 2.5, 2.6 and Django-1.0.
+
 
 #### Tasks:
 
@@ -59,7 +66,6 @@ Task Statuses define the status of a single run of a single Task.  They are the 
 
  * Each Task in Norc belongs to exactly 1 Job.  Dependencies between Tasks can only be defined within a single Job.
  * Jobs may be started on a schedule, such as midnight.  Norc uses a Job (TMS_ADMIN) to start all Jobs in Norc.
-
 
 
 #### Iterations:
