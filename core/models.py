@@ -1557,5 +1557,8 @@ class ScheduledRunCommand(SchedulableTask, RunCommand):
     
     class Meta:
         db_table = 'norc_generic_scheduledruncommand'
+    
+    def get_library_name(self):
+        return 'norc.core.models.ScheduledRunCommand'
 
 #
