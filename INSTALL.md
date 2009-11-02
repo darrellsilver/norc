@@ -69,7 +69,7 @@ Edit settings.py, which is stored in Git, with other settings.  Bold items are c
  * **TMS_TMP_DIR**: The full path to a directory used for any temp files created by Norc Tasks.  This variable is available in the environment to any command run in Norc.
  * **DATABASE_NAME**: Your DB schema
  * **DATABASE_USER**: Your DB login user
- * **DATABASE_{USE_TLS, HOST, HOST_USER, PORT}**: Service from which all email alerts in Norc will be sent.
+ * **EMAIL_{USE_TLS, HOST, HOST_USER, PORT}**: Service from which all email alerts in Norc will be sent.
  * **TMS_EMAIL_{ALERTS, ALERTS_TO}**: Send alerts on Task failure, and to whom.
 
 The full config file:
