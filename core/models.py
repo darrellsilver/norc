@@ -45,6 +45,7 @@
 import sys, os, datetime
 import traceback
 import subprocess
+import random
 
 from django.db import models
 from django.db import connection
@@ -817,9 +818,10 @@ class SchedulableTask(Task):
         if schedule_name in ('DAILY','WEEKLY','MONTHLY'):
             hour = 0
         if schedule_name in ('WEEKLY'):
-            day_of_week = 0
+            day_of_week = random.randint(0,6)
         if schedule_name in ('MONTHLY'):
-            day_of_month = 1
+            # TODO this is a shortcut it should be 31 when that many days in the month
+            day_of_month = random.randint(1, 30)
         
         return (minute, hour, day_of_month, month, day_of_week)
     
@@ -863,16 +865,16 @@ class SchedulableTask(Task):
             and self.__hour_r__ == [0] \
             and self.__day_of_month_r__ == day_of_month \
             and self.__month_r__ == month \
-            and self.__day_of_week_r__ == [0]:
+            and len(self.__day_of_week_r__) == 1:
             if pretty_names:
                 schedule_name = 'once a week'
             else:
                 schedule_name = 'WEEKLY'
         elif self.__minute_r__ == [0] \
             and self.__hour_r__ == [0] \
-            and self.__day_of_month_r__ == [1] \
+            and len(self.__day_of_month_r__) == 1 \
             and self.__month_r__ == month \
-            and self.__day_of_week_r__ == [0]:
+            and self.__day_of_week_r__ == day_of_week:
             if pretty_names:
                 schedule_name = 'once a month'
             else:
