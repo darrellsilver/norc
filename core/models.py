@@ -775,7 +775,7 @@ class SchedulableTask(Task):
         self.__minute_r__ = SchedulableTask.__str2range__(self.minute, 0, 60)
         self.__hour_r__ = SchedulableTask.__str2range__(self.hour, 0, 24)
         self.__day_of_month_r__ = SchedulableTask.__str2range__(self.day_of_month, 1, 32)
-        self.__month_r__ = SchedulableTask.__str2range__(self.month, 0, 12)
+        self.__month_r__ = SchedulableTask.__str2range__(self.month, 1, 13)
         self.__day_of_week_r__ = SchedulableTask.__str2range__(self.day_of_week, 0, 7)
     
     @staticmethod
@@ -808,7 +808,7 @@ class SchedulableTask(Task):
         minute = range(0, 60)
         hour = range(0, 24)
         day_of_month = range(1, 32)
-        month = range(0, 12)
+        month = range(1, 13)
         day_of_week = range(0, 7)
         
         if schedule_name in ('HALFHOURLY'):
@@ -829,7 +829,7 @@ class SchedulableTask(Task):
         minute = range(0, 60)
         hour = range(0, 24)
         day_of_month = range(1, 32)
-        month = range(0, 12)
+        month = range(1, 13)
         day_of_week = range(0, 7)
         
         schedule_name = None
@@ -893,7 +893,7 @@ class SchedulableTask(Task):
         minute_r = SchedulableTask.__range2str__(minute, 0, 60)
         hour_r = SchedulableTask.__range2str__(hour, 0, 24)
         day_of_month_r = SchedulableTask.__range2str__(day_of_month, 1, 32)# not all months have 31 days, but doesn't matter
-        month_r = SchedulableTask.__range2str__(month, 0, 12)
+        month_r = SchedulableTask.__range2str__(month, 1, 13)
         day_of_week_r = SchedulableTask.__range2str__(day_of_week, 0, 7)
         
         return (minute_r, hour_r, day_of_month_r, month_r, day_of_week_r)
@@ -1454,13 +1454,18 @@ class NorcDaemonStatus(models.Model):
             return NorcDaemonStatus.DAEMON_TYPE_SQS
         else:
             return NorcDaemonStatus.DAEMON_TYPE_TMS
-    def get_task_statuses(self, only_statuses=None):
+    def get_task_statuses(self, only_statuses=None, date_started=None):
         """
         return the statuses (not the tasks) for all tasks run(ning) by this daemon
+        date_started: limit to statuses with start date since given date, 
+                    or all if date_started=None (the default)
         """
         filtered = []
         task_statuses = self.taskrunstatus_set.filter(controlling_daemon=self)
         sqs_statuses = self.sqstaskrunstatus_set.filter(controlling_daemon=self)
+        if not date_started == None:
+            task_statuses = task_statuses.filter(date_started__gte=date_started)
+            sqs_statuses = sqs_statuses.filter(date_started__gte=date_started)
         if only_statuses == None:
             filtered.extend(task_statuses.all())
             filtered.extend(sqs_statuses.all())
