@@ -64,13 +64,13 @@ Edit the file to contains the proper credentials.  In this case:
 Edit settings.py, which is stored in Git, with other settings.  Bold items are crucial and explained below:
 
  * **ADMINS**: This is Django's admins list. See the django docs for more details.
- * **TMS_CODE_ROOT**: The full path where you downloaded norc from GitHub
- * **TMS_LOG_DIR**: The full path where all logs of all Tasks in Norc should be stored
- * **TMS_TMP_DIR**: The full path to a directory used for any temp files created by Norc Tasks.  This variable is available in the environment to any command run in Norc.
+ * **NORC_CODE_ROOT**: The full path where you downloaded norc from GitHub
+ * **NORC_LOG_DIR**: The full path where all logs of all Tasks in Norc should be stored
+ * **NORC_TMP_DIR**: The full path to a directory used for any temp files created by Norc Tasks.  This variable is available in the environment to any command run in Norc.
  * **DATABASE_NAME**: Your DB schema
  * **DATABASE_USER**: Your DB login user
  * **EMAIL_{USE_TLS, HOST, HOST_USER, PORT}**: Service from which all email alerts in Norc will be sent.
- * **TMS_EMAIL_{ALERTS, ALERTS_TO}**: Send alerts on Task failure, and to whom.
+ * **NORC_EMAIL_{ALERTS, ALERTS_TO}**: Send alerts on Task failure, and to whom.
 
 The full config file:
 
@@ -89,9 +89,9 @@ The full config file:
                 , 'LOGGING_DEBUG' : os.environ.get('NORC_LOGGING_DEBUG', False) in ('True', 'true')
                 , 'ADMINS' : (('Darrell', 'contact@darrellsilver.com'),)
                 , 'TIME_ZONE' : 'America/New-York'
-                , 'TMS_CODE_ROOT' : '/Users/darrell/projects/norc/demo/norc'
-                , 'TMS_LOG_DIR' : '/Users/darrell/projects/norc/demo/norc_log'
-                , 'TMS_TMP_DIR' : '/Users/darrell/projects/norc/demo/norc_tmp'
+                , 'NORC_CODE_ROOT' : '/Users/darrell/projects/norc/demo/norc'
+                , 'NORC_LOG_DIR' : '/Users/darrell/projects/norc/demo/norc_log'
+                , 'NORC_TMP_DIR' : '/Users/darrell/projects/norc/demo/norc_tmp'
         
                 # DB connection
                 , 'DATABASE_ENGINE' : 'mysql'
@@ -109,9 +109,9 @@ The full config file:
         
                 # TMS alert handling
                 # send alerts?
-                , 'TMS_EMAIL_ALERTS' : True
+                , 'NORC_EMAIL_ALERTS' : True
                 # to whom should alerts be sent
-                , 'TMS_EMAIL_ALERTS_TO' : ['support@example.com']
+                , 'NORC_EMAIL_ALERTS_TO' : ['support@example.com']
             },
         }
 
@@ -320,7 +320,7 @@ with
 
 at run-time.
 
-The full list of these variables, which could be easily expanded, can be seen direclty in Norc's source code:
+The full list of these variables, which could be easily expanded, can be seen directly in Norc's source code:
 
         norc/core/models.py > RunCommand() > interpret_vars()
 

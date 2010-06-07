@@ -212,7 +212,7 @@ def main():
     parser.add_option("--iteration_id", action="store", type="int"
         , help="The id of the iteration in which this Task runs")
     parser.add_option("--task_library", action="store", type="string"
-        , help="The path Task (permalink.tms_impl.models.EnqueudArchiveRequest)")
+        , help="The path Task (permalink.norc_impl.models.EnqueudArchiveRequest)")
     parser.add_option("--task_id", action="store", type="string"
         , help="The id of this Task in this library")
     parser.add_option("--nice", action="store", type="int", default=5

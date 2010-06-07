@@ -30,7 +30,6 @@
 #
 
 
-
 #######################################
 #
 # Report on how long Tasks run, wait to run, etc
@@ -80,7 +79,7 @@ def compile_timings(data_to_compile, one_row_compiler, save_stream=None):
         sys.stderr.write('\n')
     return task_timings
 
-def __tms_compile_one_row__(row):
+def __norc_compile_one_row__(row):
     task = row.get_task()
     if task == None:# crappy data in statuses table
         return None
@@ -93,7 +92,7 @@ def compile_task_timings(save_stream=None):
     matches = matches.filter(date_started__gte=datetime.datetime(2009, 5, 18, 20))
     #matches = matches.filter(date_started__lte=datetime.datetime(2009, 5, 18, 14))
     matches = matches.order_by('date_started')
-    return compile_timings(matches, __tms_compile_one_row__, save_stream)
+    return compile_timings(matches, __norc_compile_one_row__, save_stream)
 
 def __sqs_compile_one_row__(row):
     if not row.queue_name or not row.status or not row.date_enqueued or not row.date_started or not row.date_ended:
@@ -246,8 +245,8 @@ def main():
     parser = OptionParser("%prog [--debug]")
     parser.add_option("--round_dates", action="store", default="10MIN"
         , help="round dates to this granularity")
-    parser.add_option("--delay_bucket_size", action="store", default=60)# 1 minute
-    parser.add_option("--duration_bucket_size", action="store", default=10)# 10 seconds
+    parser.add_option("--delay_bucket_size", action="store", type="int", default=60)# 1 minute
+    parser.add_option("--duration_bucket_size", action="store", type="int", default=10)# 10 seconds
     parser.add_option("--max_delay", action="store", type="int", default=60*90)# 1.5 hours
     parser.add_option("--max_duration", action="store", type="int", default=60*20)# 20 minutes
     parser.add_option("--save_timings", action="store", default="./task_timings_raw.csv"
