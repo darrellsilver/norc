@@ -161,7 +161,7 @@ class SQSTask(object):
     
     def get_log_file(self):
         #f = "%s.%s" % (self.get_id(), self.get_date_enqueued().strftime('%Y%m%d_%H%M%S'))
-        fp = os.path.join(settings.TMS_LOG_DIR, self.get_queue_name(), str(self.get_id()))
+        fp = os.path.join(settings.NORC_LOG_DIR, self.get_queue_name(), str(self.get_id()))
         return fp
     def get_date_enqueued(self):
         return self.date_enqueued
@@ -193,13 +193,13 @@ class SQSTask(object):
 def get_sqs_task_class(queue_name):
     # TODO poor hard coding!
     if queue_name in settings.AWS_SQS_ARCHIVE_QUEUES.values():
-        from permalink.tms_impl.models import SQSArchiveRequest
+        from permalink.norc_impl.models import SQSArchiveRequest
         return SQSArchiveRequest
     if queue_name == settings.AWS_SQS_PUBLISH_RECORD:
-        from permalink.tms_impl.models import SQSPublishRecord
+        from permalink.norc_impl.models import SQSPublishRecord
         return SQSPublishRecord
     if queue_name == settings.AWS_SQS_BROWSER_PUBLISH:
-        from permalink.tms_impl.models import SQSBrowserPublish
+        from permalink.norc_impl.models import SQSBrowserPublish
         return SQSBrowserPublish
     raise Exception("unknown queue_name '%s'.  Configure it in get_sqs_task_class()" \
         % (queue_name))

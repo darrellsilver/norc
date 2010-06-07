@@ -75,8 +75,8 @@ class RunCommandAdmin(admin.ModelAdmin):
     list_display = ['id', 'cmd', 'timeout', 'nice', core.RunCommand.get_job, 'get_status', 'date_added']
 admin.site.register(core.RunCommand, RunCommandAdmin)
 
-class ScheduledRunCommandAdmin(admin.ModelAdmin):
-    list_display = ['id', 'cmd', 'timeout', 'nice', core.RunCommand.get_job, 'get_status', 'date_added']
-admin.site.register(core.ScheduledRunCommand, ScheduledRunCommandAdmin)
+# class ScheduledRunCommandAdmin(admin.ModelAdmin):
+#     list_display = ['id', 'cmd', 'timeout', 'nice', core.RunCommand.get_job, 'get_status', 'date_added']
+# admin.site.register(core.ScheduledRunCommand, ScheduledRunCommandAdmin)
 
 #

@@ -65,7 +65,7 @@ Task Statuses define the status of a single run of a single Task.  They are the 
 #### Jobs:
 
  * Each Task in Norc belongs to exactly 1 Job.  Dependencies between Tasks can only be defined within a single Job.
- * Jobs may be started on a schedule, such as midnight.  Norc uses a Job (TMS_ADMIN) to start all Jobs in Norc.
+ * Jobs may be started on a schedule, such as midnight.  Norc uses a Job (NORC_ADMIN) to start all Jobs in Norc.
 
 
 #### Iterations:
