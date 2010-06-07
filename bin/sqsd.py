@@ -30,6 +30,7 @@
 #
 
 
+
 ########################################
 #
 # A daemon for running SQS Tasks, similar to tmsd
@@ -47,7 +48,7 @@ from boto.sqs.connection import SQSConnection
 
 from norc import settings
 from norc.bin import tmsd
-from norc.core import models as norc_models
+from norc.core import models as tms_models
 
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
@@ -162,13 +163,7 @@ class ForkingSQSDaemon(tmsd.ForkingNorcDaemon):
             queue = self.get_queue()
             if queue == None:
                 raise Exception("No queue by name '%s'" % (self.get_queue_name()))
-            try:
-                self.__queue_size__ = queue.count()
-            except Exception, e:
-                # allow for some shity error w/in SQS (BotoServerError, sslerror, ...)
-                log.error("Error getting queue size from SQS. Skipping.", e)
-                return
-            
+            self.__queue_size__ = queue.count()
             self.__runs_since_queue_size_check__ = 0
         else:
             self.__runs_since_queue_size_check__ += 1
@@ -206,7 +201,7 @@ def main():
     
     # resolve the region
     # currently an SQS Queue is mapped 1:1 to a ResourceRegion
-    region = norc_models.ResourceRegion.get(options.queue_name)
+    region = tms_models.ResourceRegion.get(options.queue_name)
     if region == None:
         raise Exception("Don't know region '%s'" % (options.queue_name))
     
@@ -220,7 +215,7 @@ def main():
     signal.signal(signal.SIGINT, __handle_SIGINT__)
     signal.signal(signal.SIGTERM, __handle_SIGTERM__)
     
-    daemon = ForkingSQSDaemon(region, options.poll_frequency, settings.NORC_LOG_DIR
+    daemon = ForkingSQSDaemon(region, options.poll_frequency, settings.TMS_LOG_DIR
         , not options.no_log_redirect, max_to_run=options.max_to_run)
     
     ended_gracefully = daemon.run()

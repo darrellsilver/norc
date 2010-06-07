@@ -420,9 +420,9 @@ class Task(models.Model):
             self.save()
         if self.alert_on_failure() and status in (TaskRunStatus.STATUS_ERROR, TaskRunStatus.STATUS_TIMEDOUT):
             alert_msg = 'TMS Task %s:%s ended with %s!' % (self.get_job().get_name(), self.get_name(), status)
-            if settings.NORC_EMAIL_ALERTS:
+            if settings.TMS_EMAIL_ALERTS:
                 send_mail(alert_msg, "d'oh!" \
-                    , settings.EMAIL_HOST_USER, settings.NORC_EMAIL_ALERT_TO, fail_silently=False)
+                    , settings.EMAIL_HOST_USER, settings.TMS_EMAIL_ALERT_TO, fail_silently=False)
             else:
                 log.info(alert_msg)
         #
@@ -501,7 +501,7 @@ class Task(models.Model):
     def get_library_name(self):
         """
         Return the python path for this Task implementation.
-        For example, permalink.norc_impl.EnqueuedArchiveRequest
+        For example, permalink.tms_impl.EnqueuedArchiveRequest
         """
         # TODO I HATE THIS! How can it be derived dynamically??
         raise NotImplementedError
@@ -528,7 +528,7 @@ class Task(models.Model):
         return u"%s.%s" % (self.__class__.__name__, self.get_id())
     def get_log_file(self):
         # TODO BIG TODO!! There needs to be an iteration suffix, but can't do that from here! Arg!
-        fp = os.path.join(settings.NORC_LOG_DIR, self.get_job().get_name(), self.get_name())
+        fp = os.path.join(settings.TMS_LOG_DIR, self.get_job().get_name(), self.get_name())
         return fp
     
     def __eq__(self, o):
@@ -772,9 +772,6 @@ class SchedulableTask(Task):
     
     def __init__(self, *args, **kwargs):
         Task.__init__(self, *args, **kwargs)
-        self._parse_schedule()
-    
-    def _parse_schedule(self):
         self.__minute_r__ = SchedulableTask.__str2range__(self.minute, 0, 60)
         self.__hour_r__ = SchedulableTask.__str2range__(self.hour, 0, 24)
         self.__day_of_month_r__ = SchedulableTask.__str2range__(self.day_of_month, 1, 32)
@@ -837,7 +834,7 @@ class SchedulableTask(Task):
         
         schedule_name = None
         
-        if len(self.__minute_r__) == 2 \
+        if self.__minute_r__ == [0,30] \
             and self.__hour_r__ == hour \
             and self.__day_of_month_r__ == day_of_month \
             and self.__month_r__ == month \
@@ -846,7 +843,7 @@ class SchedulableTask(Task):
                 schedule_name = 'every half hour'
             else:
                 schedule_name = 'HALFHOURLY'
-        elif len(self.__minute_r__) == 1 \
+        elif self.__minute_r__ == [0] \
             and self.__hour_r__ == hour \
             and self.__day_of_month_r__ == day_of_month \
             and self.__month_r__ == month \
@@ -855,8 +852,8 @@ class SchedulableTask(Task):
                 schedule_name = 'every hour'
             else:
                 schedule_name = 'HOURLY'
-        elif len(self.__minute_r__) == 1 \
-            and len(self.__hour_r__) == 1 \
+        elif self.__minute_r__ == [0] \
+            and self.__hour_r__ == [0] \
             and self.__day_of_month_r__ == day_of_month \
             and self.__month_r__ == month \
             and self.__day_of_week_r__ == day_of_week:
@@ -864,8 +861,8 @@ class SchedulableTask(Task):
                 schedule_name = 'once a day'
             else:
                 schedule_name = 'DAILY'
-        elif len(self.__minute_r__) == 1 \
-            and len(self.__hour_r__) == 1 \
+        elif self.__minute_r__ == [0] \
+            and self.__hour_r__ == [0] \
             and self.__day_of_month_r__ == day_of_month \
             and self.__month_r__ == month \
             and len(self.__day_of_week_r__) == 1:
@@ -873,8 +870,8 @@ class SchedulableTask(Task):
                 schedule_name = 'once a week'
             else:
                 schedule_name = 'WEEKLY'
-        elif len(self.__minute_r__) == 1 \
-            and len(self.__hour_r__) == 1 \
+        elif self.__minute_r__ == [0] \
+            and self.__hour_r__ == [0] \
             and len(self.__day_of_month_r__) == 1 \
             and self.__month_r__ == month \
             and self.__day_of_week_r__ == day_of_week:
@@ -884,7 +881,7 @@ class SchedulableTask(Task):
                 schedule_name = 'MONTHLY'
         
         return schedule_name
-
+    
     @staticmethod
     def prep_schedule_parts(minute, hour, day_of_month, month, day_of_week):
         """
@@ -1059,11 +1056,9 @@ class ResourceRegion(models.Model):
             return ResourceRegion.objects.get(name=name)
         except ResourceRegion.DoesNotExist, dne:
             return None
-    @staticmethod
     def create(name):
         rr = ResourceRegion(name=name)
         rr.save()
-        return rr
     
     def get_name(self):
         return self.name
@@ -1105,10 +1100,9 @@ class Resource(models.Model):
         except Resource.DoesNotExist, dne:
             return None
     @staticmethod
-    def create(name):
-        r = Resource(name=name)
+    def create(name, global_units_available=None):
+        r = Resource(name=name, units_in_existence=units_in_existence)
         r.save()
-        return r
     
     def get_name(self):
         return self.name
@@ -1452,11 +1446,11 @@ class NorcDaemonStatus(models.Model):
     
     def get_daemon_type(self):
         # TODO This is sloppy!
-        norc_c = self.taskrunstatus_set.count()
+        tms_c = self.taskrunstatus_set.count()
         sqs_c = self.sqstaskrunstatus_set.count()
-        if norc_c > 0 and sqs_c == 0:
+        if tms_c > 0 and sqs_c == 0:
             return NorcDaemonStatus.DAEMON_TYPE_TMS
-        elif norc_c == 0 and sqs_c > 0:
+        elif tms_c == 0 and sqs_c > 0:
             return NorcDaemonStatus.DAEMON_TYPE_SQS
         else:
             return NorcDaemonStatus.DAEMON_TYPE_TMS
@@ -1552,7 +1546,7 @@ class RunCommand(Task):
         
         cmd_n = cmd
         # Settings
-        cmd_n = cmd_n.replace("$NORC_TMP_DIR", settings.NORC_TMP_DIR)
+        cmd_n = cmd_n.replace("$TMS_TMP_DIR", settings.TMS_TMP_DIR)
         cmd_n = cmd_n.replace("$DATABASE_NAME", settings.DATABASE_NAME)
         cmd_n = cmd_n.replace("$DATABASE_USER", settings.DATABASE_USER)
         cmd_n = cmd_n.replace("$DATABASE_PASSWORD", settings.DATABASE_PASSWORD)
@@ -1594,23 +1588,14 @@ class RunCommand(Task):
     
     def __unicode__(self):
         return u"%s" % (self.get_name())
-'''
-removed because of diamond multiple inheritnace on db_model problem
-this is unused anyway
-
-
-Removed because bothe SchedulableTask and RunCommand inherit from task,
-this means fields conflict
-
-ScheduledRunCommand isn't used in the current codebase, it was used for the norc demo 
 
 class ScheduledRunCommand(SchedulableTask, RunCommand):
     """Run an arbitrary command on a schedule"""
     
     class Meta:
         db_table = 'norc_generic_scheduledruncommand'
-
+    
     def get_library_name(self):
-        return 'taskmaster.core.models.ScheduledRunCommand'
+        return 'norc.core.models.ScheduledRunCommand'
 
-'''
+#

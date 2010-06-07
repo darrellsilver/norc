@@ -30,6 +30,7 @@
 #
 
 
+
 ##############################################
 #
 # Some utilities to manage Amazon SQS
@@ -44,7 +45,7 @@ import sys, datetime, pickle, time
 from optparse import OptionParser
 
 from permalink import settings# not exactly normalized, but a shortcut addressable later
-from permalink.norc_impl import models
+from permalink.tms_impl import models
 
 from boto.sqs.connection import SQSConnection
 from boto.exception import SQSError

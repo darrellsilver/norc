@@ -29,54 +29,92 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-# Django settings for Norc project.
+
 
 import os
 from norc.settings_local import *
-from norc.all_environments import ENV
+
+
+ALL_ENVIRONMENTS = {
+    #
+    # Environment settings that aren't private go here.
+    #
+    # This structure replaces Django's default settings.py with this
+    # because it allows us to more easily support multiple environments
+    #
+    # This variable must be defined in the shell environment as 'norc_ENVIRONMENT'
+    'darrell-dsmbp' : {
+        # Basic Django config
+        'DEBUG' : os.environ.get('NORC_DEBUG', False) in ('True', 'true')
+        , 'TEMPLATE_DEBUG' : os.environ.get('NORC_TEMPLATE_DEBUG', False) in ('True', 'true')
+        , 'LOGGING_DEBUG' : os.environ.get('NORC_LOGGING_DEBUG', False) in ('True', 'true')
+        , 'ADMINS' : (('Darrell', 'contact@darrellsilver.com'),)
+        , 'TIME_ZONE' : 'America/New-York'
+        , 'TMS_CODE_ROOT' : '/Users/darrell/projects/permalink/src/'
+        , 'TMS_LOG_DIR' : '/Users/darrell/projects/permalink/tms_log'
+        , 'TMS_TMP_DIR' : '/Users/darrell/projects/permalink/tms_tmp'
+        
+        # DB connection
+        , 'DATABASE_ENGINE' : 'mysql'
+        , 'DATABASE_NAME' : 'perpetually_dev'
+        , 'DATABASE_USER' : 'permalink'
+        , 'DATABASE_HOST' : ''
+        , 'DATABASE_PORT' : ''
+        
+        # address to use for all outgoing emails (failure alerts, etc)
+        # this account is the FROM address
+        , 'EMAIL_USE_TLS' : True
+        , 'EMAIL_HOST' : 'smtp.gmail.com'
+        , 'EMAIL_HOST_USER' : 'support@perpetually.com'
+        , 'EMAIL_PORT' : 587
+        
+        # TMS alert handling
+        # send alerts?
+        , 'TMS_EMAIL_ALERTS' : False
+        # to whom should alerts be sent
+        , 'TMS_EMAIL_ALERTS_TO' : ['darrellsilver@gmail.com']
+    },
+}
 
 #
 # Determine the environment
 #
 
-import itertools
-def expose_env(*args):
-    """
-    used to replace repetitive blocks of
-
-    SETTING_NAME = ENV['SETTING_NAME']
-
-    maybe we could just run
-    expose_env(*ENV.keys())
-
-    and then write
-    from all_environments import *
-    """
-    for key in args:
-    #for key in itertools.chain(args):
-        globals()[key] = ENV[key]
+try:
+    if not os.environ.get('NORC_ENVIRONMENT'):
+        raise Exception("'NORC_ENVIRONMENT' Must be specified in your enviornment")
+    ENV = ALL_ENVIRONMENTS[os.environ.get('NORC_ENVIRONMENT')]
+except KeyError, ke:
+    raise Exception("Unknown NORC_ENVIRONMENT '%s'" % (os.environ.get('NORC_ENVIRONMENT')))
 
 
 
-# Debug creates small memory leaks, storing all SQL queries in memory.
-expose_env('DEBUG','TEMPLATE_DEBUG')
 
-expose_env('ADMINS')
+# Debug creates small memory leaks, storing all SQL queries in memory
+DEBUG = ENV['DEBUG']
+TEMPLATE_DEBUG = ENV['TEMPLATE_DEBUG']
+
+ADMINS = ENV['ADMINS']
+
 MANAGERS = ADMINS
 
-# Database configuration.
-expose_env('DATABASE_ENGINE','DATABASE_NAME','DATABASE_USER','DATABASE_HOST','DATABASE_PORT')
+DATABASE_ENGINE = ENV['DATABASE_ENGINE']
+DATABASE_NAME = ENV['DATABASE_NAME']
+DATABASE_USER = ENV['DATABASE_USER']
+DATABASE_HOST = ENV['DATABASE_HOST']
+DATABASE_PORT = ENV['DATABASE_PORT']
 
-# Email configuration.
-expose_env('EMAIL_USE_TLS','EMAIL_HOST','EMAIL_HOST_USER','EMAIL_PORT')
+EMAIL_USE_TLS = ENV['EMAIL_USE_TLS']
+EMAIL_HOST = ENV['EMAIL_HOST']
+EMAIL_HOST_USER = ENV['EMAIL_HOST_USER']
+EMAIL_PORT = ENV['EMAIL_PORT']
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
 # If running in a Windows environment this must be set to the same as your
 # system time zone.
-expose_env('TIME_ZONE')
-
+TIME_ZONE = ENV['TIME_ZONE']
 
 # Language code for this installation. All choices can be found here:
 # http://www.i18nguy.com/unicode/language-identifiers.html
@@ -122,7 +160,7 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
-    #os.path.join(ENV['NORC_CODE_ROOT'], '/templates/'),
+    #os.path.join(ENV['TMS_CODE_ROOT'], 'permalink/django_html'),
 )
 
 INSTALLED_APPS = (
@@ -133,16 +171,18 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'norc.core',
     'norc.sqs',
-    'norc.view',
 )
 
 #
-# taskmaster specific settings
+# norc specific settings
 #
 
 # TMS alert handling
-expose_env('NORC_EMAIL_ALERTS','NORC_EMAIL_ALERTS_TO')
+TMS_EMAIL_ALERTS = ENV['TMS_EMAIL_ALERTS']
+TMS_EMAIL_ALERT_TO = ENV['TMS_EMAIL_ALERTS_TO']
 
-expose_env('LOGGING_DEBUG','NORC_LOG_DIR','NORC_TMP_DIR')
+LOGGING_DEBUG = ENV['LOGGING_DEBUG']
+TMS_LOG_DIR = ENV['TMS_LOG_DIR']
+TMS_TMP_DIR = ENV['TMS_TMP_DIR']
 
 #

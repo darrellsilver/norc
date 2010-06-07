@@ -61,8 +61,8 @@ import subprocess# if using forking for running Tasks
 
 from optparse import OptionParser
 
-from norc.core import models as norc_models
-from norc.core import manage as norc_manage
+from norc.core import models as tms_models
+from norc.core import manage as tms_manage
 from norc import settings
 
 from norc.utils import log
@@ -207,7 +207,7 @@ class NorcDaemon(object):
     
     def __init__(self, region, poll_frequency):
         self.__poll_frequency__ = poll_frequency
-        self.__daemon_status__ = norc_models.NorcDaemonStatus.create(region)
+        self.__daemon_status__ = tms_models.NorcDaemonStatus.create(region)
     
     def get_poll_frequency(self):
         return self.__poll_frequency__
@@ -221,7 +221,7 @@ class NorcDaemon(object):
         log.info("%s %s..." % (self.get_name(), str(self.get_daemon_status())))
         if settings.DEBUG:
             log.info("WARNING: settings.DEBUG is True: daemon will gobble up memory b/c django stores SQL queries.")
-        self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_RUNNING)
+        self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_RUNNING)
         last_status = self.get_daemon_status().get_status()
         while True:
             if not last_status == self.get_daemon_status().get_status():
@@ -230,11 +230,11 @@ class NorcDaemon(object):
             self.__set_daemon_status__(self.get_daemon_status().thwart_cache())# see note in this method definition
             if self.get_daemon_status().is_stop_requested() or self.get_daemon_status().is_being_stopped():
                 # don't kick off more tasks, but wait for those running to finish on their own
-                self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_STOPINPROGRESS)
+                self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_STOPINPROGRESS)
                 num_running_tasks = self.get_num_running_tasks()
                 if num_running_tasks == 0:
                     log.info("tmsd stop requested and no more tasks. Ending gracefully.")
-                    self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_ENDEDGRACEFULLY)
+                    self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_ENDEDGRACEFULLY)
                     return True
                 else:
                     log.info("tmsd stop requested; waiting for %s task(s) to finish." % (num_running_tasks))
@@ -242,11 +242,11 @@ class NorcDaemon(object):
                 running_tasks = self.get_running_tasks()
                 if len(running_tasks) == 0:
                     log.info("tmsd kill requested but no tasks running. Ending gracefully.")
-                    self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_ENDEDGRACEFULLY)
+                    self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_ENDEDGRACEFULLY)
                     return True
                 else:
                     log.info("tmsd kill requested; interrupting %s task(s) and stopping immediately." % (len(running_tasks)))
-                    self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_KILLINPROGRESS)
+                    self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_KILLINPROGRESS)
                     for running_task in running_tasks:
                         # There's no way to actually interrupt python threads
                         # mark the task as ended in error, and leave it up to
@@ -256,11 +256,11 @@ class NorcDaemon(object):
                             running_task.interrupt()
                         except Exception, e:
                             log.error("Could not interrupt Task '%s'" % (running_task), e)
-                    self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_KILLED)
+                    self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_KILLED)
                     return False
             elif self.get_daemon_status().is_pause_requested():
                 log.info("tmsd pause requested.  Will just sit here.")
-                self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_PAUSED)
+                self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_PAUSED)
             elif self.get_daemon_status().is_paused():
                 log.debug("tmsd paused.  Just sittin' here.")
             elif self.get_daemon_status().is_running():
@@ -273,7 +273,7 @@ class NorcDaemon(object):
         raise Exception("The main loop exited somehow without throwing an error. Bug?")
     
     def run_batch(self):
-        tasks_to_run = norc_manage.get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
+        tasks_to_run = tms_manage.get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
         num_running_tasks = self.get_num_running_tasks()
         log.debug("tmsd running %s task(s), at least %s task(s) due to run" % (num_running_tasks, len(tasks_to_run)))
         need_resource_types = []
@@ -305,17 +305,17 @@ class NorcDaemon(object):
             ended_gracefully = self.__do_run__()
             return ended_gracefully
         except Exception, e:
-            self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_ERROR)
+            self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_ERROR)
             log.error("tmsd suffered an internal error. BAD!", e)
             return False
     
     def request_stop(self):
         log.info("tmsd Sending stop request...")
-        self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_STOPREQUESTED)
+        self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_STOPREQUESTED)
         self.__break_tasks_to_run_loop__ = True
     def request_kill(self):
         log.info("tmsd Sending kill request...")
-        self.get_daemon_status().set_status(norc_models.NorcDaemonStatus.STATUS_KILLREQUESTED)
+        self.get_daemon_status().set_status(tms_models.NorcDaemonStatus.STATUS_KILLREQUESTED)
         self.__break_tasks_to_run_loop__ = True
     
     def get_num_running_tasks(self):
@@ -577,7 +577,7 @@ def main():
         sys.exit(parser.get_usage())
     
     # resolve the region
-    region = norc_models.ResourceRegion.get(options.region)
+    region = tms_models.ResourceRegion.get(options.region)
     if region == None:
         raise Exception("Don't know region '%s'" % (options.region))
     
@@ -593,10 +593,10 @@ def main():
     
     if options.threads:
         # multi-threaded; spawn new threads for new Tasks
-        daemon = ThreadingNorcDaemon(region, options.poll_frequency, settings.NORC_LOG_DIR, not options.no_log_redirect)
+        daemon = ThreadingNorcDaemon(region, options.poll_frequency, settings.TMS_LOG_DIR, not options.no_log_redirect)
     else:
         # single-threaded; fork new Tasks
-        daemon = ForkingNorcDaemon(region, options.poll_frequency, settings.NORC_LOG_DIR, not options.no_log_redirect)
+        daemon = ForkingNorcDaemon(region, options.poll_frequency, settings.TMS_LOG_DIR, not options.no_log_redirect)
     
     ended_gracefully = daemon.run()
     if ended_gracefully:

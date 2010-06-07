@@ -47,13 +47,9 @@
 #    This is regardless of success or failure, and a task 
 #    that is retried after failure doesn't lose its position in the queue
 #
-#
-# TODO add definition of Norc here
-#
 # TODO Missing basics:
 # - Tasks need unique names -- is that true??
 # - Tasks should be assigned permissions, runtime environments
-#   - Tasks should belong to 'domains' that restrict the environment in which they run, like 'solaris only'
 #
 # TODO Jobs:
 # - A Task that is a SchedulableTask needs to have BOTH its predecessors successfully completed and it's run time occur.
@@ -63,15 +59,11 @@
 #  "--catch_up ALL" to run() all missed occurances of all Tasks that should have run but didn't.
 #  "--catch_up LATEST" to run() one occurance of all Tasks that should have run bud didn't.
 #
-# TODO Need ability to run an arbitrary cmd-line script as a Task
-# TODO Need Timeout support for all Tasks
 # TODO Need global resources: resources shared across all regions
 # TODO dynamic resources, like hitting a URL
 # TODO delay between resource usages
 # TODO Need ability to retry Tasks, N times before failing, and with min delay between attempts
-# TODO Generic Task types; command-line, call url, etc
 # TODO Input/Output Job definitions to XML; it's a config, after all.
-# TODO switch deamon from threading to process forking
 #
 #
 #Darrell
