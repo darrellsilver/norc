@@ -54,7 +54,6 @@ from django.contrib.contenttypes import generic
 from django.core.mail import send_mail
 
 from norc import settings
-
 from norc.utils import django_extras
 from norc.utils import log
 log = log.Log()
@@ -230,7 +229,7 @@ class TaskDependency(models.Model):
     __repr__ = __str__
 
 class Task(models.Model):
-    """Abstract class representing one task"""
+    """Abstract class representing one task."""
     
     STATUS_ACTIVE = 'ACTIVE'
     STATUS_EXPIRED = 'EXPIRED'# A task can be ephemeral; after it runs it 'expires', which is effectively the same as deleting it.
@@ -814,15 +813,15 @@ class SchedulableTask(Task):
         month = range(1, 13)
         day_of_week = range(0, 7)
         
-        if schedule_name in ('HALFHOURLY'):
+        if schedule_name in ['HALFHOURLY']:
             minute = [0,30]
-        elif schedule_name in ('HOURLY','DAILY','WEEKLY','MONTHLY'):
+        elif schedule_name in ['HOURLY','DAILY','WEEKLY','MONTHLY']:
             minute = 0
-        if schedule_name in ('DAILY','WEEKLY','MONTHLY'):
+        if schedule_name in ['DAILY','WEEKLY','MONTHLY']:
             hour = 0
-        if schedule_name in ('WEEKLY'):
+        if schedule_name in ['WEEKLY']:
             day_of_week = random.randint(0,6)
-        if schedule_name in ('MONTHLY'):
+        if schedule_name in ['MONTHLY']:
             # TODO this is a shortcut it should be 31 when that many days in the month
             day_of_month = random.randint(1, 30)
         
