@@ -1058,11 +1058,6 @@ class ResourceRegion(models.Model):
             return ResourceRegion.objects.get(name=name)
         except ResourceRegion.DoesNotExist, dne:
             return None
-    @staticmethod
-    def create(name):
-        rr = ResourceRegion(name=name)
-        rr.save()
-        return rr
     
     def get_name(self):
         return self.name
@@ -1598,7 +1593,7 @@ removed because of diamond multiple inheritnace on db_model problem
 this is unused anyway
 
 
-Removed because bothe SchedulableTask and RunCommand inherit from task,
+Removed because both SchedulableTask and RunCommand inherit from task,
 this means fields conflict
 
 ScheduledRunCommand isn't used in the current codebase, it was used for the norc demo 
