@@ -43,13 +43,12 @@
 ##################################################
 
 import sys
-
-from norc.core import models as core
 from optparse import OptionParser
 
+from norc.core import models as core
 from norc.utils import log
-log = log.Log()
 
+log = log.Log()
 
 def format_job_label(job, iteration=None):
     if iteration == None:
