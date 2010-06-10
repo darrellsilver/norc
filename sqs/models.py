@@ -47,7 +47,7 @@ import os, datetime, pickle
 from django.db import models
 
 from norc import settings
-from norc.core import models as core
+from norc.core.daemons import NorcDaemonStatus, ForkingNorcDaemon
 
 from norc.utils import log
 log = log.Log()
@@ -80,7 +80,7 @@ class SQSTaskRunStatus(models.Model):
     date_enqueued = models.DateTimeField()
     date_started = models.DateTimeField(blank=True, null=True)
     date_ended = models.DateTimeField(blank=True, null=True)
-    controlling_daemon = models.ForeignKey(core.NorcDaemonStatus, blank=True, null=True)
+    controlling_daemon = models.ForeignKey(NorcDaemonStatus, blank=True, null=True)
     
     def get_id(self):
         return self.id
@@ -106,7 +106,7 @@ class SQSTask(object):
         self.date_enqueued = date_enqueued
         self.current_run_status = None
     
-    def __set_run_status__(self, status, tmsd_status=None):
+    def __set_run_status(self, status, tmsd_status=None):
         assert status in SQSTaskRunStatus.ALL_STATUSES, "Unknown status '%s'" % (status)
         if self.current_run_status == None:
             self.current_run_status = SQSTaskRunStatus(queue_name=self.get_queue_name()
@@ -123,9 +123,9 @@ class SQSTask(object):
             self.current_run_status.controlling_daemon = tmsd_status
         self.current_run_status.save()
     def set_ended_on_error(self):
-        self.__set_run_status__(SQSTaskRunStatus.STATUS_ERROR)
+        self.__set_run_status(SQSTaskRunStatus.STATUS_ERROR)
     def set_ended_on_timeout(self):
-        self.__set_run_status__(SQSTaskRunStatus.STATUS_TIMEDOUT)
+        self.__set_run_status(SQSTaskRunStatus.STATUS_TIMEDOUT)
     def get_current_run_status(self):
         return self.current_run_status
     
@@ -133,11 +133,11 @@ class SQSTask(object):
         """What's actually called by the daemon to run the Message. Don't override!"""
         try:
             try:
-                self.__set_run_status__(SQSTaskRunStatus.STATUS_RUNNING, tmsd_status=tmsd_status)
+                self.__set_run_status(SQSTaskRunStatus.STATUS_RUNNING, tmsd_status=tmsd_status)
                 log.info("Running SQS Task '%s'" % (self))
                 success = self.run()
                 if success:
-                    self.__set_run_status__(SQSTaskRunStatus.STATUS_SUCCESS)
+                    self.__set_run_status(SQSTaskRunStatus.STATUS_SUCCESS)
                     log.info("SQS Task '%s' succeeded.\n\n" % (self))
                 else:
                     raise Exception("SQS Task returned failure status. See log for details.")
@@ -149,13 +149,13 @@ class SQSTask(object):
             except Exception, e:
                 log.error("SQS Task failed!", e)
                 log.error("\n\n", noalteration=True)
-                self.__set_run_status__(SQSTaskRunStatus.STATUS_ERROR)
+                self.__set_run_status(SQSTaskRunStatus.STATUS_ERROR)
             except:
                 # if the error thrown doesn't use Exception(...), ie just throws a string
                 log.error("Task failed with poorly thrown exception!")
                 traceback.print_exc()
                 log.error("\n\n", noalteration=True)
-                self.__set_run_status__(SQSTaskRunStatus.STATUS_ERROR)
+                self.__set_run_status(SQSTaskRunStatus.STATUS_ERROR)
         finally:
             pass
     
@@ -211,6 +211,131 @@ def get_task(boto_message, queue_name):
         d.pop('current_run_status')
     t = task_class(**d)
     return t
+    
+
+class SQSTaskInProcess(object):
+    
+    RUN_TASK_EXE = 'sqsd_run_task'
+    
+    __daemon_status__ = None
+    __log_dir__ = None
+    __subprocess__ = None
+    
+    def __init__(self, daemon_status, log_dir):
+        self.__daemon_status__ = daemon_status
+        self.__log_dir__ = log_dir
+    
+    def get_daemon_status(self):
+        return self.__daemon_status__
+    
+    def run(self):
+        cmd = [SQSTaskInProcess.RUN_TASK_EXE
+            , "--daemon_status_id", str(self.get_daemon_status().get_id())
+            , "--queue_name", str(self.get_daemon_status().get_region())
+            , "--stdout", "DEFAULT"
+            , "--stderr", "STDOUT"
+        ]
+        if log.get_logging_debug():
+            cmd.append("--debug")
+        #log.info(cmd)
+        self.__subprocess__ = subprocess.Popen(cmd)
+        time.sleep(2)
+    
+    def is_running(self):
+        if self.__subprocess__ == None:
+            # not even started yet
+            return False
+        return self.__subprocess__.poll() == None
+    def get_exit_status(self):
+        if self.__subprocess__ == None:
+            # not even started yet
+            return None
+        return self.__subprocess__.returncode
+    def get_pid(self):
+        if self.__subprocess__ == None:
+            # not even started yet
+            return None
+        return self.__subprocess__.pid
+    
+    def interrupt(self):
+        """Interrupt this Task"""
+        assert not self.__subprocess__ == None, "Cannot interrupt process not started"
+        # A bit of interpretive dance to get this to replicate what's much easier in the 2.6 version
+        if self.is_running():
+            # task is still running; interrupt it! 
+            # TODO kill it? (would be signal.SIGKILL)
+            log.info("sending SIGINT to pid:%s" % (self.get_pid()))
+            os.kill(self.get_pid(), signal.SIGINT)
+        elif self.get_exit_status():
+            raise Exception("Task cannot be interrupted. It has already succeeded.")
+        else:
+            raise Exception("Task cannot be interrupted. It has failed with status %s." % (self.get_exit_status()))
+    
+    def __unicode__(self):
+        return u"SQSTaskInProcess pid:%s running:%s exit_status:%s" \
+            % (self.get_pid(), self.is_running(), self.get_exit_status())
+    def __str__(self):
+        return str(self.__unicode__())
+    __repr__ = __str__
+
+
+class ForkingSQSDaemon(ForkingNorcDaemon):
+    # TODO this inheritence is a little lazy; mostly the silly part is that 'region' here means 'queue_name'
+    
+    __max_to_run__ = None
+    __queue__ = None
+    __queue_size__ = 0
+    __runs_since_queue_size_check__ = 0
+    
+    def __init__(self, *args, **kwargs):
+        self.__max_to_run__ = kwargs['max_to_run']
+        kwargs.pop('max_to_run')
+        ForkingNorcDaemon.__init__(self, *args, **kwargs)
+        c = SQSConnection(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_ACCESS_KEY)
+        self.__queue__ = c.get_queue(self.get_queue_name())
+    
+    def get_name(self):
+        return 'SQS Forking Daemon'
+    def get_queue_name(self):
+        return self.get_daemon_status().get_region().get_name()# could also look in queue
+    def get_max_to_run(self):
+        return self.__max_to_run__
+    def get_queue(self):
+        return self.__queue__
+    def __get_task_label__(self, running_task):
+        return "pid:%s" % (running_task.get_pid())
+    def start_task(self):
+        log.info("Starting the next SQS Task in new process")
+        tp = SQSTaskInProcess(self.get_daemon_status(), self.__log_dir__)
+        tp.run()
+        self.__add_running_task__(tp)
+    
+    def run_batch(self):
+        num_running = self.get_num_running_tasks()
+        max_to_run = self.get_max_to_run()
+        # Checking queue size is somewhat expensive and slow. 
+        # So if queue is big assume there's tasks to run and only recheck size occasionally
+        if self.__runs_since_queue_size_check__ > 10 or self.__queue_size__ < max_to_run*10:
+            queue = self.get_queue()
+            if queue == None:
+                raise Exception("No queue by name '%s'" % (self.get_queue_name()))
+            try:
+                self.__queue_size__ = queue.count()
+            except Exception, e:
+                # allow for some shity error w/in SQS (BotoServerError, sslerror, ...)
+                log.error("Error getting queue size from SQS. Skipping.", e)
+                return
+            
+            self.__runs_since_queue_size_check__ = 0
+        else:
+            self.__runs_since_queue_size_check__ += 1
+        while num_running < max_to_run and self.__queue_size__ > 0:
+            if self.__break_tasks_to_run_loop__:
+                # some other thread (request_stop) doesn't want me to continue.  Stop here.
+                break
+            self.start_task()
+            num_running = self.get_num_running_tasks()
+            self.__queue_size__ -= 1
 
 
 
