@@ -1,4 +1,3 @@
-
 #
 # Copyright (c) 2009, Perpetually.com, LLC.
 # All rights reserved.
@@ -27,7 +26,6 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
-
 
 
 ############################################
