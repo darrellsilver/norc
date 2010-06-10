@@ -62,9 +62,12 @@ import subprocess   # if using forking for running Tasks
 from django.db import models
 
 from norc import settings
+from norc.core import manage
 from tasks import Task, TaskRunStatus
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
+
+# TODO: Can these be run not as daemons?
 
 class NorcDaemon(object):
     """Abstract daemon; subclasses implement the running of Tasks."""
@@ -96,7 +99,8 @@ class NorcDaemon(object):
                 log.info("tmsd state changed: %s -> %s" % (last_status, self.get_daemon_status().get_status()))
                 last_status = self.get_daemon_status().get_status()
             self.__set_daemon_status__(self.get_daemon_status().thwart_cache())# see note in this method definition
-            if self.get_daemon_status().is_stop_requested() or self.get_daemon_status().is_being_stopped():
+            if self.get_daemon_status().is_stop_requested() or \
+               self.get_daemon_status().is_being_stopped():
                 # don't kick off more tasks, but wait for those running to finish on their own
                 self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_STOPINPROGRESS)
                 num_running_tasks = self.get_num_running_tasks()
@@ -141,7 +145,7 @@ class NorcDaemon(object):
         raise Exception("The main loop exited somehow without throwing an error. Bug?")
     
     def run_batch(self):
-        tasks_to_run = norc.core.manage.get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
+        tasks_to_run = manage.get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
         num_running_tasks = self.get_num_running_tasks()
         log.debug("tmsd running %s task(s), at least %s task(s) due to run" % (num_running_tasks, len(tasks_to_run)))
         need_resource_types = []
@@ -174,7 +178,7 @@ class NorcDaemon(object):
             return ended_gracefully
         except Exception, e:
             self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_ERROR)
-            log.error("tmsd suffered an internal error. BAD!", e)
+            log.error("norcd suffered an internal error. BAD!", e)
             return False
     
     def request_stop(self):
@@ -199,9 +203,6 @@ class NorcDaemon(object):
         """Start the given Task in the given Iteration"""
         raise NotImplementedError
 
-# TODO change this to not have 'daemon' in the name; they can be run not
-# as a daemon. TaskControllerStatus or somesuch.
-# -> When can this be run not as a daemon?
 class NorcDaemonStatus(models.Model):
     """Track the statuses of Norc daemons."""
     
@@ -415,31 +416,35 @@ class ThreadedTaskLogger(object):
         self.__log_dir__ = log_dir
         self.daemon_id_for_log = daemon_id_for_log
         if not daemon_id_for_log == None:
-            log.info("TMSD stderr & stdout will be in '%s'" \
-                % (self.__get_daemon_log_file_name__()))
+            log.info("NORCD stderr & stdout will be in '%s'" \
+                % (self._get_daemon_log_file_name()))
         self.buffer_data = buffer_data
         self.open_files = {}
     
-    def __get_daemon_log_file_name__(self):
+    def _get_daemon_log_file_name(self):
         assert not self.daemon_id_for_log == None, "daemon_id_for_log is None! BUG!"
-        fp = "%s/_tmsd/tmsd.%s" % (self.__log_dir__, self.daemon_id_for_log)
+        fp = "%s/_norcd/norcd.%s" % (self.__log_dir__, self.daemon_id_for_log)
         return fp
-    def __get_log_file__(self, fp):
+    
+    def _get_log_file(self, fp):
         if not self.open_files.has_key(fp):
             if not os.path.exists(os.path.dirname(fp)):
                 os.mkdir(os.path.dirname(fp))
             self.open_files[fp] = open(fp, 'a')
         return self.open_files[fp]
+    
     def write_to_task_log(self, task, data):
-        fh = self.__get_log_file__(task.get_log_file())
+        fh = self._get_log_file(task.get_log_file())
         fh.write(data)
         if not self.buffer_data:
             fh.flush()
+    
     def write_to_daemon_log(self, data):
-        fh = self.__get_log_file__(self.__get_daemon_log_file_name__())
+        fh = self._get_log_file(self._get_daemon_log_file_name())
         fh.write(data)
         if not self.buffer_data:
             fh.flush()
+    
     def write(self, data):
         try:
             current_thread = threading.currentThread()
@@ -570,10 +575,10 @@ class ForkingNorcDaemon(NorcDaemon):
     
     def get_name(self):
         """Return a name for this daemon implementation"""
-        return 'TMSD (forking)'
+        return 'norcd (forking)'
     def __add_running_task__(self, running):
         self.__running_tasks__.append(running)
-    def __get_task_label__(self, running_task):
+    def _get_task_label(self, running_task):
         return "%s:%s" % (running_task.get_task().get_job(), running_task.get_task().get_name())
     def get_running_tasks(self):
         """Returns list of currently running RunnableTask's"""
@@ -587,27 +592,27 @@ class ForkingNorcDaemon(NorcDaemon):
                 # no longer running; log that fact for convenience
                 exit_status = running_task.get_exit_status()
                 if exit_status == 0:
-                    log.info("\"%s\" succeeded" % (self.__get_task_label__(running_task)))
+                    log.info("\"%s\" succeeded" % (self._get_task_label(running_task)))
                 elif exit_status == 130:
-                    log.info("\"%s\" timed out." % (self.__get_task_label__(running_task)))
+                    log.info("\"%s\" timed out." % (self._get_task_label(running_task)))
                 elif exit_status == 131:
-                    log.info("\"%s\" was interrupted." % (self.__get_task_label__(running_task)))
+                    log.info("\"%s\" was interrupted." % (self._get_task_label(running_task)))
                 elif exit_status == 132:
-                    log.info("\"%s\" was killed." % (self.__get_task_label__(running_task)))
+                    log.info("\"%s\" was killed." % (self._get_task_label(running_task)))
                 elif exit_status == 133:
-                    log.info("\"%s\" did not run." % (self.__get_task_label__(running_task)))
+                    log.info("\"%s\" did not run." % (self._get_task_label(running_task)))
                 elif exit_status == 134:
-                    log.info("\"%s\" ended without a status." % (self.__get_task_label__(running_task)))
+                    log.info("\"%s\" ended without a status." % (self._get_task_label(running_task)))
                 elif exit_status == 127:
                     raise Exception("\"%s\" failed b/c of internal error.  \
-TaskInProcess.RUN_TASK_EXE '%s' could not be found! BAD!" % (self.__get_task_label__(running_task) \
+TaskInProcess.RUN_TASK_EXE '%s' could not be found! BAD!" % (self._get_task_label(running_task) \
                                 , TaskInProcess.RUN_TASK_EXE))
                 elif exit_status == 126:
                     raise Exception("\"%s\" failed b/c of internal error.  \
-TaskInProcess.RUN_TASK_EXE '%s' is not executable! BAD!" % (self.__get_task_label__(running_task) \
+TaskInProcess.RUN_TASK_EXE '%s' is not executable! BAD!" % (self._get_task_label(running_task) \
                                 , TaskInProcess.RUN_TASK_EXE))
                 else:
-                    log.info("\"%s\" failed with exit status %s!" % (self.__get_task_label__(running_task) \
+                    log.info("\"%s\" failed with exit status %s!" % (self._get_task_label(running_task) \
                         , exit_status))
         
         for no_longer_running in to_cleanup:# TODO can this be done in one loop?

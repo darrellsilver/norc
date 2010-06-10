@@ -40,14 +40,15 @@ from norc.utils import django_extras
 
 
 class Resource(models.Model):
-    """
-    A resource represents something of finite availability to Tasks in TMS.
-    Naturally, a task will be run only if all resources necessary to run it are 
-    available in sufficient quantity.
-    Resources define total units of availability of the Resource (units_in_existence)
-    and a task demands a specific amount of these units to be available at runtime.
+    """A resource represents something of finite availability to Tasks.
     
-    Tasks are run within 'Region's, which are islands of resource availability.
+    Naturally, a task will be run only if all resources necessary to
+    run it are available in sufficient quantity.  Resources define total
+    units of availability of the resource (units_in_existence) and a task
+    demands a specific amount of these units to be available at runtime.
+    
+    Tasks are run within Regions, which are islands of resource availability.
+    
     """
     
     class Meta:
@@ -103,12 +104,15 @@ class Resource(models.Model):
     
 
 class ResourceRegion(models.Model):
-    """
-    A resource region defines an island of resource availability.  Each task is run 
-    within a single Region, where resources are finite within that region.
-    A region might naturally be a single computer, where the shared resource is CPU usage.
+    """A ResourceRegion defines an island of resource availability.
     
-    At this time, there is no way to define usage of a resource that spans multiple regions.
+    Each task is run within a single Region, where resources are finite
+    within that region.  A region might naturally be a single computer,
+    where the shared resource is CPU usage.
+    
+    At this time, there is no way to define usage of a resource that spans
+    multiple regions.
+    
     """
     
     class Meta:
@@ -117,24 +121,20 @@ class ResourceRegion(models.Model):
     name = models.CharField(max_length=128, unique=True)
     date_added = models.DateTimeField(default=datetime.datetime.utcnow)
     
-    @staticmethod
-    def get(name):
-        try:
-            return ResourceRegion.objects.get(name=name)
-        except ResourceRegion.DoesNotExist, dne:
-            return None
-    
     def get_name(self):
         return self.name
+    
     def __unicode__(self):
         return self.get_name()
+    
     def __str__(self):
         return str(self.__unicode__())
+    
     __repr__ = __str__
     
 
 class ResourceReservation(models.Model):
-    """A reservation of a resource in a given region."""
+    """A reservation of a Resource in a given ResourceRegion."""
     
     class Meta:
         db_table = 'norc_resourcereservation'
