@@ -296,9 +296,11 @@ def main():
     if not tds_id == None:
         tds = get_tds(tds_id)
         if options.pause and tds.is_paused() or tds.is_pause_requested():
-            raise Exception("tmsd %s is already paused or pause has been requested." % (tds.id))
+            raise Exception("tmsd %s is already paused or pause has been \
+                             requested." % (tds.id))
         if options.stop and tds.is_stop_requested():
-            raise Exception("tmsd %s is already scheduled to stop. You can also try --kill <id>." % (tds.id))
+            raise Exception("tmsd %s is already scheduled to stop. You can \
+                             also try --kill <id>." % (tds.id))
         elif options.kill and tds.is_kill_requested():
             raise Exception("tmsd %s is already scheduled to be killed. The only thing more severe is $kill -9 %s." % (tds.id, tds.pid))
         elif options.salvage and (not tds.is_stop_requested() and not tds.is_kill_requested() and not tds.is_paused()):

@@ -85,6 +85,7 @@ def __norc_compile_one_row__(row):
         return None
     one_row = [task.__class__.__name__, row.status, task.date_added, row.date_started, row.date_ended]
     return one_row
+    
 def compile_task_timings(save_stream=None):
     log.info("Compilin' Task Timin's")
     matches = core.TaskRunStatus.objects
@@ -99,6 +100,7 @@ def __sqs_compile_one_row__(row):
         return None# crap data, probably still running
     one_row = [row.queue_name, row.status, row.date_enqueued, row.date_started, row.date_ended]
     return one_row
+    
 def compile_sqs_timings(save_stream=None):
     log.info("Compilin' SQS Timin's")
     matches = sqs.SQSTaskRunStatus.objects

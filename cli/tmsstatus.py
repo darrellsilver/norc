@@ -166,7 +166,7 @@ def main():
                 % (len(trs), job.get_name(), task.get_name(), status))
     else:
         log.info("Setting %s %s to %s" % (job.get_name(), task.get_name(), status))
-        task.__set_run_status__(iteration, status)
+        task.__set_run_status(iteration, status)
     
 
 if __name__ == '__main__':

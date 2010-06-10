@@ -2,15 +2,15 @@
 
 ###############################
 #
-# Set up initial data for Perpetually & norc
+# Set up initial data for Norc.
 #
 #
-# Run these exact steps to go from no tables to full setup:
+# Run these steps to go from no tables to full setup:
 #  2) python norc/manage.py syncdb --noinput
-#  3) python bin/init_db.py
+#  3) python util/init_db.py
 # 
 # Now, turn on the archivin':
-#  * tmsd --region QA
+#  * norcd --region DEMO_REGION
 #  * sqsd --queue SQSArchiveRequest-NORMAL --max 1
 # 
 # TODO call syncdb for permalink & norc here instead of expecting it
@@ -69,7 +69,7 @@ def init_norc():
         defaults=dict(status=Iteration.STATUS_RUNNING))
     assert new_iteration, "An iteration should not already exist."
     
-    resource_region = _create_ResourceRegion("MY_REGION")
+    resource_region = _create_ResourceRegion("DEMO_REGION")
     resource = Resource.create("DATABASE_CONNECTION")
     
     # SQS Regions don't have RegionResourceRelationships; 
