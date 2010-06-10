@@ -1,6 +1,6 @@
 
 #
-# Copyright (c) 2010, Perpetually.com, LLC.
+# Copyright (c) 2009, Perpetually.com, LLC.
 # All rights reserved.
 # 
 # Redistribution and use in source and binary forms, with or without
@@ -38,17 +38,19 @@ from norc.core.models import SchedulableTask
 
 class TestParseSchedule(unittest.TestCase):
     """Tests the SchedulableTask.parse_schedule_predefined method."""
-
+    
     def setUp(self):
         """Initialize valid ranges for values."""
+        
         self.valid_minutes = range(0, 60)
         self.valid_hours = range(0, 24)
         self.valid_days = range(1, 32)
         self.valid_months = range(1, 13)
         self.valid_weekdays = range(0, 7)
-
+    
     def test_halfhourly_schedule(self):
         """Test the 'HALFHOURLY' schedule keyword."""
+        
         minutes, hours, days, months, weekdays = \
             SchedulableTask.parse_schedule_predefined('HALFHOURLY')
         # Half-hourly happens twice an hour.
@@ -64,6 +66,7 @@ class TestParseSchedule(unittest.TestCase):
     
     def test_hourly_schedule(self):
         """Test the 'HOURLY' schedule keyword."""
+        
         minutes, hours, days, months, weekdays = \
             SchedulableTask.parse_schedule_predefined('HOURLY')
         if type(minutes) == list:
@@ -79,6 +82,7 @@ class TestParseSchedule(unittest.TestCase):
     
     def test_daily_schedule(self):
         """Test the 'DAILY' schedule keyword."""
+        
         minutes, hours, days, months, weekdays = \
             SchedulableTask.parse_schedule_predefined('DAILY')
         if type(minutes) == list:
@@ -94,9 +98,10 @@ class TestParseSchedule(unittest.TestCase):
         self.assertEquals(days, self.valid_days)
         self.assertEquals(months, self.valid_months)
         self.assertEquals(weekdays, self.valid_weekdays)
-
+    
     def test_weekly_schedule(self):
         """Test the 'WEEKLY' schedule keyword."""
+        
         minutes, hours, days, months, weekdays = \
             SchedulableTask.parse_schedule_predefined('WEEKLY')
         if type(minutes) == list:
@@ -116,9 +121,10 @@ class TestParseSchedule(unittest.TestCase):
             self.assertTrue(weekdays[0] in self.valid_weekdays)
         else:
             self.assertTrue(weekdays in self.valid_weekdays)
-
+    
     def test_monthly_schedule(self):
         """Test the 'MONTHLY' schedule keyword."""
+        
         minutes, hours, days, months, weekdays = \
             SchedulableTask.parse_schedule_predefined('MONTHLY')
         if type(minutes) == list:
@@ -135,15 +141,17 @@ class TestParseSchedule(unittest.TestCase):
             self.assertEquals(type(days), int)
         self.assertEquals(months, self.valid_months)
         self.assertEquals(weekdays, self.valid_weekdays)
-
-    def test_nonsense_schedule(self):
+    
+    def test_nonsense_input(self):
         """Test the handling of some nonsense input."""
+        
         self.assertRaises(AssertionError,
                           SchedulableTask.parse_schedule_predefined,
                           'th1s1sM4dn3ss')
         self.assertRaises(AssertionError,
                           SchedulableTask.parse_schedule_predefined,
                           42)
+    
 
 if __name__ == '__main__':
     unittest.main()
