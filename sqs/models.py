@@ -218,12 +218,12 @@ class SQSTaskInProcess(object):
     RUN_TASK_EXE = 'sqsd_run_task'
     
     __daemon_status__ = None
-    __log_dir__ = None
-    __subprocess__ = None
+    __log_dir = None
+    __subprocess = None
     
     def __init__(self, daemon_status, log_dir):
         self.__daemon_status__ = daemon_status
-        self.__log_dir__ = log_dir
+        self.__log_dir = log_dir
     
     def get_daemon_status(self):
         return self.__daemon_status__
@@ -238,28 +238,28 @@ class SQSTaskInProcess(object):
         if log.get_logging_debug():
             cmd.append("--debug")
         #log.info(cmd)
-        self.__subprocess__ = subprocess.Popen(cmd)
+        self.__subprocess = subprocess.Popen(cmd)
         time.sleep(2)
     
     def is_running(self):
-        if self.__subprocess__ == None:
+        if self.__subprocess == None:
             # not even started yet
             return False
-        return self.__subprocess__.poll() == None
+        return self.__subprocess.poll() == None
     def get_exit_status(self):
-        if self.__subprocess__ == None:
+        if self.__subprocess == None:
             # not even started yet
             return None
-        return self.__subprocess__.returncode
+        return self.__subprocess.returncode
     def get_pid(self):
-        if self.__subprocess__ == None:
+        if self.__subprocess == None:
             # not even started yet
             return None
-        return self.__subprocess__.pid
+        return self.__subprocess.pid
     
     def interrupt(self):
         """Interrupt this Task"""
-        assert not self.__subprocess__ == None, "Cannot interrupt process not started"
+        assert not self.__subprocess == None, "Cannot interrupt process not started"
         # A bit of interpretive dance to get this to replicate what's much easier in the 2.6 version
         if self.is_running():
             # task is still running; interrupt it! 
@@ -306,7 +306,7 @@ class ForkingSQSDaemon(ForkingNorcDaemon):
         return "pid:%s" % (running_task.get_pid())
     def start_task(self):
         log.info("Starting the next SQS Task in new process")
-        tp = SQSTaskInProcess(self.get_daemon_status(), self.__log_dir__)
+        tp = SQSTaskInProcess(self.get_daemon_status(), self.__log_dir)
         tp.run()
         self.__add_running_task__(tp)
     

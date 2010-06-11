@@ -45,7 +45,8 @@
 #    - This could be achieved if the daemon was listening on a port
 #    - Does MySQL support listening for DB events?
 #  - max daemons per machine or dont bother?
-#  - errors/message that occur in the daemon in the task thread are logged to the task, rather than the daemon.
+#  - errors/message that occur in the daemon in the task thread are logged
+#    to the task, rather than the daemon.
 #
 #
 #Darrell
@@ -60,16 +61,16 @@ from optparse import OptionParser
 
 from norc import settings
 from norc.core.daemons import ThreadingNorcDaemon, ForkingNorcDaemon
-from norc.reporter.reporter import get_object
+from norc.core import reporter
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 def main():
     parser = OptionParser(
-        "%prog region [-t] [-d] [-f <frequency>] [--no_log_redirect]")
+        "%prog region [-t] [-d] [-f <frequency>] [--no_log_redirect] [-h]")
     
     parser.add_option(
-        "-t", "--threads", action="store_true",
+        "-t", "--threading", action="store_true",
         help="Use threading instead of subprocesses. Note that threads in " +
         "Python cannot be interrupted without killing the daemon!")
     parser.add_option(
@@ -94,21 +95,25 @@ def main():
         sys.exit(parser.get_usage())
     
     # resolve the region
-    region = get_object('region', name=args[0])
+    region = reporter.get_object('region', name=args[0])
     if region == None:
         raise Exception("Don't know region '%s'" % (options.region))
     
     # register signal handlers for interrupt (ctl-c) & terminate ($ kill <pid>).
     def __handle_SIGINT(signum, frame):
-        assert signum == signal.SIGINT, "This signal handler only handles SIGINT, not '%s'. BUG!" % (signum)
+        assert signum == signal.SIGINT, "This signal handler only " + \
+            "handles SIGINT, not '%s'. BUG!" % (signum)
         daemon.request_stop()
+    
     def __handle_SIGTERM(signum, frame):
-        assert signum == signal.SIGTERM, "This signal handler only handles SIGTERM, not '%s'. BUG!" % (signum)
+        assert signum == signal.SIGTERM, "This signal handler only " + \
+            "handles SIGTERM, not '%s'. BUG!" % (signum)
         daemon.request_kill()
+    
     signal.signal(signal.SIGINT, __handle_SIGINT)
     signal.signal(signal.SIGTERM, __handle_SIGTERM)
     
-    if options.threads:
+    if options.threading:
         # multi-threaded; spawn new threads for new Tasks
         daemon = ThreadingNorcDaemon(region,
                                      options.poll_frequency,
@@ -124,7 +129,7 @@ def main():
     ended_gracefully = daemon.run()
     if ended_gracefully:
         sys.exit(0)
-    elif options.threads:
+    elif options.threading:
         # there's no way in python to interrupt threads; so gotta force 'em.
         # exit code is 137 on OS X
         os.kill(os.getpid(), signal.SIGKILL)

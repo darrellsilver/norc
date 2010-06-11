@@ -222,10 +222,8 @@ class ResourceReservation(models.Model):
     
 
 class TaskResourceRelationship(models.Model):
-    """
-    Describe the relationship a specific Task has to a resource, 
-    namely, how much of this resource does this Task demand to run.
-    """
+    """Defines how much of a Resource a Task demands in order to run."""
+    
     class Meta:
         db_table = 'norc_taskresourcerelationship'
         unique_together = (('_task_content_type', '_task_object_id', 'resource'),)
@@ -263,8 +261,10 @@ class TaskResourceRelationship(models.Model):
     
     def get_units_demanded(self):
         return self.units_demanded
+    
     def get_resource(self):
         return self.resource
+    
     def can_reserve(self, region):
         """
         True if a reservation can CURRENTLY be made.  False otherwise.
@@ -272,10 +272,12 @@ class TaskResourceRelationship(models.Model):
         This is for convenience.
         """
         return self.get_units_demanded() <= self.resource.get_units_available(region)
+    
     def reserve(self, region):
         """Return True if this resource has been reserved, False otherwise"""
         did_reserve = ResourceReservation.reserve(region, self)
         return did_reserve
+    
     def release(self, region):
         rrs = self.resourcereservation_set.filter(region=region)
         if len(rrs) == 0:
@@ -285,11 +287,14 @@ class TaskResourceRelationship(models.Model):
         raise Exception("There are %s reservations for resource '%s' in region '%s'.  \
                         There should be exactly 0 or 1." 
                         % (len(rss), self.resource, region))
+    
     def __unicode__(self):
         return u"Task@%s:%s demands %s '%s'" \
             % (self._task_content_type.model, self._task_object_id, self.units_demanded, self.get_resource())
+    
     def __str__(self):
         return str(self.__unicode__())
+    
     __repr__ = __str__
     
 
@@ -320,19 +325,19 @@ class RegionResourceRelationship(models.Model):
     
     def get_region(self):
         return self.region
+    
     def get_resource(self):
         return self.resource
+    
     def get_units_in_existence(self):
         return self.units_in_existence
     
     def __unicode__(self):
         return u"%s provides %s %s" % (self.get_region(), self.get_units_in_existence(), self.get_resource())
+    
     def __str__(self):
         return str(self.__unicode__())
-    __repr__ = __str__
     
-
-class InsufficientResourcesException(Exception):
-    pass
+    __repr__ = __str__
     
 

@@ -69,10 +69,6 @@ def print_job_iterations(job):
         print "   %s: %s %s - %s" % (iteration.get_id(), iteration.get_status() \
             , iteration.get_date_started(), iteration.get_date_ended())
 
-#
-#
-#
-
 def determine_status(options):
     if options.skipped:
         return core.TaskRunStatus.STATUS_SKIPPED

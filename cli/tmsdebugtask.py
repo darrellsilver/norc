@@ -47,8 +47,9 @@
 
 from optparse import OptionParser
 
-from norc.core import models as norc_models
+from norc.core.models import Iteration, ResourceRegion, NorcDaemonStatus
 from norc.core import manage as norc_manage
+from norc.core import controller
 from norc import settings
 
 from norc.utils import log
@@ -66,13 +67,13 @@ def get_task(task_name, asof=None):
     raise Exception("Unknown Task '%s'" % (task_name))
 
 def __find_iteration__(job):
-    iterations = norc_models.Iteration.objects.filter(job=job)
+    iterations = Iteration.objects.filter(job=job)
     if iterations.count() == 0:
         raise Exception("Cannot determine iteration for Job '%s'!" % (job))
     elif iterations.count() == 1:
         iteration = iterations[0]
     else:
-        iterations = iterations.exclude(status=norc_models.Iteration.STATUS_DONE)
+        iterations = iterations.exclude(status=Iteration.STATUS_DONE)
         if iterations.count() == 0:
             raise Exception("Cannot determine iteration for Job '%s'!" % (job))
         else:
@@ -85,16 +86,16 @@ def run_task(task, region_name=None, region=None, iteration=None):
     tmsd_status = None
     try:
         if region == None:
-            region = norc_models.ResourceRegion.get(region_name)
+            region = ResourceRegion.get(region_name)
         if region == None:
             raise Exception("Unknown region '%s'" % (region))
         if iteration == None:
             iteration = __find_iteration__(task.get_job())
-        tmsd_status = norc_models.NorcDaemonStatus.create(region)
+        tmsd_status = controller.create_daemon_status(region)
         task.do_run(iteration, tmsd_status)
     finally:
         if not tmsd_status == None:
-            tmsd_status.set_status(norc_models.NorcDaemonStatus.STATUS_ENDEDGRACEFULLY)
+            tmsd_status.set_status(NorcDaemonStatus.STATUS_ENDEDGRACEFULLY)
     return True
 
 def main():

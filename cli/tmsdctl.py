@@ -46,8 +46,8 @@
 import re, sys, time, datetime
 from optparse import OptionParser
 
-from norc.core import models as norc_models
-from norc.core import manage as norc_manage
+from norc.core import reporter
+from norc.core.models import NorcDaemonStatus, TaskRunStatus
 from norc import settings
 
 from utils import formatting
@@ -59,28 +59,28 @@ log = log.Log(settings.LOGGING_DEBUG)
 #
 
 DAEMON_STATUS_FILTER_2_STATUS_LIST = {}
-DAEMON_STATUS_FILTER_2_STATUS_LIST['running'] = [norc_models.NorcDaemonStatus.STATUS_RUNNING]
-DAEMON_STATUS_FILTER_2_STATUS_LIST['active'] = [norc_models.NorcDaemonStatus.STATUS_STARTING
-                                            , norc_models.NorcDaemonStatus.STATUS_RUNNING
-                                            , norc_models.NorcDaemonStatus.STATUS_PAUSEREQUESTED
-                                            , norc_models.NorcDaemonStatus.STATUS_STOPREQUESTED
-                                            , norc_models.NorcDaemonStatus.STATUS_KILLREQUESTED
-                                            , norc_models.NorcDaemonStatus.STATUS_PAUSED
-                                            , norc_models.NorcDaemonStatus.STATUS_STOPINPROGRESS
-                                            , norc_models.NorcDaemonStatus.STATUS_KILLINPROGRESS]
-DAEMON_STATUS_FILTER_2_STATUS_LIST['errored'] = [norc_models.NorcDaemonStatus.STATUS_ERROR]
+DAEMON_STATUS_FILTER_2_STATUS_LIST['running'] = [NorcDaemonStatus.STATUS_RUNNING]
+DAEMON_STATUS_FILTER_2_STATUS_LIST['active'] = [NorcDaemonStatus.STATUS_STARTING
+                                            , NorcDaemonStatus.STATUS_RUNNING
+                                            , NorcDaemonStatus.STATUS_PAUSEREQUESTED
+                                            , NorcDaemonStatus.STATUS_STOPREQUESTED
+                                            , NorcDaemonStatus.STATUS_KILLREQUESTED
+                                            , NorcDaemonStatus.STATUS_PAUSED
+                                            , NorcDaemonStatus.STATUS_STOPINPROGRESS
+                                            , NorcDaemonStatus.STATUS_KILLINPROGRESS]
+DAEMON_STATUS_FILTER_2_STATUS_LIST['errored'] = [NorcDaemonStatus.STATUS_ERROR]
 DAEMON_STATUS_FILTER_2_STATUS_LIST['interesting'] = []
 DAEMON_STATUS_FILTER_2_STATUS_LIST['interesting'].extend(DAEMON_STATUS_FILTER_2_STATUS_LIST['active'])
 DAEMON_STATUS_FILTER_2_STATUS_LIST['interesting'].extend(DAEMON_STATUS_FILTER_2_STATUS_LIST['errored'])
 DAEMON_STATUS_FILTER_2_STATUS_LIST['all'] = None# meaning all of them
 
 TASK_STATUS_FILTER_2_STATUS_LIST = {}
-TASK_STATUS_FILTER_2_STATUS_LIST['running'] = [norc_models.TaskRunStatus.STATUS_RUNNING]
-TASK_STATUS_FILTER_2_STATUS_LIST['active'] = [norc_models.TaskRunStatus.STATUS_RUNNING]
-TASK_STATUS_FILTER_2_STATUS_LIST['errored'] = [norc_models.TaskRunStatus.STATUS_ERROR
-                                            , norc_models.TaskRunStatus.STATUS_TIMEDOUT]
-TASK_STATUS_FILTER_2_STATUS_LIST['success'] = [norc_models.TaskRunStatus.STATUS_SUCCESS
-                                            , norc_models.TaskRunStatus.STATUS_CONTINUE]
+TASK_STATUS_FILTER_2_STATUS_LIST['running'] = [TaskRunStatus.STATUS_RUNNING]
+TASK_STATUS_FILTER_2_STATUS_LIST['active'] = [TaskRunStatus.STATUS_RUNNING]
+TASK_STATUS_FILTER_2_STATUS_LIST['errored'] = [TaskRunStatus.STATUS_ERROR
+                                            , TaskRunStatus.STATUS_TIMEDOUT]
+TASK_STATUS_FILTER_2_STATUS_LIST['success'] = [TaskRunStatus.STATUS_SUCCESS
+                                            , TaskRunStatus.STATUS_CONTINUE]
 TASK_STATUS_FILTER_2_STATUS_LIST['interesting'] = []
 TASK_STATUS_FILTER_2_STATUS_LIST['interesting'].extend(TASK_STATUS_FILTER_2_STATUS_LIST['active'])
 TASK_STATUS_FILTER_2_STATUS_LIST['interesting'].extend(TASK_STATUS_FILTER_2_STATUS_LIST['errored'])
@@ -90,7 +90,7 @@ TASK_STATUS_FILTER_2_STATUS_LIST['all'] = None# meaning all of them
 def report_tmsd_status(status_filter, norc_list=None, max_tasks_due_to_run=None, date_started=None):
     include_statuses = DAEMON_STATUS_FILTER_2_STATUS_LIST[status_filter.lower()]
     if norc_list == None:
-        matches = norc_models.NorcDaemonStatus.objects.filter()
+        matches = NorcDaemonStatus.objects.filter()
         norc_list = matches.all()
     tabular = []
     tabular.append(["ID", "Type", "Region", "Host", "PID", "Running", "Success", "Error", "Status", "Started", "Ended"])
@@ -125,7 +125,7 @@ def report_tmsd_status(status_filter, norc_list=None, max_tasks_due_to_run=None,
         print >>sys.stdout, "From %s to Now" % (date_started.strftime("%m/%d/%Y %H:%M:%S"))
     if not max_tasks_due_to_run in (None, 0):
         # This call is currently super expensive when there's lots of Tasks; limit it!
-        to_run = norc_manage.get_tasks_allowed_to_run(max_to_return=max_tasks_due_to_run)
+        to_run = reporter.get_tasks_allowed_to_run(max_to_return=max_tasks_due_to_run)
         if len(to_run) < max_tasks_due_to_run:
             print >>sys.stdout, "%s Task(s) due to run.\n" % (len(to_run))
         else:
@@ -193,9 +193,9 @@ def report_sqsd_details(status_filter, sqsd, date_started=None):
 def get_tds(id):
     try:
         assert not id == None, "ID Cannot be None"
-        tds = norc_models.NorcDaemonStatus.objects.get(id=id)
+        tds = NorcDaemonStatus.objects.get(id=id)
         return tds
-    except norc_models.NorcDaemonStatus.DoesNotExist:
+    except NorcDaemonStatus.DoesNotExist:
         raise Exception("tmsd %s does not exist" % (id))
 
 #
@@ -310,22 +310,22 @@ def main():
         if not options.force and not tds.is_done_with_error():
             raise Exception("tmsd %s cannot be deleted because it has status %s. Use --force to override." % (tds.id, tds.get_status()))
         log.info("Deleting tmsd %s" % (tds))
-        tds.set_status(norc_models.NorcDaemonStatus.STATUS_DELETED)
+        tds.set_status(NorcDaemonStatus.STATUS_DELETED)
     elif options.salvage:
         log.info("Salvaging tmsd %s" % (tds))
-        tds.set_status(norc_models.NorcDaemonStatus.STATUS_RUNNING)
+        tds.set_status(NorcDaemonStatus.STATUS_RUNNING)
     elif options.pause or options.stop or options.kill:
         if tds.is_done():
             raise Exception("tmsd %s is not running.  It cannot be shutdown or paused." % (tds.id))
         if options.pause:
             log.info("Sending pause request to tmsd %s" % (tds))
-            tds.set_status(norc_models.NorcDaemonStatus.STATUS_PAUSEREQUESTED)
+            tds.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED)
         elif options.stop:
             log.info("Sending stop request to tmsd %s" % (tds))
-            tds.set_status(norc_models.NorcDaemonStatus.STATUS_STOPREQUESTED)
+            tds.set_status(NorcDaemonStatus.STATUS_STOPREQUESTED)
         elif options.kill:
             log.info("Sending kill request to tmsd %s" % (tds))
-            tds.set_status(norc_models.NorcDaemonStatus.STATUS_KILLREQUESTED)
+            tds.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED)
         #
         if options.wait_seconds:
             seconds_waited = 0
@@ -360,9 +360,9 @@ def main():
             , max_tasks_due_to_run=options.due_to_run, date_started=options.started_since)
     if options.details:
         daemon_type = tds.get_daemon_type()
-        if daemon_type == norc_models.NorcDaemonStatus.DAEMON_TYPE_TMS:
+        if daemon_type == NorcDaemonStatus.DAEMON_TYPE_TMS:
             report_tmsd_details(options.filter_status, tds, date_started=options.started_since)
-        elif daemon_type == norc_models.NorcDaemonStatus.DAEMON_TYPE_SQS:
+        elif daemon_type == NorcDaemonStatus.DAEMON_TYPE_SQS:
             report_sqsd_details(options.filter_status, tds, date_started=options.started_since)
         else:
             raise Exception("Unknown daemon_type '%s'" % (daemon_type))

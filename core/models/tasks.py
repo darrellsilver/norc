@@ -28,15 +28,16 @@
 #
 
 
-"""All data classes related to tasks."""
+"""All models related to tasks."""
 
-import datetime, random
+import os, datetime, random
 
 from django.db import models
 from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 from django.contrib.contenttypes.models import ContentType
 
+from norc import settings
 from jobs import *
 
 class Task(models.Model):
@@ -324,11 +325,10 @@ class Task(models.Model):
                 pass
     
     def alert_on_failure(self):
-        """
-        True if alert(s) should be issued when this Task fails, False otherwise.
-        Defaults to True.
-        """
+        """Whether alert(s) should be issued when this Task fails."""
+        
         return True
+    
     def get_library_name(self):
         """
         Return the python path for this Task implementation.
@@ -632,6 +632,105 @@ class TaskRunStatus(models.Model):
     __repr__ = __str__
     
 
+class TaskClassImplementation(models.Model):
+    """List of classes that implement the Task interface and can be instantiated (not including abstract subclasses)"""
+    
+    STATUS_ACTIVE = 'ACTIVE'
+    STATUS_INACTIVE = 'INACTIVE'
+    
+    ALL_STATUSES = (STATUS_ACTIVE, STATUS_INACTIVE)
+    
+    class Meta:
+        db_table = 'norc_taskclassimplementation'
+    
+    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
+    library_name = models.CharField(max_length=1024)
+    class_name = models.CharField(max_length=1024)
+    
+    @staticmethod
+    def get_all():
+        matches = TaskClassImplementation.objects.filter(status=TaskClassImplementation.STATUS_ACTIVE)
+        return matches.all()
+    
+    def __unicode__(self):
+        return "%s.%s (%s)" % (self.library_name, self.class_name, self.status)
+    def __str__(self):
+        return str(self.__unicode__())
+    __repr__ = __str__
+    
+
+class RunCommand(Task):
+    """Run an arbitrary command line as a Task."""
+    
+    class Meta:
+        db_table = 'norc_generic_runcommand'
+    
+    cmd = models.CharField(max_length=1024)
+    nice = models.IntegerField(default=0)
+    timeout = models.PositiveIntegerField()
+    
+    def get_library_name(self):
+        return 'norc.core.models.RunCommand'
+    def has_timeout(self):
+        return True
+    def get_timeout(self):
+        return self.timeout
+    def get_command(self, interpret_vars=False):
+        if interpret_vars:
+            return self.interpret_vars(self.cmd)
+        else:
+            return self.cmd
+    
+    def interpret_vars(self, cmd):
+        """replace specific var names in the given string with their values.
+        Provides environment-like settings available only at run time to the a cmd line task."""
+        
+        cmd_n = cmd
+        # Settings
+        cmd_n = cmd_n.replace("$NORC_TMP_DIR", settings.NORC_TMP_DIR)
+        cmd_n = cmd_n.replace("$DATABASE_NAME", settings.DATABASE_NAME)
+        cmd_n = cmd_n.replace("$DATABASE_USER", settings.DATABASE_USER)
+        cmd_n = cmd_n.replace("$DATABASE_PASSWORD", settings.DATABASE_PASSWORD)
+        cmd_n = cmd_n.replace("$DATABASE_HOST", settings.DATABASE_HOST)
+        cmd_n = cmd_n.replace("$DATABASE_PORT", settings.DATABASE_PORT)
+        cmd_n = cmd_n.replace("$AWS_ACCESS_KEY_ID", settings.AWS_ACCESS_KEY_ID)
+        cmd_n = cmd_n.replace("$AWS_SECRET_ACCESS_KEY", settings.AWS_SECRET_ACCESS_KEY)
+        
+        # Local Dates
+        now = datetime.datetime.now()
+        cmd_n = cmd_n.replace("$LOCAL_YYYYMMDD.HHMMSS", "%s%02d%02d.%02d%02d%02d" \
+            % (now.year, now.month, now.day, now.hour, now.minute, now.second))
+        cmd_n = cmd_n.replace("$LOCAL_YYYYMMDD", "%s%02d%02d" % (now.year, now.month, now.day))
+        cmd_n = cmd_n.replace("$LOCAL_MM/DD/YYYY", "%02d/%02d/%s" % (now.month, now.day, now.year))
+        
+        # UTC Dates
+        utc = datetime.datetime.now()
+        cmd_n = cmd_n.replace("$UTC_YYYYMMDD.HHMMSS", "%s%02d%02d.%02d%02d%02d" \
+            % (utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second))
+        cmd_n = cmd_n.replace("$UTC_YYYYMMDD", "%s%02d%02d" % (utc.year, utc.month, utc.day))
+        cmd_n = cmd_n.replace("$UTC_MM/DD/YYYY", "%02d/%02d/%s" % (utc.month, utc.day, utc.year))
+        
+        return cmd_n
+    
+    def run(self):
+        cmd = self.get_command(interpret_vars=True)
+        if self.nice:
+            cmd = "nice -n %s %s" % (self.nice, cmd)
+        log.info("Running command '%s'" % (cmd))
+        # make sure our output is in order up until this point for clarity
+        sys.stdout.flush()
+        if not sys.stdout == sys.stderr:
+            sys.stderr.flush()
+        exit_status = subprocess.call(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
+        if exit_status == 0:
+            return True
+        else:
+            return False
+    
+    def __unicode__(self):
+        return u"%s" % self.get_name()
+    
+
 class SchedulableTask(Task):
     """Abstract class representing one task that can be scheduled in a crontab-like way"""
         
@@ -894,105 +993,6 @@ class SchedulableTask(Task):
         return self.get_pretty_schedule()
     
 
-class TaskClassImplementation(models.Model):
-    """List of classes that implement the Task interface and can be instantiated (not including abstract subclasses)"""
-    
-    STATUS_ACTIVE = 'ACTIVE'
-    STATUS_INACTIVE = 'INACTIVE'
-    
-    ALL_STATUSES = (STATUS_ACTIVE, STATUS_INACTIVE)
-    
-    class Meta:
-        db_table = 'norc_taskclassimplementation'
-    
-    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
-    library_name = models.CharField(max_length=1024)
-    class_name = models.CharField(max_length=1024)
-    
-    @staticmethod
-    def get_all():
-        matches = TaskClassImplementation.objects.filter(status=TaskClassImplementation.STATUS_ACTIVE)
-        return matches.all()
-    
-    def __unicode__(self):
-        return "%s.%s (%s)" % (self.library_name, self.class_name, self.status)
-    def __str__(self):
-        return str(self.__unicode__())
-    __repr__ = __str__
-    
-
-class RunCommand(Task):
-    """Run an arbitrary command line as a Task."""
-    
-    class Meta:
-        db_table = 'norc_generic_runcommand'
-    
-    cmd = models.CharField(max_length=1024)
-    nice = models.IntegerField(default=0)
-    timeout = models.PositiveIntegerField()
-    
-    def get_library_name(self):
-        return 'norc.core.models.RunCommand'
-    def has_timeout(self):
-        return True
-    def get_timeout(self):
-        return self.timeout
-    def get_command(self, interpret_vars=False):
-        if interpret_vars:
-            return self.interpret_vars(self.cmd)
-        else:
-            return self.cmd
-    
-    def interpret_vars(self, cmd):
-        """replace specific var names in the given string with their values.
-        Provides environment-like settings available only at run time to the a cmd line task."""
-        
-        cmd_n = cmd
-        # Settings
-        cmd_n = cmd_n.replace("$NORC_TMP_DIR", settings.NORC_TMP_DIR)
-        cmd_n = cmd_n.replace("$DATABASE_NAME", settings.DATABASE_NAME)
-        cmd_n = cmd_n.replace("$DATABASE_USER", settings.DATABASE_USER)
-        cmd_n = cmd_n.replace("$DATABASE_PASSWORD", settings.DATABASE_PASSWORD)
-        cmd_n = cmd_n.replace("$DATABASE_HOST", settings.DATABASE_HOST)
-        cmd_n = cmd_n.replace("$DATABASE_PORT", settings.DATABASE_PORT)
-        cmd_n = cmd_n.replace("$AWS_ACCESS_KEY_ID", settings.AWS_ACCESS_KEY_ID)
-        cmd_n = cmd_n.replace("$AWS_SECRET_ACCESS_KEY", settings.AWS_SECRET_ACCESS_KEY)
-        
-        # Local Dates
-        now = datetime.datetime.now()
-        cmd_n = cmd_n.replace("$LOCAL_YYYYMMDD.HHMMSS", "%s%02d%02d.%02d%02d%02d" \
-            % (now.year, now.month, now.day, now.hour, now.minute, now.second))
-        cmd_n = cmd_n.replace("$LOCAL_YYYYMMDD", "%s%02d%02d" % (now.year, now.month, now.day))
-        cmd_n = cmd_n.replace("$LOCAL_MM/DD/YYYY", "%02d/%02d/%s" % (now.month, now.day, now.year))
-        
-        # UTC Dates
-        utc = datetime.datetime.now()
-        cmd_n = cmd_n.replace("$UTC_YYYYMMDD.HHMMSS", "%s%02d%02d.%02d%02d%02d" \
-            % (utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second))
-        cmd_n = cmd_n.replace("$UTC_YYYYMMDD", "%s%02d%02d" % (utc.year, utc.month, utc.day))
-        cmd_n = cmd_n.replace("$UTC_MM/DD/YYYY", "%02d/%02d/%s" % (utc.month, utc.day, utc.year))
-        
-        return cmd_n
-    
-    def run(self):
-        cmd = self.get_command(interpret_vars=True)
-        if self.nice:
-            cmd = "nice -n %s %s" % (self.nice, cmd)
-        log.info("Running command '%s'" % (cmd))
-        # make sure our output is in order up until this point for clarity
-        sys.stdout.flush()
-        if not sys.stdout == sys.stderr:
-            sys.stderr.flush()
-        exit_status = subprocess.call(cmd, shell=True, stdout=sys.stdout, stderr=sys.stderr)
-        if exit_status == 0:
-            return True
-        else:
-            return False
-    
-    def __unicode__(self):
-        return u"%s" % self.get_name()
-    
-
 class StartIteration(SchedulableTask):
     """Schedule on which new TMS Iterations are started"""
     
@@ -1020,6 +1020,10 @@ class StartIteration(SchedulableTask):
     
 
 class NorcInvalidStateException(Exception):
+    pass
+    
+
+class InsufficientResourcesException(Exception):
     pass
     
 

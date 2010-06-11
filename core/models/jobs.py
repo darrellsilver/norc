@@ -31,6 +31,8 @@
 import datetime
 
 from django.db import models
+from norc.utils import log
+log = log.Log()
 
 class Job(models.Model):
     """A collection of Tasks across which dependencies can be defined."""
@@ -42,25 +44,6 @@ class Job(models.Model):
     description = models.CharField(max_length=512, blank=True, null=True)
     date_added = models.DateTimeField(default=datetime.datetime.utcnow)
     
-    @staticmethod
-    def get(name):
-        return Job.objects.get(name=name)
-    
-    def get_tasks(self, include_expired=False):
-        """Return all active Tasks in this Job"""
-        # That this has to look at all implementations of the Task superclass
-        tasks = []
-        for tci in TaskClassImplementation.get_all():
-            # Wont work if there's a collision across libraries, but that'll be errored by django on model creation
-            # when it will demand a related_name for Job FK.  Solution isnt to create a related_name, but to rename lib entirely
-            tci_name = "%s_set" % (tci.class_name.lower())
-            matches = self.__getattribute__(tci_name)
-            matches = matches.exclude(status=Task.STATUS_DELETED)
-            if not include_expired:
-                matches = matches.exclude(status=Task.STATUS_EXPIRED)
-            tasks.extend(matches.all())
-        return tasks
-        
     def get_name(self):
         return self.name
     def has_description(self):

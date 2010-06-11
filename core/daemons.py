@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 #
 # Copyright (c) 2009, Perpetually.com, LLC.
 # All rights reserved.
@@ -45,7 +43,8 @@
 #    - This could be achieved if the daemon was listening on a port
 #    - Does MySQL support listening for DB events?
 #  - max daemons per machine or dont bother?
-#  - errors/message that occur in the daemon in the task thread are logged to the task, rather than the daemon.
+#  - errors/message that occur in the daemon in the task thread are logged
+#    to the task, rather than the daemon.
 #
 #
 #Darrell
@@ -62,8 +61,8 @@ import subprocess   # if using forking for running Tasks
 from django.db import models
 
 from norc import settings
-from norc.core import manage
-from tasks import Task, TaskRunStatus
+from norc.core import controller, reporter
+from norc.core.models import NorcDaemonStatus
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
@@ -78,7 +77,7 @@ class NorcDaemon(object):
     
     def __init__(self, region, poll_frequency):
         self.__poll_frequency__ = poll_frequency
-        self.__daemon_status__ = NorcDaemonStatus.create(region)
+        self.__daemon_status__ = controller.create_daemon_status(region)
     
     def get_poll_frequency(self):
         return self.__poll_frequency__
@@ -145,7 +144,7 @@ class NorcDaemon(object):
         raise Exception("The main loop exited somehow without throwing an error. Bug?")
     
     def run_batch(self):
-        tasks_to_run = manage.get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
+        tasks_to_run = reporter.get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
         num_running_tasks = self.get_num_running_tasks()
         log.debug("tmsd running %s task(s), at least %s task(s) due to run" % (num_running_tasks, len(tasks_to_run)))
         need_resource_types = []
@@ -203,170 +202,6 @@ class NorcDaemon(object):
         """Start the given Task in the given Iteration"""
         raise NotImplementedError
 
-class NorcDaemonStatus(models.Model):
-    """Track the statuses of Norc daemons."""
-    
-    DAEMON_TYPE_TMS = 'TMS'
-    DAEMON_TYPE_SQS = 'SQS'
-    
-    # Daemon is starting.
-    STATUS_STARTING = 'STARTING'
-    # Daemon itself exited with bad error
-    STATUS_ERROR = TaskRunStatus.STATUS_ERROR
-    # Daemon is currently running
-    STATUS_RUNNING = TaskRunStatus.STATUS_RUNNING
-    # Pause has been requested
-    STATUS_PAUSEREQUESTED = 'PAUSEREQUESTED'
-    # Don't launch any more tasks, just wait.
-    STATUS_PAUSED = 'PAUSED'
-    # Stop launching tasks; exit gracefully when running tasks are complete.
-    STATUS_STOPREQUESTED = 'STOPREQUESTED'
-    # The daemon has received a stop request and will exit gracefully.
-    STATUS_STOPINPROGRESS = 'BEING_STOPPED'
-    # Stop launching tasks; kill already running tasks with error status.
-    STATUS_KILLREQUESTED = 'KILLREQUESTED'
-    # The daemon has received a kill request and is shutting down.
-    STATUS_KILLINPROGRESS = 'BEING_KILLED'
-    # Daemon was exited gracefully; no tasks were interrupted.
-    STATUS_ENDEDGRACEFULLY = 'ENDED'
-    # Daemon was killed; any running tasks were interrupted.
-    STATUS_KILLED = 'KILLED'
-    # Daemon status has been hidden for convenience.
-    STATUS_DELETED = Task.STATUS_DELETED
-    
-    ALL_STATUSES = (STATUS_STARTING
-        , STATUS_ERROR, STATUS_RUNNING
-        , STATUS_PAUSEREQUESTED, STATUS_PAUSED
-        , STATUS_STOPREQUESTED, STATUS_KILLREQUESTED
-        , STATUS_KILLINPROGRESS, STATUS_STOPINPROGRESS
-        , STATUS_ENDEDGRACEFULLY, STATUS_KILLED
-        , STATUS_DELETED)
-    
-    class Meta:
-        db_table = 'norc_daemonstatus'
-    
-    region = models.ForeignKey('ResourceRegion')
-    host = models.CharField(max_length=124)
-    pid = models.IntegerField()
-    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=64)
-    date_started = models.DateTimeField(default=datetime.datetime.utcnow)
-    date_ended = models.DateTimeField(blank=True, null=True)
-    
-    @staticmethod
-    def create(region, status=None, pid=None, host=None):
-        if status == None:
-            status = NorcDaemonStatus.STATUS_STARTING
-        if pid == None:
-            pid = os.getpid()
-        if host == None:
-            # or platform.unode(), platform.node(), socket.gethostname() -- which is best???
-            host = os.uname()[1]
-        
-        status = NorcDaemonStatus(region=region
-                                        , pid=pid, host=host
-                                        , status=status)
-        status.save()
-        return status
-    
-    def get_id(self):
-        return self.id
-    def thwart_cache(self):
-        """
-        Django caches this object, so if someone changes 
-        the database directly this object doesn't see that change.
-        We must call this hack to return a new instance of this object, 
-        reflecting the database's latest state.
-        If the record no longer exists in the database, a DoesNotExist error is raised
-        Perhaps there's something in this answer about db types and refreshes?
-        Also, QuerySet._clone() will reproduce, but this is almost as good.
-        http://groups.google.com/group/django-users/browse_thread/thread/e25cec400598c06d
-        """
-        # TODO how do you do this natively to Django???
-        return NorcDaemonStatus.objects.get(id=self.id)
-    def get_region(self):
-        return self.region
-    def set_status(self, status):
-        assert status in NorcDaemonStatus.ALL_STATUSES, "Unknown status '%s'" % (status)
-        self.status = status
-        if not status == TaskRunStatus.STATUS_RUNNING:
-            self.date_ended = datetime.datetime.utcnow()
-        self.save()
-    def get_status(self):
-        return self.status
-    def is_pause_requested(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_PAUSEREQUESTED
-    def is_stop_requested(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_STOPREQUESTED
-    def is_kill_requested(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_KILLREQUESTED
-    def is_paused(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_PAUSED
-    def is_being_stopped(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_STOPINPROGRESS
-    def is_being_killed(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_KILLINPROGRESS
-    def is_starting(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_STARTING
-    def is_shutting_down(self):
-        return self.is_stop_requested() or self.is_kill_requested()
-    def is_running(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_RUNNING
-    def is_done(self):
-        return self.get_status() in (NorcDaemonStatus.STATUS_ENDEDGRACEFULLY
-                                    , NorcDaemonStatus.STATUS_KILLED
-                                    , NorcDaemonStatus.STATUS_ERROR
-                                    , NorcDaemonStatus.STATUS_DELETED)
-    def is_done_with_error(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_ERROR
-    def is_deleted(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_DELETED
-    
-    def get_daemon_type(self):
-        # TODO This is sloppy!
-        norc_c = self.taskrunstatus_set.count()
-        sqs_c = self.sqstaskrunstatus_set.count()
-        if norc_c > 0 and sqs_c == 0:
-            return NorcDaemonStatus.DAEMON_TYPE_TMS
-        elif norc_c == 0 and sqs_c > 0:
-            return NorcDaemonStatus.DAEMON_TYPE_SQS
-        else:
-            return NorcDaemonStatus.DAEMON_TYPE_TMS
-    def get_task_statuses(self, only_statuses=None, date_started=None):
-        """
-        return the statuses (not the tasks) for all tasks run(ning) by this daemon
-        date_started: limit to statuses with start date since given date, 
-                    or all if date_started=None (the default)
-        """
-        filtered = []
-        task_statuses = self.taskrunstatus_set.filter(controlling_daemon=self)
-        sqs_statuses = self.sqstaskrunstatus_set.filter(controlling_daemon=self)
-        if not date_started == None:
-            task_statuses = task_statuses.filter(date_started__gte=date_started)
-            sqs_statuses = sqs_statuses.filter(date_started__gte=date_started)
-        if only_statuses == None:
-            filtered.extend(task_statuses.all())
-            filtered.extend(sqs_statuses.all())
-        else:
-            filtered.extend(task_statuses.filter(status__in=only_statuses))
-            filtered.extend(sqs_statuses.filter(status__in=only_statuses))
-        return filtered
-    
-    def __unicode__(self):
-        base = u"id:%3s host:%s pid:%s" % (self.id, self.host, self.pid)
-        if self.is_running():
-            return u"running %s started %s" % (base, self.date_started)
-        elif self.is_starting():
-            return u"starting %s asof %s" % (base, self.date_started)
-        elif self.is_shutting_down():
-            return u"ending %s" % (base)
-        else:
-            return u"finished %s ran %s - %s" % (base, self.date_started, self.date_ended)
-        
-    def __str__(self):
-        return str(self.__unicode__())
-    __repr__ = __str__
-    
-
 class RunnableTask(object):
     """Abstract interface for a runnable Task."""
     
@@ -387,7 +222,7 @@ class RunnableTask(object):
         return self.__daemon_status__
     
     def run(self):
-        """Run this Task!"""
+        """Run this Task."""
         raise NotImplementedError
     def interrupt(self):
         """Interrupt this Task."""
@@ -405,7 +240,7 @@ class ThreadedTaskLogger(object):
     
     __orig_stdout__ = None
     __orig_stderr__ = None
-    __log_dir__ = None
+    __log_dir = None
     daemon_id_for_log = None
     buffer_data = None
     open_files = None
@@ -413,7 +248,7 @@ class ThreadedTaskLogger(object):
     def __init__(self, log_dir, daemon_id_for_log, buffer_data):
         if not os.path.exists(log_dir):
             raise Exception("log_dir '%s' not found!" % (log_dir))
-        self.__log_dir__ = log_dir
+        self.__log_dir = log_dir
         self.daemon_id_for_log = daemon_id_for_log
         if not daemon_id_for_log == None:
             log.info("NORCD stderr & stdout will be in '%s'" \
@@ -423,7 +258,7 @@ class ThreadedTaskLogger(object):
     
     def _get_daemon_log_file_name(self):
         assert not self.daemon_id_for_log == None, "daemon_id_for_log is None! BUG!"
-        fp = "%s/_norcd/norcd.%s" % (self.__log_dir__, self.daemon_id_for_log)
+        fp = "%s/_norcd/norcd.%s" % (self.__log_dir, self.daemon_id_for_log)
         return fp
     
     def _get_log_file(self, fp):
@@ -502,12 +337,12 @@ class TaskInProcess(RunnableTask):
     
     RUN_TASK_EXE = 'tmsd_run_task'
     
-    __log_dir__ = None
-    __subprocess__ = None
+    __log_dir = None
+    __subprocess = None
     
     def __init__(self, task, iteration, daemon_status, log_dir):
         RunnableTask.__init__(self, task, iteration, daemon_status)
-        self.__log_dir__ = log_dir
+        self.__log_dir = log_dir
     
     def run(self):
         #log.info("Starting Task \"%s\" in new process" % (self.get_task().get_name()))
@@ -524,29 +359,32 @@ class TaskInProcess(RunnableTask):
         if log.get_logging_debug():
             cmd.append("--debug")
         if not os.path.exists(os.path.dirname(log_file_name)):
+            print os.path.dirname(log_file_name)
             os.mkdir(os.path.dirname(log_file_name))
-        self.__subprocess__ = subprocess.Popen(cmd)
+        self.__subprocess = subprocess.Popen(cmd)
         # give the Task a chance to start; 
         # this prevents lots of false starts due to unavailable resources
         # that only are only unavailable to future tasks once this task has kicked off.
         time.sleep(2)
     
     def is_running(self):
-        if self.__subprocess__ == None:
+        if self.__subprocess == None:
             # not even started yet
             return False
-        return self.__subprocess__.poll() == None
+        return self.__subprocess.poll() == None
+    
     def get_exit_status(self):
-        if self.__subprocess__ == None:
+        if self.__subprocess == None:
             # not even started yet
             return None
-        return self.__subprocess__.returncode
+        return self.__subprocess.returncode
+    
     def get_pid(self):
-        return self.__subprocess__.pid
+        return self.__subprocess.pid
     
     def interrupt(self):
         """Interrupt this Task"""
-        assert not self.__subprocess__ == None, "Cannot interrupt process not started"
+        assert not self.__subprocess == None, "Cannot interrupt process not started"
         # A bit of interpretive dance to get this to replicate what's much easier in the 2.6 version
         if self.is_running():
             # task is still running; interrupt it! 
@@ -560,13 +398,13 @@ class TaskInProcess(RunnableTask):
 
 class ForkingNorcDaemon(NorcDaemon):
     
-    __log_dir__ = None
+    __log_dir = None
     __running_tasks__ = None
     
     def __init__(self, region, poll_frequency, log_dir, redirect_daemon_log):
         #import subprocess
         NorcDaemon.__init__(self, region, poll_frequency)
-        self.__log_dir__ = log_dir
+        self.__log_dir = log_dir
         self.__running_tasks__ = []
         daemon_id_for_log = None
         if redirect_daemon_log:
@@ -621,7 +459,7 @@ TaskInProcess.RUN_TASK_EXE '%s' is not executable! BAD!" % (self._get_task_label
         return running_tasks
     def start_task(self, task, iteration):
         log.info("\"%s:%s\" starting in new process" % (task.get_job().get_name(), task.get_name()))
-        tp = TaskInProcess(task, iteration, self.get_daemon_status(), self.__log_dir__)
+        tp = TaskInProcess(task, iteration, self.get_daemon_status(), self.__log_dir)
         tp.run()
         self.__add_running_task__(tp)
     
