@@ -335,7 +335,7 @@ class ThreadedTaskLogger(object):
 
 class TaskInProcess(RunnableTask):
     
-    RUN_TASK_EXE = 'tmsd_run_task'
+    RUN_TASK_EXE = 'norc_task'
     
     __log_dir = None
     __subprocess = None
@@ -358,6 +358,7 @@ class TaskInProcess(RunnableTask):
         ]
         if log.get_logging_debug():
             cmd.append("--debug")
+        print cmd
         if not os.path.exists(os.path.dirname(log_file_name)):
             print os.path.dirname(log_file_name)
             os.mkdir(os.path.dirname(log_file_name))

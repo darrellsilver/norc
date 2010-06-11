@@ -103,7 +103,7 @@ def __stop_timeout_timer__():
     return True
 
 def __handle_signal__(sig_name, exit_code, timeout):
-    global task, iteration, region
+    global task, iteration, region, sys
     
     if task == None or iteration == None or region == None:
         log.error("\n", noalteration=True)
@@ -208,15 +208,15 @@ def main():
     global task, iteration, region
     parser = OptionParser("%prog --daemon_status_id <id> --iteration_id <id> \
 --task_library <lib> --task_id <id> [--nice 5] [--stdout <file_name>] [--stderr <file_name>|STDOUT>] [--debug]")
-    parser.add_option("--daemon_status_id", action="store", type="int"
+    parser.add_option("-d", "--daemon_status_id", action="store", type="int"
         , help="The id of the daemon status that launched this Task")
-    parser.add_option("--iteration_id", action="store", type="int"
+    parser.add_option("-i", "--iteration_id", action="store", type="int"
         , help="The id of the iteration in which this Task runs")
-    parser.add_option("--task_library", action="store", type="string"
+    parser.add_option("-l", "--task_library", action="store", type="string"
         , help="The path Task (permalink.norc_impl.models.EnqueudArchiveRequest)")
-    parser.add_option("--task_id", action="store", type="string"
+    parser.add_option("-t", "--task_id", action="store", type="string"
         , help="The id of this Task in this library")
-    parser.add_option("--nice", action="store", type="int", default=5
+    parser.add_option("-n", "--nice", action="store", type="int", default=5
         , help="nice this process. defaults to 5.")
     parser.add_option("--stdout", action="store", type="string"
         , help="Send stdout to this file")

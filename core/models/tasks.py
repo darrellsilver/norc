@@ -30,7 +30,10 @@
 
 """All models related to tasks."""
 
-import os, datetime, random
+import sys, os
+import datetime
+import random
+import subprocess
 
 from django.db import models
 from django.contrib.contenttypes.generic import (GenericRelation,
