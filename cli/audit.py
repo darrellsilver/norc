@@ -75,8 +75,8 @@ def get_run_statuses_by_daemon(daemon_id, statuses):
     log.info("Getting run statuses for:")
     log.info("  daemon_id: '%s'" % (daemon_id))
     log.info("  statuses: %s" % (statuses))
-    tds = tmsdctl.get_tds(daemon_id)
-    tss = tds.get_task_statuses(only_statuses=statuses)
+    nds = tmsdctl.get_nds(daemon_id)
+    tss = nds.get_task_statuses(only_statuses=statuses)
     return tss
     
 

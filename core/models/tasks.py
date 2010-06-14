@@ -282,7 +282,8 @@ class Task(models.Model):
         if save:
             self.save()
     
-    def get_current_run_status(self, iteration):# TODO should this take asof param?? is_allowed_to_run() does
+    def get_current_run_status(self, iteration):
+        # TODO should this take asof param?? is_allowed_to_run() does
         if not self.current_run_status == None and self.current_run_status.get_iteration() == iteration:
             return self.current_run_status
         self.current_run_status = TaskRunStatus.get_latest(self, iteration)

@@ -30,106 +30,97 @@
 
 """Reporter is how external modules should access Norc data."""
 
-from norc.core.models import *
+from models import *
 from django.core.exceptions import FieldError
-from norc.utils import log
-#log = log.Log(settings.LOGGING_DEBUG)
-log = log.Log()
 
 CLASS_DICT = dict(job=Job,
-                  task=Task,
+                  rc=RunCommand,
                   resource=Resource,
                   region=ResourceRegion,
                   iteration=Iteration,
-                  trs=TaskRunStatus)
+                  trs=TaskRunStatus,
+                  nds=NorcDaemonStatus)
+
+DAEMON_STATUS_DICT = {}
+DAEMON_STATUS_DICT['running'] = [
+    NorcDaemonStatus.STATUS_RUNNING]
+DAEMON_STATUS_DICT['active'] = [
+    NorcDaemonStatus.STATUS_STARTING,
+    NorcDaemonStatus.STATUS_RUNNING,
+    NorcDaemonStatus.STATUS_PAUSEREQUESTED,
+    NorcDaemonStatus.STATUS_STOPREQUESTED,
+    NorcDaemonStatus.STATUS_KILLREQUESTED,
+    NorcDaemonStatus.STATUS_PAUSED,
+    NorcDaemonStatus.STATUS_STOPINPROGRESS,
+    NorcDaemonStatus.STATUS_KILLINPROGRESS]
+DAEMON_STATUS_DICT['errored'] = [
+    NorcDaemonStatus.STATUS_ERROR]
+DAEMON_STATUS_DICT['interesting'] = []
+DAEMON_STATUS_DICT['interesting'].extend(
+    DAEMON_STATUS_DICT['active'])
+DAEMON_STATUS_DICT['interesting'].extend(
+    DAEMON_STATUS_DICT['errored'])
+DAEMON_STATUS_DICT['all'] = None    # meaning all of them
+
+TASK_STATUS_FILTER_2_STATUS_LIST = {}
+TASK_STATUS_FILTER_2_STATUS_LIST['running'] = [TaskRunStatus.STATUS_RUNNING]
+TASK_STATUS_FILTER_2_STATUS_LIST['active'] = [TaskRunStatus.STATUS_RUNNING]
+TASK_STATUS_FILTER_2_STATUS_LIST['errored'] = [TaskRunStatus.STATUS_ERROR,
+                                               TaskRunStatus.STATUS_TIMEDOUT]
+TASK_STATUS_FILTER_2_STATUS_LIST['success'] = [TaskRunStatus.STATUS_SUCCESS
+                                            , TaskRunStatus.STATUS_CONTINUE]
+TASK_STATUS_FILTER_2_STATUS_LIST['interesting'] = []
+TASK_STATUS_FILTER_2_STATUS_LIST['interesting'].extend(
+    TASK_STATUS_FILTER_2_STATUS_LIST['active'])
+TASK_STATUS_FILTER_2_STATUS_LIST['interesting'].extend(
+    TASK_STATUS_FILTER_2_STATUS_LIST['errored'])
+TASK_STATUS_FILTER_2_STATUS_LIST['all'] = None      # meaning all of them
+
 
 def get_object(class_key, **kwargs):
+    """Retrieves a database object of the corresponding class and attributes.
+    
+    class_key is a string that represents the desired class in CLASS_DICT.
+    kwargs are the parameters used to find the object.
+    
+    """
+    assert class_key in CLASS_DICT.keys(), "Invalid class key."
+    return get_object_from_class(CLASS_DICT[class_key], **kwargs)
+
+def get_object_from_class(class_, **kwargs):
     """Retrieves a database object of the given class and attributes.
     
     class_key is the string that represents the wanted class in CLASS_DICT.
     kwargs are the parameters used to find the object.
     
     """
-    
-    assert class_key in CLASS_DICT.keys(), "Invalid class key."
-    class_ = CLASS_DICT[class_key]
     try:
         return class_.objects.get(**kwargs)
-    except class_.DoesNotExist, _:
+    except class_.DoesNotExist, dne:
         return None
 
 def get_job(name):
-    get_object('job', name=name)
+    return get_object('job', name=name)
 
-def get_task(name):
-    get_object('task', name=name)
-
-def get_resource():
-    pass
+def get_task(class_, id):
+    return get_object_from_class(class_, id=id)
 
 def get_region(name):
-    get_object('region', name=name)
+    return get_object('region', name=name)
 
-def get_objects(class_key, include, exclude):
+def get_iteration(id):
+    return get_object('iteration', id=id)
 
-    assert class_key in CLASS_DICT.keys(), "Invalid class key."
-    return class_.objects.filter(**include).exclude(**exclude)
+def get_daemon_status(id):
+    return get_object('nds', id=id)
 
+def get_objects(class_key, filters={}, excludes={}):
+    #assert class_key in CLASS_DICT.keys(), "Invalid class key."
+    #class_ = CLASS_DICT[class_key]
+    #return class_.objects.filter(**filters).exclude(**excludes)
+    pass
 
-def get_tasks(job, include_expired=False):
-    """Return all active Tasks in this Job"""
-    # That this has to look at all implementations of the Task superclass
-    tasks = []
-    for tci in TaskClassImplementation.get_all():
-        # Wont work if there's a collision across libraries, but that'll be errored by django on model creation
-        # when it will demand a related_name for Job FK.  Solution isnt to create a related_name, but to rename lib entirely
-        tci_name = "%s_set" % (tci.class_name.lower())
-        matches = job.__getattribute__(tci_name)
-        matches = matches.exclude(status=Task.STATUS_DELETED)
-        if not include_expired:
-            matches = matches.exclude(status=Task.STATUS_EXPIRED)
-        tasks.extend(matches.all())
-    return tasks
+def get_daemon_statuses(status_filter='all'):
+    include_statuses = DAEMON_STATUS_DICT[status_filter.lower()]
+    return get_objects('nds', filters=dict(status__in=include_statuses))
 
-def get_tasks_allowed_to_run(asof=None, end_completed_iterations=False, max_to_return=None):
-    """
-    Get all tasks that are allowed to run, regardless of resources available. Includes all interfaces.
-    
-    TODO Currently this is EXTREMELY expensive to run.  Use max_to_return or beware the sloooowness!
-    *Slowness is due to having to independently query for each Task's lastest status and parent's status.
-     One approach is to query for statuses, then tasks with no statuses, then merge the two lists.
-     But this only satisfies some of the criteria that this slow way uses.
-     Another approach: the daemon should ask for one task at a time, like a proper queue.
-    """
-    if asof == None:# need to do this here and not in arg so it updates w/ each call
-        asof = datetime.datetime.utcnow()
-    to_run = []#[[Task, Iteration]...]
-    for iteration in Iteration.get_running_iterations():
-        tasks = get_tasks(iteration.get_job())
-        iteration_is_done = True
-        for a_task in tasks:
-            try:
-                if not max_to_return == None and len(to_run) >= max_to_return:
-                    break
-                elif a_task.is_allowed_to_run(iteration, asof=asof):
-                    to_run.append([a_task, iteration])
-                    iteration_is_done = False
-                elif iteration_is_done and end_completed_iterations and not __status_is_finished__(a_task, iteration):
-                    iteration_is_done = False
-            except Exception, e:
-                log.error("Could not check if task type '%s' is due to run. Skipping.  \
-                        BAD! Maybe DB is in an inconsistent state or software bug?" 
-                        % (a_task.__class__.__name__), e)
-        
-        # TODO there's a bug here! iterations end when tasks are sittign in failed state
-        if iteration_is_done and end_completed_iterations and iteration.is_ephemeral():
-            # this iteration has completed and should be set as such
-            iteration.set_done()
-        if not max_to_return == None and len(to_run) >= max_to_return:
-            break
-    
-    return to_run
-
-def __status_is_finished__(task, iteration):
-    status = task.get_current_run_status(iteration)
-    return not status == None and status.is_finished()

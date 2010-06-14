@@ -27,6 +27,10 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
+
+"""Models relating to daemons."""
+
+import os
 import datetime
 
 from django.db import models
@@ -82,8 +86,24 @@ class NorcDaemonStatus(models.Model):
     date_started = models.DateTimeField(default=datetime.datetime.utcnow)
     date_ended = models.DateTimeField(blank=True, null=True)
     
+    @staticmethod
+    def create(region, status=None, pid=None, host=None):
+        if status == None:
+            status = NorcDaemonStatus.STATUS_STARTING
+        if pid == None:
+            pid = os.getpid()
+        if host == None:
+            # or platform.unode(), platform.node(), socket.gethostname() -- which is best???
+            host = os.uname()[1]
+
+        status = NorcDaemonStatus(
+            region=region, pid=pid, host=host, status=status)
+        status.save()
+        return status
+    
     def get_id(self):
         return self.id
+    
     def thwart_cache(self):
         """
         Django caches this object, so if someone changes 
@@ -97,41 +117,56 @@ class NorcDaemonStatus(models.Model):
         """
         # TODO how do you do this natively to Django???
         return NorcDaemonStatus.objects.get(id=self.id)
+    
     def get_region(self):
         return self.region
+    
     def set_status(self, status):
         assert status in NorcDaemonStatus.ALL_STATUSES, "Unknown status '%s'" % (status)
         self.status = status
         if not status == TaskRunStatus.STATUS_RUNNING:
             self.date_ended = datetime.datetime.utcnow()
         self.save()
+    
     def get_status(self):
         return self.status
+    
     def is_pause_requested(self):
         return self.get_status() == NorcDaemonStatus.STATUS_PAUSEREQUESTED
+    
     def is_stop_requested(self):
         return self.get_status() == NorcDaemonStatus.STATUS_STOPREQUESTED
+    
     def is_kill_requested(self):
         return self.get_status() == NorcDaemonStatus.STATUS_KILLREQUESTED
+    
     def is_paused(self):
         return self.get_status() == NorcDaemonStatus.STATUS_PAUSED
+    
     def is_being_stopped(self):
         return self.get_status() == NorcDaemonStatus.STATUS_STOPINPROGRESS
+    
     def is_being_killed(self):
         return self.get_status() == NorcDaemonStatus.STATUS_KILLINPROGRESS
+    
     def is_starting(self):
         return self.get_status() == NorcDaemonStatus.STATUS_STARTING
+    
     def is_shutting_down(self):
         return self.is_stop_requested() or self.is_kill_requested()
+    
     def is_running(self):
         return self.get_status() == NorcDaemonStatus.STATUS_RUNNING
+    
     def is_done(self):
         return self.get_status() in (NorcDaemonStatus.STATUS_ENDEDGRACEFULLY
                                     , NorcDaemonStatus.STATUS_KILLED
                                     , NorcDaemonStatus.STATUS_ERROR
                                     , NorcDaemonStatus.STATUS_DELETED)
+    
     def is_done_with_error(self):
         return self.get_status() == NorcDaemonStatus.STATUS_ERROR
+    
     def is_deleted(self):
         return self.get_status() == NorcDaemonStatus.STATUS_DELETED
     
@@ -145,7 +180,8 @@ class NorcDaemonStatus(models.Model):
             return NorcDaemonStatus.DAEMON_TYPE_SQS
         else:
             return NorcDaemonStatus.DAEMON_TYPE_TMS
-    def get_task_statuses(self, only_statuses=None, date_started=None):
+    
+    def get_task_statuses(self, only_statuses=None, since_date=None):
         """
         return the statuses (not the tasks) for all tasks run(ning) by this daemon
         date_started: limit to statuses with start date since given date, 
@@ -154,9 +190,9 @@ class NorcDaemonStatus(models.Model):
         filtered = []
         task_statuses = self.taskrunstatus_set.filter(controlling_daemon=self)
         sqs_statuses = self.sqstaskrunstatus_set.filter(controlling_daemon=self)
-        if not date_started == None:
-            task_statuses = task_statuses.filter(date_started__gte=date_started)
-            sqs_statuses = sqs_statuses.filter(date_started__gte=date_started)
+        if not since_date == None:
+            task_statuses = task_statuses.filter(date_started__gte=since_date)
+            sqs_statuses = sqs_statuses.filter(date_started__gte=since_date)
         if only_statuses == None:
             filtered.extend(task_statuses.all())
             filtered.extend(sqs_statuses.all())
@@ -178,6 +214,7 @@ class NorcDaemonStatus(models.Model):
         
     def __str__(self):
         return str(self.__unicode__())
+    
     __repr__ = __str__
     
 

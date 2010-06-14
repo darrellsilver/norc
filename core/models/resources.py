@@ -28,7 +28,7 @@
 #
 
 
-"""All data classes related to handling resources."""
+"""Models related to handling/tracking resources."""
 
 import datetime
 

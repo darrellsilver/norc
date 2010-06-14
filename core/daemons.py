@@ -58,15 +58,68 @@ import datetime
 import threading    # if using thread for running Tasks
 import subprocess   # if using forking for running Tasks
 
-from django.db import models
-
 from norc import settings
-from norc.core import controller, reporter
-from norc.core.models import NorcDaemonStatus
+from norc.core.models import *
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 # TODO: Can these be run not as daemons?
+
+
+def _get_tasks(job, include_expired=False):
+    """Return all active Tasks in this Job"""
+    # That this has to look at all implementations of the Task superclass
+    tasks = []
+    for tci in TaskClassImplementation.get_all():
+        # Wont work if there's a collision across libraries, but that'll be errored by django on model creation
+        # when it will demand a related_name for Job FK.  Solution isnt to create a related_name, but to rename lib entirely
+        tci_name = "%s_set" % (tci.class_name.lower())
+        matches = job.__getattribute__(tci_name)
+        matches = matches.exclude(status=Task.STATUS_DELETED)
+        if not include_expired:
+            matches = matches.exclude(status=Task.STATUS_EXPIRED)
+        tasks.extend(matches.all())
+    return tasks
+
+def _get_tasks_allowed_to_run(asof=None, end_completed_iterations=False, max_to_return=None):
+    """
+    Get all tasks that are allowed to run, regardless of resources available. Includes all interfaces.
+    
+    TODO Currently this is EXTREMELY expensive to run.  Use max_to_return or beware the sloooowness!
+    *Slowness is due to having to independently query for each Task's lastest status and parent's status.
+     One approach is to query for statuses, then tasks with no statuses, then merge the two lists.
+     But this only satisfies some of the criteria that this slow way uses.
+     Another approach: the daemon should ask for one task at a time, like a proper queue.
+    """
+    if asof == None:# need to do this here and not in arg so it updates w/ each call
+        asof = datetime.datetime.utcnow()
+    to_run = []#[[Task, Iteration]...]
+    for iteration in Iteration.get_running_iterations():
+        tasks = _get_tasks(iteration.get_job())
+        iteration_is_done = True
+        for a_task in tasks:
+            try:
+                if not max_to_return == None and len(to_run) >= max_to_return:
+                    break
+                elif a_task.is_allowed_to_run(iteration, asof=asof):
+                    to_run.append([a_task, iteration])
+                    iteration_is_done = False
+                elif iteration_is_done and end_completed_iterations and not __status_is_finished__(a_task, iteration):
+                    iteration_is_done = False
+            except Exception, e:
+                log.error("Could not check if task type '%s' is due to run. Skipping.  \
+                        BAD! Maybe DB is in an inconsistent state or software bug?" 
+                        % (a_task.__class__.__name__), e)
+        
+        # TODO there's a bug here! iterations end when tasks are sittign in failed state
+        if iteration_is_done and end_completed_iterations and iteration.is_ephemeral():
+            # this iteration has completed and should be set as such
+            iteration.set_done()
+        if not max_to_return == None and len(to_run) >= max_to_return:
+            break
+    
+    return to_run
+
 
 class NorcDaemon(object):
     """Abstract daemon; subclasses implement the running of Tasks."""
@@ -77,7 +130,9 @@ class NorcDaemon(object):
     
     def __init__(self, region, poll_frequency):
         self.__poll_frequency__ = poll_frequency
-        self.__daemon_status__ = controller.create_daemon_status(region)
+        
+        status = NorcDaemonStatus.create(region)
+        self.__daemon_status__ = status
     
     def get_poll_frequency(self):
         return self.__poll_frequency__
@@ -144,7 +199,7 @@ class NorcDaemon(object):
         raise Exception("The main loop exited somehow without throwing an error. Bug?")
     
     def run_batch(self):
-        tasks_to_run = reporter.get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
+        tasks_to_run = _get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
         num_running_tasks = self.get_num_running_tasks()
         log.debug("tmsd running %s task(s), at least %s task(s) due to run" % (num_running_tasks, len(tasks_to_run)))
         need_resource_types = []
@@ -331,7 +386,7 @@ class ThreadedTaskLogger(object):
         self.close_all()
         sys.stdout = self.__orig_stdout__
         sys.stderr = self.__orig_stderr__
-
+    
 
 class TaskInProcess(RunnableTask):
     

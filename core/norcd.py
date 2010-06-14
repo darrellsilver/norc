@@ -67,7 +67,7 @@ log = log.Log(settings.LOGGING_DEBUG)
 
 def main():
     parser = OptionParser(
-        "%prog region [-t] [-d] [-f <frequency>] [--no_log_redirect] [-h]")
+        "%prog region [-t] [-d] [-f <frequency>] [--no_log_redirect]")
     
     parser.add_option(
         "-t", "--threading", action="store_true",

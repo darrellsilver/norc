@@ -29,7 +29,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-
+# TODO: Merge into norc_task
 
 ############################################
 #
@@ -49,7 +49,6 @@ from optparse import OptionParser
 
 from norc.core.models import Iteration, ResourceRegion, NorcDaemonStatus
 from norc.core import manage as norc_manage
-from norc.core import controller
 from norc import settings
 
 from norc.utils import log
@@ -91,7 +90,8 @@ def run_task(task, region_name=None, region=None, iteration=None):
             raise Exception("Unknown region '%s'" % (region))
         if iteration == None:
             iteration = __find_iteration__(task.get_job())
-        tmsd_status = controller.create_daemon_status(region)
+        tmsd_status = NorcDaemonStatus(region=region)
+        tmsd_status.save()
         task.do_run(iteration, tmsd_status)
     finally:
         if not tmsd_status == None:
