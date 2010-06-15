@@ -41,6 +41,6 @@ urlpatterns = patterns('',
     # (r'^admin/doc/', include('django.contrib.admindocs.urls')),
     (r'^admin(.*)$',    admin.site.root),
     (r'^$',             'norc.web.views.index'),
-    (r'^sandbox$',             'norc.web.views.sandbox'),
+    (r'^sandbox(.*)$',             'norc.web.views.sandbox'),
     (r'^(.*)$',           'norc.web.views.notfound'),
 )

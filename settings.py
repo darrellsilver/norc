@@ -125,6 +125,8 @@ TEMPLATE_DIRS = (
     #os.path.join(ENV['NORC_CODE_ROOT'], '/templates/'),
 )
 
+TEMPLATE_STRING_IF_INVALID = "Invalid variable: %s"
+
 INSTALLED_APPS = (
     'django.contrib.admin',
     'django.contrib.auth',

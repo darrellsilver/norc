@@ -81,12 +81,14 @@ def get_iteration(id):
 def get_nds(id):
     return get_object(NorcDaemonStatus, id=id)
 
-def get_daemon_statuses(status_filter='all'):
-    if status_filter == 'all':
-        return NorcDaemonStatus.objects.all()
-    else:
+def get_daemon_statuses(since_date=None, status_filter='all'):
+    nds_query = NorcDaemonStatus.objects.all()
+    if since_date != None:
+        nds_query = nds_query.exclude(date_ended__lte=since_date)
+    if status_filter != 'all':
         include_statuses = DAEMON_STATUS_DICT[status_filter.lower()]
-        return NorcDaemonStatus.objects.filter(status__in=include_statuses)
+        nds_query = nds_query.filter(status__in=include_statuses)
+    return nds_query
 
 #def get_task_statuses(status_filter='all'):
 #    if status_filter == 'all':

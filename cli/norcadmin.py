@@ -43,38 +43,28 @@
 #04/13/2009
 ############################################
 
-import re, sys, time, datetime
+import sys, time
 from optparse import OptionParser
 
 from norc.core import reporter
 from norc.core.models import NorcDaemonStatus, TaskRunStatus
-from norc.utils import formatting
+from norc.utils import formatting, date_utils
 
 def report_daemon_statuses(status_filter, since_date=None):
-    tabular = []
-    tabular.append(["ID", "Type", "Region", "Host", "PID", "Running",
-        "Success", "Error", "Status", "Started", "Ended"])
+    tabular = [["ID", "Type", "Region", "Host", "PID", "Running",
+        "Success", "Error", "Status", "Started", "Ended"]]
     for nds in reporter.get_daemon_statuses(status_filter.lower()):
-        one_row = []
-        one_row.append(str(nds.id))
-        one_row.append(nds.get_daemon_type())
-        one_row.append(nds.get_region().get_name())
-        one_row.append(nds.host)
-        one_row.append(nds.pid)
-        # don't apply start_date to running tasks; showing all gives better monitoring
-        one_row.append(len(nds.get_task_statuses('running')))
-        one_row.append(len(nds.get_task_statuses('success', since_date)))
-        one_row.append(len(nds.get_task_statuses('errored', since_date)))
-        #one_row.append(len(nds.get_task_statuses(
-        #    only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['running'])))
-        #one_row.append(len(nds.get_task_statuses(
-        #    only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['success'],
-        #    since_date=since_date)))
-        #one_row.append(len(nds.get_task_statuses(
-        #    only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['errored'],
-        #    since_date=since_date)))
-        one_row.append(nds.get_status())
-        one_row.append(nds.date_started)
+        one_row = [
+            str(nds.id),
+            nds.get_daemon_type(),
+            nds.get_region().get_name(),
+            nds.host,
+            nds.pid,
+            len(nds.get_task_statuses('running', since_date)),
+            len(nds.get_task_statuses('success', since_date)),
+            len(nds.get_task_statuses('errored', since_date)),
+            nds.get_status(),
+            nds.date_started,
         if nds.is_done():
             one_row.append(nds.date_ended)
         else:
@@ -158,25 +148,7 @@ def report_sqsd_details(status_filter, sqsd, date_started=None):
 # Main
 #
 
-def _parse_date_relative(date, back):
-    parser = re.compile("([mp])([0-9]*)(d|h|min)")
-    parsed = parser.findall(back)
-    if not len(parsed) == 1:
-        raise TypeError("Could not parse '%s'" % (back))
-    (sign, num, units) = parsed[0]
-    if sign == 'm':
-        sign = -1
-    else:
-        sign = 1
-    num = int(num)
-    if units == 'd':
-        td = datetime.timedelta(days=sign*num)
-    elif units == 'h':
-        td = datetime.timedelta(hours=sign*num)
-    elif units == 'min':
-        td = datetime.timedelta(minutes=sign*num)
-    
-    return date + td
+
 
 WAIT_POLL_SECONDS = 3
 
@@ -253,7 +225,7 @@ def main():
     #    raise Exception(usage())
     
     if options.started_since:
-        options.started_since = _parse_date_relative(datetime.datetime.utcnow(), options.started_since)
+        options.started_since = date_utils.parse_date_relative(options.started_since)
     
     # Perform an action on a Norc daemon.
     flags = ['pause', 'stop', 'kill', 'salvage', 'delete']
@@ -306,7 +278,7 @@ def main():
                     if seconds_waited >= options.wait_seconds:
                         timeout = True
                         break
-                    nds = get_nds(nds_id)
+                    nds = reporter.get_nds(nds_id)
                     if nds.is_shutting_down():
                         log.info("Waiting for shutdown of norcd %s.  It's been %s seconds." % (nds.id, seconds_waited), indent_chars=4)
                     elif nds.is_done():

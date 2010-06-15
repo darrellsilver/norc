@@ -61,6 +61,7 @@ from optparse import OptionParser
 
 from norc import settings
 from norc.core.daemons import ThreadingNorcDaemon, ForkingNorcDaemon
+from norc.core.models import ResourceRegion
 from norc.core import reporter
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
@@ -95,7 +96,7 @@ def main():
         sys.exit(parser.get_usage())
     
     # resolve the region
-    region = reporter.get_object('region', name=args[0])
+    region = reporter.get_object(ResourceRegion, name=args[0])
     if region == None:
         raise Exception("Don't know region '%s'" % (options.region))
     
