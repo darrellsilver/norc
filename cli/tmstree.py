@@ -32,7 +32,7 @@
 
 ############################################
 #
-# Print out the tree for a TMS Job
+# Print out the tree for a Norc Job
 #
 #
 #Darrell

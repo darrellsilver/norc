@@ -469,7 +469,7 @@ class ForkingNorcDaemon(NorcDaemon):
     
     def get_name(self):
         """Return a name for this daemon implementation"""
-        return 'norcd (forking)'
+        return 'Norc Daemon(forking)'
     def __add_running_task__(self, running):
         self.__running_tasks__.append(running)
     def _get_task_label(self, running_task):
@@ -576,7 +576,7 @@ class ThreadingNorcDaemon(NorcDaemon):
     
     def get_name(self):
         """Return a name for this daemon implementation"""
-        return 'TMSD (threading)'
+        return 'Norc Daemon (threading)'
     def get_running_tasks(self):
         """Returns list of currently running RunnableTask's"""
         task_threads = []

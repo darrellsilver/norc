@@ -65,7 +65,7 @@ def main():
     parser.add_option("--max_to_run", action="store", type="int"
         , help="max Tasks that can be run at a time")
     parser.add_option("--no_log_redirect", action="store_true"
-        , help="print daemon logging to sys.stdout & sys.stderr instead of redirecting them to a TMS log file.")
+        , help="print daemon logging to sys.stdout & sys.stderr instead of redirecting them to a Norc log file.")
     parser.add_option("--debug", action="store_true", help="more messages")
     (options, args) = parser.parse_args()
     

@@ -33,7 +33,7 @@
 
 ##################################################
 #
-# Set status of TMS tasks
+# Set status of Norc tasks
 #
 #
 #

@@ -32,6 +32,7 @@
 
 import os
 import datetime
+import pdb
 
 from django.db import models
 
@@ -40,8 +41,8 @@ from tasks import Task, TaskRunStatus
 class NorcDaemonStatus(models.Model):
     """Track the statuses of Norc daemons."""
     
-    DAEMON_TYPE_TMS = 'TMS'
-    DAEMON_TYPE_SQS = 'SQS'
+    # DAEMON_TYPE_NORC = 'NORC'
+    # DAEMON_TYPE_SQS = 'SQS'
     
     # Daemon is starting.
     STATUS_STARTING = 'STARTING'
@@ -68,13 +69,10 @@ class NorcDaemonStatus(models.Model):
     # Daemon status has been hidden for convenience.
     STATUS_DELETED = Task.STATUS_DELETED
     
-    ALL_STATUSES = (STATUS_STARTING
-        , STATUS_ERROR, STATUS_RUNNING
-        , STATUS_PAUSEREQUESTED, STATUS_PAUSED
-        , STATUS_STOPREQUESTED, STATUS_KILLREQUESTED
-        , STATUS_KILLINPROGRESS, STATUS_STOPINPROGRESS
-        , STATUS_ENDEDGRACEFULLY, STATUS_KILLED
-        , STATUS_DELETED)
+    ALL_STATUSES = (STATUS_STARTING, STATUS_ERROR, STATUS_RUNNING,
+        STATUS_PAUSEREQUESTED, STATUS_PAUSED, STATUS_STOPREQUESTED,
+        STATUS_KILLREQUESTED, STATUS_KILLINPROGRESS, STATUS_STOPINPROGRESS,
+        STATUS_ENDEDGRACEFULLY, STATUS_KILLED, STATUS_DELETED)
     
     class Meta:
         db_table = 'norc_daemonstatus'
@@ -95,7 +93,7 @@ class NorcDaemonStatus(models.Model):
         if host == None:
             # or platform.unode(), platform.node(), socket.gethostname() -- which is best???
             host = os.uname()[1]
-
+        
         status = NorcDaemonStatus(
             region=region, pid=pid, host=host, status=status)
         status.save()
@@ -171,17 +169,18 @@ class NorcDaemonStatus(models.Model):
         return self.get_status() == NorcDaemonStatus.STATUS_DELETED
     
     def get_daemon_type(self):
-        # TODO This is sloppy!
-        norc_c = self.taskrunstatus_set.count()
-        sqs_c = self.sqstaskrunstatus_set.count()
-        if norc_c > 0 and sqs_c == 0:
-            return NorcDaemonStatus.DAEMON_TYPE_TMS
-        elif norc_c == 0 and sqs_c > 0:
-            return NorcDaemonStatus.DAEMON_TYPE_SQS
-        else:
-            return NorcDaemonStatus.DAEMON_TYPE_TMS
+        return 'NORC'
+    #     # TODO This is sloppy!
+    #     norc_c = self.taskrunstatus_set.count()
+    #     sqs_c = self.sqstaskrunstatus_set.count()
+    #     if norc_c > 0 and sqs_c == 0:
+    #         return NorcDaemonStatus.DAEMON_TYPE_NORC
+    #     elif norc_c == 0 and sqs_c > 0:
+    #         return NorcDaemonStatus.DAEMON_TYPE_SQS
+    #     else:
+    #         return NorcDaemonStatus.DAEMON_TYPE_NORC
     
-    def get_task_statuses(self, only_statuses=None, since_date=None):
+    def get_task_statuses(self, status_filter='all', since_date=None):
         """
         return the statuses (not the tasks) for all tasks run(ning) by this daemon
         date_started: limit to statuses with start date since given date, 
@@ -189,16 +188,17 @@ class NorcDaemonStatus(models.Model):
         """
         filtered = []
         task_statuses = self.taskrunstatus_set.filter(controlling_daemon=self)
-        sqs_statuses = self.sqstaskrunstatus_set.filter(controlling_daemon=self)
+        #sqs_statuses = self.sqstaskrunstatus_set.filter(controlling_daemon=self)
         if not since_date == None:
             task_statuses = task_statuses.filter(date_started__gte=since_date)
-            sqs_statuses = sqs_statuses.filter(date_started__gte=since_date)
-        if only_statuses == None:
+            #sqs_statuses = sqs_statuses.filter(date_started__gte=since_date)
+        if status_filter == 'all':
             filtered.extend(task_statuses.all())
-            filtered.extend(sqs_statuses.all())
+            #filtered.extend(sqs_statuses.all())
         else:
+            only_statuses = TaskRunStatus.STATUS_CATEGORIES[status_filter.lower()]
             filtered.extend(task_statuses.filter(status__in=only_statuses))
-            filtered.extend(sqs_statuses.filter(status__in=only_statuses))
+            #filtered.extend(sqs_statuses.filter(status__in=only_statuses))
         return filtered
     
     def __unicode__(self):

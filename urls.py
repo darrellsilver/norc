@@ -39,7 +39,8 @@ urlpatterns = patterns('',
     # Uncomment the admin/doc line below and add 'django.contrib.admindocs' 
     # to INSTALLED_APPS to enable admin documentation:
     # (r'^admin/doc/', include('django.contrib.admindocs.urls')),
-    (r'^admin/(.*)$',    admin.site.root),
-    (r'^$',             'norc.view.views.index'),
-    (r'^.*$',           'norc.view.views.notfound'),
+    (r'^admin(.*)$',    admin.site.root),
+    (r'^$',             'norc.web.views.index'),
+    (r'^sandbox$',             'norc.web.views.sandbox'),
+    (r'^(.*)$',           'norc.web.views.notfound'),
 )

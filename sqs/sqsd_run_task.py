@@ -90,7 +90,7 @@ def __handle_signal__(sig_name, exit_code, timeout):
         log.error("\n", noalteration=True)
     else:
         log.error("\n", noalteration=True)
-        log.error("Received %s! TMS Stopping Task with exit code %s." % (sig_name, exit_code))
+        log.error("Received %s! Norc Stopping Task with exit code %s." % (sig_name, exit_code))
         log.error("\n", noalteration=True)
         if timeout:
             task.set_ended_on_timeout()

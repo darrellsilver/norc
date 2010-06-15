@@ -133,14 +133,14 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'norc.core',
     'norc.sqs',
-    'norc.view',
+    'norc.web',
 )
 
 #
 # taskmaster specific settings
 #
 
-# TMS alert handling
+# Norc alert handling
 expose_env('NORC_EMAIL_ALERTS','NORC_EMAIL_ALERTS_TO')
 
 expose_env('LOGGING_DEBUG','NORC_LOG_DIR','NORC_TMP_DIR')

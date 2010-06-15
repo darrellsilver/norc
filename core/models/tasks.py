@@ -249,7 +249,7 @@ class Task(models.Model):
             self.status = Task.STATUS_EXPIRED
             self.save()
         if self.alert_on_failure() and status in (TaskRunStatus.STATUS_ERROR, TaskRunStatus.STATUS_TIMEDOUT):
-            alert_msg = 'TMS Task %s:%s ended with %s!' % (self.get_job().get_name(), self.get_name(), status)
+            alert_msg = 'Norc Task %s:%s ended with %s!' % (self.get_job().get_name(), self.get_name(), status)
             if settings.NORC_EMAIL_ALERTS:
                 send_mail(alert_msg, "d'oh!" \
                     , settings.EMAIL_HOST_USER, settings.NORC_EMAIL_ALERT_TO, fail_silently=False)
@@ -351,7 +351,7 @@ class Task(models.Model):
     def run(self):
         """
         Run this task!
-        TMS records success/failure, but any more detail than that is left to the internals of the run() implementation.
+        Norc records success/failure, but any more detail than that is left to the internals of the run() implementation.
         """
         raise NotImplementedError
     
@@ -362,7 +362,7 @@ class Task(models.Model):
         return self.job
     
     def get_name(self):
-        """A unique name for this Task in TMS; don't override!"""
+        """A unique name for this Task in Norc; don't override!"""
         # TODO names should be allowed to be defined by the subclass for clarity
         # EnqueuedArchiveRequest.144
         return u"%s.%s" % (self.__class__.__name__, self.get_id())
@@ -534,9 +534,18 @@ class TaskRunStatus(models.Model):
     STATUS_RETRY = 'RETRY'         # Task has been asked to be retried
     STATUS_SUCCESS = 'SUCCESS'     # Task ran successfully. Yay!
     
-    ALL_STATUSES = (STATUS_SKIPPED, STATUS_RUNNING, STATUS_ERROR
-                    , STATUS_CONTINUE, STATUS_TIMEDOUT
-                    , STATUS_RETRY, STATUS_SUCCESS)
+    ALL_STATUSES = (STATUS_SKIPPED, STATUS_RUNNING, STATUS_ERROR,
+        STATUS_CONTINUE, STATUS_TIMEDOUT, STATUS_RETRY, STATUS_SUCCESS)
+    
+    STATUS_CATEGORIES = {}
+    STATUS_CATEGORIES['running'] = [STATUS_RUNNING]
+    STATUS_CATEGORIES['active'] = [STATUS_RUNNING]
+    STATUS_CATEGORIES['errored'] = [STATUS_ERROR, STATUS_TIMEDOUT]
+    STATUS_CATEGORIES['success'] = [STATUS_SUCCESS, STATUS_CONTINUE]
+    STATUS_CATEGORIES['interesting'] = []
+    STATUS_CATEGORIES['interesting'].extend(STATUS_CATEGORIES['active'])
+    STATUS_CATEGORIES['interesting'].extend(STATUS_CATEGORIES['errored'])
+    STATUS_CATEGORIES['all'] = ALL_STATUSES
     
     class Meta:
         db_table = 'norc_taskrunstatus'
@@ -998,7 +1007,7 @@ class SchedulableTask(Task):
     
 
 class StartIteration(SchedulableTask):
-    """Schedule on which new TMS Iterations are started"""
+    """Schedule on which new Norc Iterations are started"""
     
     class Meta:
         db_table = 'norc_startiteration'

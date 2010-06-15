@@ -41,3 +41,11 @@ def index(request):
 
 def notfound(request):
     return render_to_response('500.html', {})
+
+def sandbox(request):
+    class X():
+        def test(self): return "foo!"
+    x = X()
+    listTest = [1, 2, 3]
+    mapTest = dict(test="boo!",best="moo!")
+    return render_to_response('sandbox.html', dict(list=listTest, map=mapTest, x=x))

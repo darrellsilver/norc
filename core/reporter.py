@@ -28,18 +28,9 @@
 #
 
 
-"""Reporter is how external modules should access Norc data."""
+"""External modules should access Norc data using these functions."""
 
-from models import *
-from django.core.exceptions import FieldError
-
-CLASS_DICT = dict(job=Job,
-                  rc=RunCommand,
-                  resource=Resource,
-                  region=ResourceRegion,
-                  iteration=Iteration,
-                  trs=TaskRunStatus,
-                  nds=NorcDaemonStatus)
+from norc.core.models import *
 
 DAEMON_STATUS_DICT = {}
 DAEMON_STATUS_DICT['running'] = [
@@ -60,38 +51,14 @@ DAEMON_STATUS_DICT['interesting'].extend(
     DAEMON_STATUS_DICT['active'])
 DAEMON_STATUS_DICT['interesting'].extend(
     DAEMON_STATUS_DICT['errored'])
-DAEMON_STATUS_DICT['all'] = None    # meaning all of them
+DAEMON_STATUS_DICT['all'] = NorcDaemonStatus.ALL_STATUSES
 
-TASK_STATUS_FILTER_2_STATUS_LIST = {}
-TASK_STATUS_FILTER_2_STATUS_LIST['running'] = [TaskRunStatus.STATUS_RUNNING]
-TASK_STATUS_FILTER_2_STATUS_LIST['active'] = [TaskRunStatus.STATUS_RUNNING]
-TASK_STATUS_FILTER_2_STATUS_LIST['errored'] = [TaskRunStatus.STATUS_ERROR,
-                                               TaskRunStatus.STATUS_TIMEDOUT]
-TASK_STATUS_FILTER_2_STATUS_LIST['success'] = [TaskRunStatus.STATUS_SUCCESS
-                                            , TaskRunStatus.STATUS_CONTINUE]
-TASK_STATUS_FILTER_2_STATUS_LIST['interesting'] = []
-TASK_STATUS_FILTER_2_STATUS_LIST['interesting'].extend(
-    TASK_STATUS_FILTER_2_STATUS_LIST['active'])
-TASK_STATUS_FILTER_2_STATUS_LIST['interesting'].extend(
-    TASK_STATUS_FILTER_2_STATUS_LIST['errored'])
-TASK_STATUS_FILTER_2_STATUS_LIST['all'] = None      # meaning all of them
-
-
-def get_object(class_key, **kwargs):
-    """Retrieves a database object of the corresponding class and attributes.
-    
-    class_key is a string that represents the desired class in CLASS_DICT.
-    kwargs are the parameters used to find the object.
-    
-    """
-    assert class_key in CLASS_DICT.keys(), "Invalid class key."
-    return get_object_from_class(CLASS_DICT[class_key], **kwargs)
-
-def get_object_from_class(class_, **kwargs):
+def get_object(class_, **kwargs):
     """Retrieves a database object of the given class and attributes.
     
-    class_key is the string that represents the wanted class in CLASS_DICT.
-    kwargs are the parameters used to find the object.
+    class_ is the class of the object to find.
+    kwargs are the parameters used to find the object.get_daemon_status
+    If no object is found, returns None.
     
     """
     try:
@@ -100,27 +67,31 @@ def get_object_from_class(class_, **kwargs):
         return None
 
 def get_job(name):
-    return get_object('job', name=name)
+    return get_object(Job, name=name)
 
 def get_task(class_, id):
     return get_object_from_class(class_, id=id)
 
 def get_region(name):
-    return get_object('region', name=name)
+    return get_object(ResourceRegion, name=name)
 
 def get_iteration(id):
-    return get_object('iteration', id=id)
+    return get_object(Iteration, id=id)
 
-def get_daemon_status(id):
-    return get_object('nds', id=id)
-
-def get_objects(class_key, filters={}, excludes={}):
-    #assert class_key in CLASS_DICT.keys(), "Invalid class key."
-    #class_ = CLASS_DICT[class_key]
-    #return class_.objects.filter(**filters).exclude(**excludes)
-    pass
+def get_nds(id):
+    return get_object(NorcDaemonStatus, id=id)
 
 def get_daemon_statuses(status_filter='all'):
-    include_statuses = DAEMON_STATUS_DICT[status_filter.lower()]
-    return get_objects('nds', filters=dict(status__in=include_statuses))
+    if status_filter == 'all':
+        return NorcDaemonStatus.objects.all()
+    else:
+        include_statuses = DAEMON_STATUS_DICT[status_filter.lower()]
+        return NorcDaemonStatus.objects.filter(status__in=include_statuses)
+
+#def get_task_statuses(status_filter='all'):
+#    if status_filter == 'all':
+#        TaskRunStatus.objects.all()
+#    else:
+#        include_statuses = TASK_STATUS_DICT[status_filter.lower()]
+#        return TaskRunStatus.objects.filter(status__in=include_statuses)
 

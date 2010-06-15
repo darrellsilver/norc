@@ -54,7 +54,7 @@ Edit the file to contains the proper credentials.  In this case:
         # Database password
         DATABASE_PASSWORD = 'norc'
 
-        # Email password for account used to send TMS alerts
+        # Email password for account used to send Norc alerts
         EMAIL_HOST_PASSWORD = 'my_password_is_super_secure!'
 
         # Amazon *secret* S3 login info
@@ -107,7 +107,7 @@ The full config file:
                 , 'EMAIL_HOST_USER' : 'darrell@perpetually.com'
                 , 'EMAIL_PORT' : 587
         
-                # TMS alert handling
+                # Norc alert handling
                 # send alerts?
                 , 'NORC_EMAIL_ALERTS' : True
                 # to whom should alerts be sent
@@ -233,7 +233,7 @@ Now we're ready to start a Norc Daemon!  In a new terminal session, or the same 
 This indicates that no Daemons are running, which should be obvious because we haven't started any.  So, let's start one:
 
         $ tmsd --region MY_REGION
-        [10/28/2009 22:27:14.059850] (info) TMSD stderr & stdout will be in '/Users/darrell/projects/norc/demo/norc_log/_tmsd/tmsd.1'
+        [10/28/2009 22:27:14.059850] (info) NorcD stderr & stdout will be in '/Users/darrell/projects/norc/demo/norc_log/_tmsd/tmsd.1'
 
 Output for this daemon, starting of each task and errors, will be sent to the file indicated.  "Ctl-C" will exit the daemon.  But before exiting, rerun tmsdctl.py and you'll see:
 
@@ -241,7 +241,7 @@ Output for this daemon, starting of each task and errors, will be sent to the fi
         Status as of 10/28/2009 22:27:23
         1 INTERESTING tms daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error    Status               Started   Ended
-        1      TMS   MY_REGION   DSmbp.local   12084         0         0       0   RUNNING   2009-10-28 22:27:14       -
+        1      Norc   MY_REGION   DSmbp.local   12084         0         0       0   RUNNING   2009-10-28 22:27:14       -
 
 
 ## Define A New Task
@@ -281,7 +281,7 @@ Once this is done, our new Task will run.  So, rerun tmsdctl shows:
         Status as of 10/28/2009 23:05:02
         1 INTERESTING tms daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error    Status               Started   Ended
-        1      TMS   MY_REGION   DSmbp.local   12084         0         1       0   RUNNING   2009-10-28 22:27:14       -
+        1      Norc   MY_REGION   DSmbp.local   12084         0         1       0   RUNNING   2009-10-28 22:27:14       -
 
 And if we show details for this Daemon, we'll see a bit more detail:
 
@@ -289,9 +289,9 @@ And if we show details for this Daemon, we'll see a bit more detail:
         Status as of 10/28/2009 23:05:02
         1 INTERESTING tms daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error    Status               Started   Ended
-        1      TMS   MY_REGION   DSmbp.local   12084         0         1       0   RUNNING   2009-10-28 22:27:14       -
+        1      Norc   MY_REGION   DSmbp.local   12084         0         1       0   RUNNING   2009-10-28 22:27:14       -
         
-        TMS Daemon 3 (ENDED) manages 1 task(s):
+        Norc Daemon 3 (ENDED) manages 1 task(s):
 
         Job:Task                  Status               Started                 Ended
         DEMO_JOB:RunCommand.1    SUCCESS   2009-10-28 23:03:41   2009-10-28 23:03:41
@@ -330,7 +330,7 @@ Now we shut off our daemon:
         Status as of 10/28/2009 23:05:02
         1 INTERESTING tms daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error          Status               Started   Ended
-        1      TMS   MY_REGION   DSmbp.local   12084         0         1       0   STOPREQUESTED   2009-10-28 22:27:14       -
+        1      Norc   MY_REGION   DSmbp.local   12084         0         1       0   STOPREQUESTED   2009-10-28 22:27:14       -
 
 After which our daemon stops, and the process ends:
 
@@ -338,7 +338,7 @@ After which our daemon stops, and the process ends:
         Status as of 10/28/2009 23:15:37
         1 ALL tms daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error   Status               Started                 Ended
-        4      TMS   MY_REGION   DSmbp.local   12671         0         0       0    ENDED   2009-10-28 22:27:14   2009-10-28 23:14:49
+        4      Norc   MY_REGION   DSmbp.local   12671         0         0       0    ENDED   2009-10-28 22:27:14   2009-10-28 23:14:49
 
 
 Fin!

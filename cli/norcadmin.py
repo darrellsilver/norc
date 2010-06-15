@@ -34,7 +34,7 @@
 ############################################
 #
 #
-# Monitor and control running Norc daemons (tmsd)
+# Monitor and control running Norc daemons (norcd)
 #
 #
 #
@@ -48,10 +48,9 @@ from optparse import OptionParser
 
 from norc.core import reporter
 from norc.core.models import NorcDaemonStatus, TaskRunStatus
+from norc.utils import formatting
 
-
-
-def report_daemon_statuses(status_filter, norc_list=None, since_date=None):
+def report_daemon_statuses(status_filter, since_date=None):
     tabular = []
     tabular.append(["ID", "Type", "Region", "Host", "PID", "Running",
         "Success", "Error", "Status", "Started", "Ended"])
@@ -63,14 +62,17 @@ def report_daemon_statuses(status_filter, norc_list=None, since_date=None):
         one_row.append(nds.host)
         one_row.append(nds.pid)
         # don't apply start_date to running tasks; showing all gives better monitoring
-        one_row.append(len(nds.get_task_statuses(
-            only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['running'])))
-        one_row.append(len(nds.get_task_statuses(
-            only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['success'],
-            since_date=since_date)))
-        one_row.append(len(nds.get_task_statuses(
-            only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['errored'],
-            since_date=since_date)))
+        one_row.append(len(nds.get_task_statuses('running')))
+        one_row.append(len(nds.get_task_statuses('success', since_date)))
+        one_row.append(len(nds.get_task_statuses('errored', since_date)))
+        #one_row.append(len(nds.get_task_statuses(
+        #    only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['running'])))
+        #one_row.append(len(nds.get_task_statuses(
+        #    only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['success'],
+        #    since_date=since_date)))
+        #one_row.append(len(nds.get_task_statuses(
+        #    only_statuses=TASK_STATUS_FILTER_2_STATUS_LIST['errored'],
+        #    since_date=since_date)))
         one_row.append(nds.get_status())
         one_row.append(nds.date_started)
         if nds.is_done():
@@ -84,7 +86,8 @@ def report_daemon_statuses(status_filter, norc_list=None, since_date=None):
             time.strftime("%m/%d/%Y %H:%M:%S")
     else:
         print >>sys.stdout, "Status from %s to %s" % \
-            (since_date.strftime("%m/%d/%Y %H:%M:%S"), time.strftime("%m/%d/%Y %H:%M:%S"))
+            (since_date.strftime("%m/%d/%Y %H:%M:%S"),
+             time.strftime("%m/%d/%Y %H:%M:%S"))
     
     # if not max_tasks_due_to_run in (None, 0):
     #         # This call is currently super expensive when there's lots of Tasks; limit it!
@@ -101,13 +104,11 @@ def report_daemon_statuses(status_filter, norc_list=None, since_date=None):
         formatting.pprint_table(sys.stdout, tabular)
         print >>sys.stdout, ""
 
-def report_daemon_details(status_filter, tmsd, date_started=None):
-    """report details for given tmsd"""
-    include_statuses = TASK_STATUS_FILTER_2_STATUS_LIST[status_filter.lower()]
+def report_norcd_details(nds, status_filter, date_started=None):
+    """report details for given norcd"""
     tabular = []
     tabular.append(["Job:Task", "Status", "Started", "Ended"])
-    for run_status in tmsd.get_task_statuses(only_statuses=include_statuses \
-        , date_started=date_started):
+    for run_status in nds.get_task_statuses(status_filter, date_started):
         one_row = []
         one_row.append(run_status.task.get_job().get_name() +":"+ run_status.task.get_name())
         one_row.append(run_status.get_status())
@@ -120,9 +121,9 @@ def report_daemon_details(status_filter, tmsd, date_started=None):
     if not date_started == None:
         print >>sys.stdout, "From %s - Now" % (date_started.strftime("%m/%d/%Y %H:%M:%S"))
     if len(tabular) == 1:
-        print >>sys.stdout, "TMS Daemon %s (%s) hasn't run any tasks\n" % (tmsd.id, tmsd.get_status())
+        print >>sys.stdout, "Norc Daemon %s (%s) hasn't run any tasks\n" % (nds.id, nds.get_status())
     else:
-        print >>sys.stdout, "TMS Daemon %s (%s) manages %s task(s):\n" % (tmsd.id, tmsd.get_status(), len(tabular)-1)
+        print >>sys.stdout, "Norc Daemon %s (%s) manages %s task(s):\n" % (nds.id, nds.get_status(), len(tabular)-1)
         formatting.pprint_table(sys.stdout, tabular)
         print >>sys.stdout, ""
 
@@ -152,14 +153,6 @@ def report_sqsd_details(status_filter, sqsd, date_started=None):
         formatting.pprint_table(sys.stdout, tabular)
         print >>sys.stdout, ""
 
-
-def get_nds(id):
-    try:
-        assert not id == None, "ID Cannot be None"
-        nds = NorcDaemonStatus.objects.get(id=id)
-        return nds
-    except NorcDaemonStatus.DoesNotExist:
-        raise Exception("tmsd %s does not exist" % (id))
 
 #
 # Main
@@ -192,17 +185,26 @@ WAIT_POLL_SECONDS = 3
 def main():
     global WAIT_POLL_SECONDS
     
-    def usage():
+    #def usage():
     #    return "%prog [--status [--filter <all|running|active|errored|interesting>] | --details <id>] \
     #[--started_since <m1d|m1h|m3min|...>] \
     #[--salvage <id> | --delete <id> | \
     #[--pause <id> | --stop <id> | --kill <id> [--wait_seconds <0>] [--force]]] [--debug]"
-        return "%prog [-f all|running|active|errored|interesting] " + \
-               "[--started_since <m1d|m1h|m3min|...>] [--details <id>]\n" + \
-               "%prog --pause|stop|salvage|kill|delete <id> " + \
-               "[-s] [--wait <seconds>] [--force] [--debug]"
+    usage = "%prog [-f all|running|active|errored|interesting] " + \
+            "[--started_since <m1d|m1h|m3min|...>] [--details <id>]\n" + \
+            "%prog --pause|stop|salvage|kill|delete <id> " + \
+            "[-s] [--wait <seconds>] [--force] [--debug]"
     
-    parser = OptionParser(usage=usage(), description="")
+    def bad_args(message):
+        print message
+        print usage
+        sys.exit(2)
+    
+    def error(message):
+        print message
+        sys.exit(1)
+    
+    parser = OptionParser(usage=usage, description="")
     
     # Status report mode options.
     
@@ -230,7 +232,7 @@ def main():
     parser.add_option("-s", "--status", action="store_true",
         help="Force a status report after performing an action.")
     parser.add_option("--wait", action="store", default=0, type="int",
-        help="wait for N seconds for tmsd to stop after kill or stop is issued. Default is 0")
+        help="wait for N seconds for norcd to stop after kill or stop is issued. Default is 0")
     parser.add_option("--force", action="store_true",
         help="overrides some safety checks. Use carefully by trying not to use it first.")
     parser.add_option("--debug", action="store_true",
@@ -257,48 +259,46 @@ def main():
     flags = ['pause', 'stop', 'kill', 'salvage', 'delete']
     selected_flags = filter(lambda a: bool(getattr(options, a)), flags)
     if len(selected_flags) > 1:
-        print "Conflicting flags; only one action may be performed at a time."
-        sys.exit(2)
+        bad_args(
+            "Conflicting flags; only one action may be performed at a time.")
     
     # TODO: Review all option logic from here on to match with above changes.
     if len(selected_flags) == 1:
         nds_id = getattr(options, selected_flags[0])
-        nds = reporter.get_nds(nds_id)
+        nds = reporter.get_daemon_statuses(nds_id)
+        if not nds:
+            bad_args("No Norc daemon with id %s found." % nds_id)
         
-        if not nds_id == None:
-            nds = reporter.get_nds(nds_id)
-            if options.pause and nds.is_paused() or nds.is_pause_requested():
-                raise Exception("tmsd %s is already paused or pause has been \
-                                 requested." % (nds.id))
-            if options.stop and nds.is_stop_requested():
-                raise Exception("tmsd %s is already scheduled to stop. You can \
-                                 also try --kill <id>." % (nds.id))
-            elif options.kill and nds.is_kill_requested():
-                raise Exception("tmsd %s is already scheduled to be killed. The only thing more severe is $kill -9 %s." % (nds.id, nds.pid))
-            elif options.salvage and (not nds.is_stop_requested() and not nds.is_kill_requested() and not nds.is_paused()):
-                raise Exception("tmsd %s cannot be salvaged.  Its status is not paused, stop- or kill- requested" % (nds.id))
-
+        if options.pause and nds.is_paused() or nds.is_pause_requested():
+            error("norcd %s is already paused or requested to pause." % nds.id)
+        if options.stop and nds.is_stop_requested():
+            raise Exception("norcd %s is already scheduled to stop. You can \
+                             also try --kill <id>." % (nds.id))
+        elif options.kill and nds.is_kill_requested():
+            raise Exception("norcd %s is already scheduled to be killed. The only thing more severe is $kill -9 %s." % (nds.id, nds.pid))
+        elif options.salvage and (not nds.is_stop_requested() and not nds.is_kill_requested() and not nds.is_paused()):
+            raise Exception("norcd %s cannot be salvaged.  Its status is not paused, stop- or kill- requested" % (nds.id))
+        
         if options.delete:
             if not options.force and not nds.is_done_with_error():
-                raise Exception("tmsd %s cannot be deleted because it has status %s. Use --force to override." % (nds.id, nds.get_status()))
-            log.info("Deleting tmsd %s" % (nds))
+                raise Exception("norcd %s cannot be deleted because it has status %s. Use --force to override." % (nds.id, nds.get_status()))
+            log.info("Deleting norcd %s" % (nds))
             nds.set_status(NorcDaemonStatus.STATUS_DELETED)
         elif options.salvage:
-            log.info("Salvaging tmsd %s" % (nds))
+            log.info("Salvaging norcd %s" % (nds))
             nds.set_status(NorcDaemonStatus.STATUS_RUNNING)
         elif options.pause or options.stop or options.kill:
             if nds.is_done():
-                raise Exception("tmsd %s is not running.  It cannot be shutdown or paused." % (nds.id))
+                raise Exception("norcd %s is not running.  It cannot be shutdown or paused." % (nds.id))
             if options.pause:
-                log.info("Sending pause request to tmsd %s" % (nds))
+                log.info("Sending pause request to norcd %s" % (nds))
                 nds.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED)
             elif options.stop:
-                log.info("Sending stop request to tmsd %s" % (nds))
+                log.info("Sending stop request to norcd %s" % (nds))
                 nds.set_status(NorcDaemonStatus.STATUS_STOPREQUESTED)
             elif options.kill:
-                log.info("Sending kill request to tmsd %s" % (nds))
+                log.info("Sending kill request to norcd %s" % (nds))
                 nds.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED)
-            #
             if options.wait_seconds:
                 seconds_waited = 0
                 timeout = False
@@ -308,16 +308,16 @@ def main():
                         break
                     nds = get_nds(nds_id)
                     if nds.is_shutting_down():
-                        log.info("Waiting for shutdown of tmsd %s.  It's been %s seconds." % (nds.id, seconds_waited), indent_chars=4)
+                        log.info("Waiting for shutdown of norcd %s.  It's been %s seconds." % (nds.id, seconds_waited), indent_chars=4)
                     elif nds.is_done():
-                        log.info("tmsd %s is done with status '%s'" % (nds.id, nds.get_status()))
+                        log.info("norcd %s is done with status '%s'" % (nds.id, nds.get_status()))
                         break
                     else:
-                        raise Exception("tmsd %s shutdown was requested but not honored or was overwritten in DB. This is bad, but try \"kill <pid>\" directly." % (tms.id))
+                        raise Exception("norcd %s shutdown was requested but not honored or was overwritten in DB. This is bad, but try \"kill <pid>\" directly." % (tms.id))
                     time.sleep(WAIT_POLL_SECONDS)
                     seconds_waited += WAIT_POLL_SECONDS
                 if timeout:
-                    log.info("Timeout reached waiting for tmsd %s to finish.  Check process id %s on host '%s'" % (nds.id, nds.pid, nds.host))
+                    log.info("Timeout reached waiting for norcd %s to finish.  Check process id %s on host '%s'" % (nds.id, nds.pid, nds.host))
                     sys.exit(1)    
     
     #if options.status or len(selected_flags) == 0:
@@ -328,16 +328,15 @@ def main():
     
     report_daemon_statuses(options.filter, since_date=options.started_since)
     if options.details:
-        nds_id = getattr(options, options.details)
+        nds_id = options.details
         nds = reporter.get_nds(nds_id)
-        daemon_type = nds.get_daemon_type()
-        if daemon_type == NorcDaemonStatus.DAEMON_TYPE_TMS:
-            report_tmsd_details(options.filter, nds, date_started=options.started_since)
-        elif daemon_type == NorcDaemonStatus.DAEMON_TYPE_SQS:
-            report_sqsd_details(options.filter, nds, date_started=options.started_since)
-        else:
-            raise Exception("Unknown daemon_type '%s'" % (daemon_type))
-
+        #daemon_type = nds.get_daemon_type()
+        #if daemon_type == NorcDaemonStatus.DAEMON_TYPE_NORC:
+        report_norcd_details(nds, options.filter, options.started_since)
+        #elif daemon_type == NorcDaemonStatus.DAEMON_TYPE_SQS:
+        #    report_sqsd_details(options.filter, nds, options.started_since)
+        #else:
+        #    raise Exception("Unknown daemon_type '%s'" % (daemon_type))
 
 if __name__ == '__main__':
     main()

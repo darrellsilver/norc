@@ -49,7 +49,7 @@ SECRET_KEY = '...'
 # Database password
 DATABASE_PASSWORD = '...'
 
-# Email password for account used to send TMS alerts
+# Email password for account used to send Norc alerts
 EMAIL_HOST_PASSWORD = '...'
 
 # Amazon *secret* S3 login info

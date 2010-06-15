@@ -39,7 +39,7 @@
 # Norc can be used as a queue service for tasks. 
 # The following patterns allow this behavior:
 #  - Tasks are always executed on a FIFO basis *for that task implementation*, 
-#    from when they were added to TMS (using the 'date_added' column).
+#    from when they were added to Norc (using the 'date_added' column).
 #  - If is_ephemeral is True, the task will be 
 #    marked as 'expired' after being run exactly one time.
 #    This is regardless of success or failure, and a task 

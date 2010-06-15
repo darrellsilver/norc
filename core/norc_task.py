@@ -106,7 +106,7 @@ def _handle_signal(sig_name, exit_code, timeout):
         log.error("\n", noalteration=True)
     else:
         log.error("\n", noalteration=True)
-        log.error("Received %s! TMS Stopping Task with exit code %s." % (sig_name, exit_code))
+        log.error("Received %s! Norc Stopping Task with exit code %s." % (sig_name, exit_code))
         log.error("\n", noalteration=True)
         if timeout:
             task.set_ended_on_timeout(iteration, region)
@@ -222,7 +222,7 @@ def main():
         print "No task matching: class '%s', id %s" % \
             (task_class, options.task_id)
         sys.exit(2)
-    daemon_status = reporter.get_daemon_status(options.daemon_status_id)
+    daemon_status = reporter.get_nds(options.daemon_status_id)
     if not daemon_status:
         print "No daemon status with id %s." % (options.daemon_status_id)
         sys.exit(2)
