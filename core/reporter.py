@@ -85,7 +85,7 @@ def get_daemon_statuses(since_date=None, status_filter='all'):
     nds_query = NorcDaemonStatus.objects.all()
     if since_date != None:
         nds_query = nds_query.exclude(date_ended__lte=since_date)
-    if status_filter != 'all':
+    if status_filter != 'all' and status_filter in DAEMON_STATUS_DICT:
         include_statuses = DAEMON_STATUS_DICT[status_filter.lower()]
         nds_query = nds_query.filter(status__in=include_statuses)
     return nds_query

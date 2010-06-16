@@ -48,12 +48,18 @@ from optparse import OptionParser
 
 from norc.core import reporter
 from norc.core.models import NorcDaemonStatus, TaskRunStatus
-from norc.utils import formatting, date_utils
+from norc.utils import formatting, date_utils, log
+log = log.Log()
 
-def report_daemon_statuses(status_filter, since_date=None):
+def report_daemon_statuses(status_filter=None, since_date=None):
     tabular = [["ID", "Type", "Region", "Host", "PID", "Running",
         "Success", "Error", "Status", "Started", "Ended"]]
-    for nds in reporter.get_daemon_statuses(status_filter.lower()):
+    if status_filter:
+        nds_set = reporter.get_daemon_statuses(
+            status_filter=status_filter.lower())
+    else:
+        nds_set = reporter.get_daemon_statuses()
+    for nds in nds_set:
         one_row = [
             str(nds.id),
             nds.get_daemon_type(),
@@ -65,10 +71,11 @@ def report_daemon_statuses(status_filter, since_date=None):
             len(nds.get_task_statuses('errored', since_date)),
             nds.get_status(),
             nds.date_started,
-        if nds.is_done():
-            one_row.append(nds.date_ended)
-        else:
-            one_row.append("-")
+            nds.date_ended if nds.is_done() else '-']
+        # if nds.is_done():
+        #     one_row.append(nds.date_ended)
+        # else:
+        #     one_row.append("-")
         tabular.append(one_row)
     
     if since_date == None:
@@ -98,16 +105,17 @@ def report_norcd_details(nds, status_filter, date_started=None):
     """report details for given norcd"""
     tabular = []
     tabular.append(["Job:Task", "Status", "Started", "Ended"])
-    for run_status in nds.get_task_statuses(status_filter, date_started):
-        one_row = []
-        one_row.append(run_status.task.get_job().get_name() +":"+ run_status.task.get_name())
-        one_row.append(run_status.get_status())
-        one_row.append(run_status.date_started)
-        if run_status.date_ended == None:
-            one_row.append("-")
-        else:
-            one_row.append(run_status.date_ended)
-        tabular.append(one_row)
+    for trs in nds.get_task_statuses(status_filter, date_started):
+        row = [
+            trs.task.job.get_name() + ":" + trs.task.get_name(),
+            trs.get_status(),
+            trs.date_started,
+            trs.date_ended if trs.date_ended else '-']
+        # if run_status.date_ended == None:
+        #     one_row.append("-")
+        # else:
+        #     one_row.append(run_status.date_ended)
+        tabular.append(row)
     if not date_started == None:
         print >>sys.stdout, "From %s - Now" % (date_started.strftime("%m/%d/%Y %H:%M:%S"))
     if len(tabular) == 1:
@@ -117,31 +125,31 @@ def report_norcd_details(nds, status_filter, date_started=None):
         formatting.pprint_table(sys.stdout, tabular)
         print >>sys.stdout, ""
 
-def report_sqsd_details(status_filter, sqsd, date_started=None):
-    """report details for given sqsd"""
-    include_statuses = TASK_STATUS_FILTER_2_STATUS_LIST[status_filter.lower()]
-    tabular = []
-    tabular.append(["Task ID", "Status", "Started", "Ended"])
-    for run_status in sqsd.get_task_statuses(only_statuses=include_statuses \
-        , date_started=date_started):
-        one_row = []
-        one_row.append(str(run_status.get_task_id()))
-        one_row.append(run_status.get_status())
-        one_row.append(run_status.date_started)
-        if run_status.date_ended == None:
-            one_row.append("-")
-        else:
-            one_row.append(run_status.date_ended)
-        tabular.append(one_row)
-    
-    if not date_started == None:
-        print >>sys.stdout, "From %s - Now" % (date_started.strftime("%m/%d/%Y %H:%M:%S"))
-    if len(tabular) == 1:
-        print >>sys.stdout, "SQS Daemon %s:%s (%s) hasn't run any tasks\n" % (sqsd.region.get_name(), sqsd.get_id(), sqsd.get_status())
-    else:
-        print >>sys.stdout, "SQS Daemon %s:%s (%s) manages %s task(s):\n" % (sqsd.region.get_name(), sqsd.get_id(), sqsd.get_status(), len(tabular)-1)
-        formatting.pprint_table(sys.stdout, tabular)
-        print >>sys.stdout, ""
+# def report_sqsd_details(status_filter, sqsd, date_started=None):
+#     """report details for given sqsd"""
+#     include_statuses = TASK_STATUS_FILTER_2_STATUS_LIST[status_filter.lower()]
+#     tabular = []
+#     tabular.append(["Task ID", "Status", "Started", "Ended"])
+#     for run_status in sqsd.get_task_statuses(only_statuses=include_statuses \
+#         , date_started=date_started):
+#         one_row = []
+#         one_row.append(str(run_status.get_task_id()))
+#         one_row.append(run_status.get_status())
+#         one_row.append(run_status.date_started)
+#         if run_status.date_ended == None:
+#             one_row.append("-")
+#         else:
+#             one_row.append(run_status.date_ended)
+#         tabular.append(one_row)
+#     
+#     if not date_started == None:
+#         print >>sys.stdout, "From %s - Now" % (date_started.strftime("%m/%d/%Y %H:%M:%S"))
+#     if len(tabular) == 1:
+#         print >>sys.stdout, "SQS Daemon %s:%s (%s) hasn't run any tasks\n" % (sqsd.region.get_name(), sqsd.get_id(), sqsd.get_status())
+#     else:
+#         print >>sys.stdout, "SQS Daemon %s:%s (%s) manages %s task(s):\n" % (sqsd.region.get_name(), sqsd.get_id(), sqsd.get_status(), len(tabular)-1)
+#         formatting.pprint_table(sys.stdout, tabular)
+#         print >>sys.stdout, ""
 
 
 #
@@ -237,7 +245,7 @@ def main():
     # TODO: Review all option logic from here on to match with above changes.
     if len(selected_flags) == 1:
         nds_id = getattr(options, selected_flags[0])
-        nds = reporter.get_daemon_statuses(nds_id)
+        nds = reporter.get_nds(nds_id)
         if not nds:
             bad_args("No Norc daemon with id %s found." % nds_id)
         
@@ -271,11 +279,11 @@ def main():
             elif options.kill:
                 log.info("Sending kill request to norcd %s" % (nds))
                 nds.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED)
-            if options.wait_seconds:
+            if options.wait:
                 seconds_waited = 0
                 timeout = False
                 while True:
-                    if seconds_waited >= options.wait_seconds:
+                    if seconds_waited >= options.wait:
                         timeout = True
                         break
                     nds = reporter.get_nds(nds_id)

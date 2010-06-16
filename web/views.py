@@ -11,22 +11,27 @@ def index(request):
     if since == 'all':
         since_date = None
     else:
-        since_date = date_utils.parse_date_relative(since)
-    nds_data = []
-    for nds in reporter.get_daemon_statuses(since_date):
-        # counts[str(nds.id)] = dict(
-        nds_data.append(dict(
-            id=nds.id,
-            region=nds.get_region(),
-            host=nds.host,
-            pid=nds.pid,
-            running=len(nds.get_task_statuses('running')),
-            success=len(nds.get_task_statuses('success')),
-            errored=len(nds.get_task_statuses('errored')),
-            status=nds.get_status(),
-            date_started=nds.date_started,
-            date_ended=nds.date_ended))
-    return render_to_response('index.html', dict(nds_data=nds_data))
+        try:
+            since_date = date_utils.parse_date_relative(since)
+        except:
+            since_date = None
+    # nds_data = []
+    # for nds in reporter.get_daemon_statuses(since_date):
+    #     # counts[str(nds.id)] = dict(
+    #     nds_data.append(dict(
+    #         id=nds.id,
+    #         region=nds.region,
+    #         host=nds.host,
+    #         pid=nds.pid,
+    #         running=len(nds.get_task_statuses('running')),
+    #         success=len(nds.get_task_statuses('success')),
+    #         errored=len(nds.get_task_statuses('errored')),
+    #         status=nds.get_status(),
+    #         date_started=nds.date_started,
+    #         date_ended=nds.date_ended))
+    # return render_to_response('index.html', dict(nds_data=nds_data))
+    nds_set = reporter.get_daemon_statuses(since_date)
+    return render_to_response('index.html', dict(nds_set=nds_set))
 
 def notfound(request, *args):
     return render_to_response('500.html', {})
@@ -38,3 +43,4 @@ def notfound(request, *args):
 #     listTest = [1, 2, 3]
 #     mapTest = dict(test="boo!",best="moo!",ex=x)
 #     return render_to_response('sandbox.html', dict(list=listTest, map=mapTest))
+

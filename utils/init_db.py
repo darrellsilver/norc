@@ -58,7 +58,7 @@ def init_norc():
     from norc.core.models import Resource, RegionResourceRelationship
     from norc.core.models import TaskClassImplementation
     
-    log.info("Initializing Norc...")
+    log.info("Initializing Norc database...")
     
     job = Job(name="DEMO_JOB", description="A demo Job.")
     job.save()
@@ -76,7 +76,7 @@ def init_norc():
     # they get only a --max at run time
     rrr = RegionResourceRelationship.create(resource_region, resource, 10)
     
-    log.info("Success! Norc initialized.")
+    log.info("Success! Norc database initialized.")
 
 def init_static():
     user = init_superuser()

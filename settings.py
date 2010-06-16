@@ -114,7 +114,10 @@ MIDDLEWARE_CLASSES = (
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     #'django.middleware.transaction.TransactionMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 )
+
+INTERNAL_IPS = ('127.0.0.1',)
 
 ROOT_URLCONF = 'norc.urls'
 
@@ -123,6 +126,7 @@ TEMPLATE_DIRS = (
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
     #os.path.join(ENV['NORC_CODE_ROOT'], '/templates/'),
+    '/Library/Python/2.6/site-packages/debug_toolbar/templates/'
 )
 
 TEMPLATE_STRING_IF_INVALID = "Invalid variable: %s"
@@ -146,5 +150,3 @@ INSTALLED_APPS = (
 expose_env('NORC_EMAIL_ALERTS','NORC_EMAIL_ALERTS_TO')
 
 expose_env('LOGGING_DEBUG','NORC_LOG_DIR','NORC_TMP_DIR')
-
-#

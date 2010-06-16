@@ -1,0 +1,5 @@
+Setup:
+
+1. Sign up for Amazon SQS at http://aws.amazon.com/.
+2. Install boto from http://code.google.com/p/boto/.
+3. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in settings_local.py.

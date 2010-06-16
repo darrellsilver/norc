@@ -28,3 +28,13 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
+
+""""""
+
+from boto.sqs.connection import SQSConnection
+from task_impls import *
+
+
+def retrieve_task(queue_name):
+    m = SQSConnection().get_queue(queue_name).read()
+    return pickle.loads(m.get_body())

@@ -26,3 +26,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
+
+from django import template
+
+register = template.Library()
+
+@register.filter
+def task_statuses(value, arg):
+    if arg:
+        return value.get_task_statuses(arg)
+    else:
+        return value.get_task_statuses()

@@ -41,9 +41,6 @@ from tasks import Task, TaskRunStatus
 class NorcDaemonStatus(models.Model):
     """Track the statuses of Norc daemons."""
     
-    # DAEMON_TYPE_NORC = 'NORC'
-    # DAEMON_TYPE_SQS = 'SQS'
-    
     # Daemon is starting.
     STATUS_STARTING = 'STARTING'
     # Daemon itself exited with bad error
@@ -167,15 +164,6 @@ class NorcDaemonStatus(models.Model):
     
     def get_daemon_type(self):
         return 'NORC'
-    #     # TODO This is sloppy!
-    #     norc_c = self.taskrunstatus_set.count()
-    #     sqs_c = self.sqstaskrunstatus_set.count()
-    #     if norc_c > 0 and sqs_c == 0:
-    #         return NorcDaemonStatus.DAEMON_TYPE_NORC
-    #     elif norc_c == 0 and sqs_c > 0:
-    #         return NorcDaemonStatus.DAEMON_TYPE_SQS
-    #     else:
-    #         return NorcDaemonStatus.DAEMON_TYPE_NORC
     
     def get_task_statuses(self, status_filter='all', since_date=None):
         """
@@ -183,7 +171,7 @@ class NorcDaemonStatus(models.Model):
         date_started: limit to statuses with start date since given date, 
                     or all if date_started=None (the default)
         """
-        task_statuses = self.taskrunstatus_set
+        task_statuses = self.taskrunstatus_set.all()
         status_filter = status_filter.lower()
         TRS_CATS = TaskRunStatus.STATUS_CATEGORIES
         #sqs_statuses = self.sqstaskrunstatus_set.filter(controlling_daemon=self)

@@ -45,7 +45,7 @@ from optparse import OptionParser
 
 from boto.sqs.connection import SQSConnection
 
-from norc import settings
+from norc import settings, sqs
 from norc.core import models as core
 from norc.sqs import models as sqs
 
@@ -200,10 +200,11 @@ sends it a the stream unique to this Task request")
     
     console_stderr = None
     try:
-        c = SQSConnection(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_ACCESS_KEY)
-        q = c.get_queue(options.queue_name)
-        boto_message = q.read()
-        task = __get_task__(boto_message, options.queue_name)
+        # c = SQSConnection(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_ACCESS_KEY)
+        # q = c.get_queue(options.queue_name)
+        # boto_message = q.read()
+        # task = __get_task__(boto_message, options.queue_name)
+        task = sqs.retrieve_task(options.queue_name)
         if task == None:
             log.debug("No task in queue '%s' pid:%s" % (options.queue_name, os.getpid()))
             sys.exit(133)
@@ -238,6 +239,4 @@ sends it a the stream unique to this Task request")
 
 if __name__ == '__main__':
     main()
-    sys.exit(0)
 
-#
