@@ -125,7 +125,7 @@ class ResourceRegion(models.Model):
         return self.name
     
     def __unicode__(self):
-        return self.get_name()
+        return self.name
     
     def __str__(self):
         return str(self.__unicode__())
@@ -160,8 +160,8 @@ class ResourceReservation(models.Model):
             # so, mine static data to allow query the ResourceReservation table in isolation
             # (replicates "if resource.get_units_available(region) < trr.get_units_demanded():")
             region_id = region.id
-            resource_id = trr.get_resource().id
-            rrr = RegionResourceRelationship.get(region, trr.get_resource())
+            resource_id = trr.resource.id
+            rrr = RegionResourceRelationship.get(region, trr.resource)
             units_in_existence = 0
             if not rrr == None:
                 units_in_existence = rrr.get_units_in_existence()
@@ -187,7 +187,7 @@ class ResourceReservation(models.Model):
                 return False
             else:
                 (rr, rsvp_made) = ResourceReservation.objects.get_or_create(region=region
-                                            , resource=trr.get_resource()
+                                            , resource=trr.resource
                                             , task_resource_relationship=trr
                                             , defaults={'units_reserved': trr.get_units_demanded()})
                 if not rsvp_made:
@@ -208,16 +208,15 @@ class ResourceReservation(models.Model):
             self.save()
         return True
     
-    def get_region(self):
-        return self.region
     def get_units_reserved(self):
         return self.units_reserved
-    def get_resource(self):
-        return self.resource
+    
     def __unicode__(self):
-        return "region:'%s': '%s' reserves %s" % (self.get_region(), self.get_resource(), self.get_units_reserved())
+        return "region:'%s': '%s' reserves %s" % (self.region, self.resource, self.get_units_reserved())
+    
     def __str__(self):
         return str(self.__unicode__())
+    
     __repr__ = __str__
     
 
@@ -262,9 +261,6 @@ class TaskResourceRelationship(models.Model):
     def get_units_demanded(self):
         return self.units_demanded
     
-    def get_resource(self):
-        return self.resource
-    
     def can_reserve(self, region):
         """
         True if a reservation can CURRENTLY be made.  False otherwise.
@@ -290,7 +286,7 @@ class TaskResourceRelationship(models.Model):
     
     def __unicode__(self):
         return u"Task@%s:%s demands %s '%s'" \
-            % (self._task_content_type.model, self._task_object_id, self.units_demanded, self.get_resource())
+            % (self._task_content_type.model, self._task_object_id, self.units_demanded, self.resource)
     
     def __str__(self):
         return str(self.__unicode__())
@@ -323,17 +319,11 @@ class RegionResourceRelationship(models.Model):
         except RegionResourceRelationship.DoesNotExist, dne:
             return None
     
-    def get_region(self):
-        return self.region
-    
-    def get_resource(self):
-        return self.resource
-    
     def get_units_in_existence(self):
         return self.units_in_existence
     
     def __unicode__(self):
-        return u"%s provides %s %s" % (self.get_region(), self.get_units_in_existence(), self.get_resource())
+        return u"%s provides %s %s" % (self.region, self.get_units_in_existence(), self.resource)
     
     def __str__(self):
         return str(self.__unicode__())

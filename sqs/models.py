@@ -231,7 +231,7 @@ class SQSTaskInProcess(object):
     def run(self):
         cmd = [SQSTaskInProcess.RUN_TASK_EXE
             , "--daemon_status_id", str(self.get_daemon_status().get_id())
-            , "--queue_name", str(self.get_daemon_status().get_region())
+            , "--queue_name", str(self.get_daemon_status().region)
             , "--stdout", "DEFAULT"
             , "--stderr", "STDOUT"
         ]
@@ -297,7 +297,7 @@ class ForkingSQSDaemon(ForkingNorcDaemon):
     def get_name(self):
         return 'SQS Forking Daemon'
     def get_queue_name(self):
-        return self.get_daemon_status().get_region().get_name()# could also look in queue
+        return self.get_daemon_status().region.get_name()# could also look in queue
     def get_max_to_run(self):
         return self.__max_to_run__
     def get_queue(self):

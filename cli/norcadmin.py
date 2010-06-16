@@ -57,7 +57,7 @@ def report_daemon_statuses(status_filter, since_date=None):
         one_row = [
             str(nds.id),
             nds.get_daemon_type(),
-            nds.get_region().get_name(),
+            nds.region.get_name(),
             nds.host,
             nds.pid,
             len(nds.get_task_statuses('running', since_date)),
@@ -137,9 +137,9 @@ def report_sqsd_details(status_filter, sqsd, date_started=None):
     if not date_started == None:
         print >>sys.stdout, "From %s - Now" % (date_started.strftime("%m/%d/%Y %H:%M:%S"))
     if len(tabular) == 1:
-        print >>sys.stdout, "SQS Daemon %s:%s (%s) hasn't run any tasks\n" % (sqsd.get_region().get_name(), sqsd.get_id(), sqsd.get_status())
+        print >>sys.stdout, "SQS Daemon %s:%s (%s) hasn't run any tasks\n" % (sqsd.region.get_name(), sqsd.get_id(), sqsd.get_status())
     else:
-        print >>sys.stdout, "SQS Daemon %s:%s (%s) manages %s task(s):\n" % (sqsd.get_region().get_name(), sqsd.get_id(), sqsd.get_status(), len(tabular)-1)
+        print >>sys.stdout, "SQS Daemon %s:%s (%s) manages %s task(s):\n" % (sqsd.region.get_name(), sqsd.get_id(), sqsd.get_status(), len(tabular)-1)
         formatting.pprint_table(sys.stdout, tabular)
         print >>sys.stdout, ""
 

@@ -116,9 +116,6 @@ class NorcDaemonStatus(models.Model):
         # TODO how do you do this natively to Django???
         return NorcDaemonStatus.objects.get(id=self.id)
     
-    def get_region(self):
-        return self.region
-    
     def set_status(self, status):
         assert status in NorcDaemonStatus.ALL_STATUSES, "Unknown status '%s'" % (status)
         self.status = status
@@ -186,20 +183,18 @@ class NorcDaemonStatus(models.Model):
         date_started: limit to statuses with start date since given date, 
                     or all if date_started=None (the default)
         """
-        filtered = []
-        task_statuses = self.taskrunstatus_set.filter(controlling_daemon=self)
+        task_statuses = self.taskrunstatus_set
+        status_filter = status_filter.lower()
+        TRS_CATS = TaskRunStatus.STATUS_CATEGORIES
         #sqs_statuses = self.sqstaskrunstatus_set.filter(controlling_daemon=self)
         if not since_date == None:
             task_statuses = task_statuses.filter(date_started__gte=since_date)
             #sqs_statuses = sqs_statuses.filter(date_started__gte=since_date)
-        if status_filter == 'all':
-            filtered.extend(task_statuses.all())
-            #filtered.extend(sqs_statuses.all())
-        else:
-            only_statuses = TaskRunStatus.STATUS_CATEGORIES[status_filter.lower()]
-            filtered.extend(task_statuses.filter(status__in=only_statuses))
+        if status_filter != 'all' and status_filter in TRS_CATS:
+            only_statuses = TRS_CATS[status_filter.lower()]
+            task_statuses = task_statuses.filter(status__in=only_statuses)
             #filtered.extend(sqs_statuses.filter(status__in=only_statuses))
-        return filtered
+        return task_statuses
     
     def __unicode__(self):
         base = u"id:%3s host:%s pid:%s" % (self.id, self.host, self.pid)

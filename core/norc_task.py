@@ -230,7 +230,7 @@ def main():
     if not iteration:
         print "No iteration with id %s." % (options.iteration_id)
         sys.exit(2)
-    region = daemon_status.get_region()
+    region = daemon_status.region
     
     try:
         _run_task(task, iteration, daemon_status)

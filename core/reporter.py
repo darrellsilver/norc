@@ -90,10 +90,10 @@ def get_daemon_statuses(since_date=None, status_filter='all'):
         nds_query = nds_query.filter(status__in=include_statuses)
     return nds_query
 
-#def get_task_statuses(status_filter='all'):
-#    if status_filter == 'all':
-#        TaskRunStatus.objects.all()
-#    else:
-#        include_statuses = TASK_STATUS_DICT[status_filter.lower()]
-#        return TaskRunStatus.objects.filter(status__in=include_statuses)
+# def get_task_statuses(status_filter='all'):
+#     if status_filter == 'all':
+#         TaskRunStatus.objects.all()
+#     else:
+#         include_statuses = TASK_STATUS_DICT[status_filter.lower()]
+#         return TaskRunStatus.objects.filter(status__in=include_statuses)
 

@@ -230,7 +230,7 @@ class Task(models.Model):
             return False
         return self.is_due_to_run(iteration, asof) and self.parents_are_finished(iteration)
     
-    def __set_run_status(self, iteration, status, tmsd_status=None):
+    def __set_run_status(self, iteration, status, nds=None):
         assert status in TaskRunStatus.ALL_STATUSES, "Unknown status '%s'" % (status)
         if self.current_run_status == None:
             self.current_run_status = TaskRunStatus(task=self, iteration=iteration, status=status)
@@ -241,8 +241,8 @@ class Task(models.Model):
             self.current_run_status.status = status
         if not status == TaskRunStatus.STATUS_RUNNING:
             self.current_run_status.date_ended = datetime.datetime.utcnow()
-        if not tmsd_status == None:
-            self.current_run_status.controlling_daemon = tmsd_status
+        if not nds == None:
+            self.current_run_status.controlling_daemon = nds
         self.current_run_status.save()
         if self.is_ephemeral():
             # TODO should it only be marked expired when it succeeds??
@@ -289,13 +289,13 @@ class Task(models.Model):
         self.current_run_status = TaskRunStatus.get_latest(self, iteration)
         return self.current_run_status
     
-    def do_run(self, iteration, tmsd_status):
+    def do_run(self, iteration, nds):
         """What's actually called by manager. Don't override!"""
         try:
             try:
-                if not self.__try_reserve_resources(tmsd_status.get_region()):
+                if not self.__try_reserve_resources(nds.region):
                     raise InsufficientResourcesException()
-                self.__set_run_status(iteration, TaskRunStatus.STATUS_RUNNING, tmsd_status=tmsd_status)
+                self.__set_run_status(iteration, TaskRunStatus.STATUS_RUNNING, nds=nds)
                 log.info("Running Task '%s'" % (self))
                 success = self.run()
                 if success:
@@ -324,7 +324,7 @@ class Task(models.Model):
                 self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)
         finally:
             try:
-                self.__release_resources(tmsd_status.get_region())
+                self.__release_resources(nds.region)
             except:
                 pass
     
@@ -560,7 +560,7 @@ class TaskRunStatus(models.Model):
     status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
     date_started = models.DateTimeField(default=datetime.datetime.utcnow)
     date_ended = models.DateTimeField(blank=True, null=True)
-    # rename to tmsd_status
+    # rename to nds
     controlling_daemon = models.ForeignKey('NorcDaemonStatus', blank=True, null=True)
     
     @staticmethod

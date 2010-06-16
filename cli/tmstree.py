@@ -105,7 +105,7 @@ def print_task(task, only_remaining=False, iteration=None, show_all_statuses=Fal
     if show_resources and task.resource_relationships.all().count() > 0:
         print "       Demands %s Resource(s):" % (task.resource_relationships.all().count())
         for rr in task.resource_relationships.all():
-            print "        %s %s" % (rr.get_units_demanded(), rr.get_resource())
+            print "        %s %s" % (rr.get_units_demanded(), rr.resource)
     #
 
 def print_job(job, only_remaining, iteration=None, show_all_statuses=False, show_resources=False):

@@ -217,7 +217,7 @@ class NorcDaemon(object):
                 # excessive polling of the resources table when there are likely no new resources.
                 #log.info("Assuming no resources avail for Task type '%s'" % (type(task)))
                 pass
-            elif task.resources_available_to_run(self.get_daemon_status().get_region()):
+            elif task.resources_available_to_run(self.get_daemon_status().region):
                 try:
                     self.start_task(task, iteration)
                 except Exception, e:
@@ -558,7 +558,7 @@ class TaskInThread(RunnableTask, threading.Thread):
         Cannot interrupt the Task thread, but can set it as ended on error.
         (Man, I wish I could interrupt threads in Python!)
         """
-        self.get_task().set_ended_on_error(self.get_iteration(), self.get_daemon_status().get_region())
+        self.get_task().set_ended_on_error(self.get_iteration(), self.get_daemon_status().region)
         # a small hack to log in the correct format, but whatever.
         msg = log.__format_msg__("ERROR", "Task was interrupted by the daemon! Sorry.\n", False, 0)
         self.__logger__.write_to_task_log(self.get_task(), msg)
