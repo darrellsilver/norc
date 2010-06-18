@@ -64,6 +64,7 @@
             <table>
                 <tr>
                     <th>ID</th>
+                    <th>Type</th>
                     <th>Region</th>
                     <th>Host</th>
                     <th>PID</th>
@@ -77,6 +78,7 @@
             {% for nds in nds_set %}
                 <tr class="{% cycle 'odd_row' 'even_row' %}">
                     <td>{{ nds.id }}</td>
+                    <td>{{ nds.get_daemon_type }}</td>
                     <td>{{ nds.region }}</td>
                     <td>{{ nds.host }}</td>
                     <td>{{ nds.pid }}</td>

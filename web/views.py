@@ -1,9 +1,10 @@
-# Create your views here.
+
+
 from django.shortcuts import render_to_response
 from django.template import Context, Template
 from norc.core.models import *
 from norc.core import reporter
-from norc.utils import date_utils
+from norc.utils import parsing
 from datetime import timedelta
 
 def index(request):
@@ -12,24 +13,9 @@ def index(request):
         since_date = None
     else:
         try:
-            since_date = date_utils.parse_date_relative(since)
+            since_date = parsing.parse_date_relative(since)
         except:
             since_date = None
-    # nds_data = []
-    # for nds in reporter.get_daemon_statuses(since_date):
-    #     # counts[str(nds.id)] = dict(
-    #     nds_data.append(dict(
-    #         id=nds.id,
-    #         region=nds.region,
-    #         host=nds.host,
-    #         pid=nds.pid,
-    #         running=len(nds.get_task_statuses('running')),
-    #         success=len(nds.get_task_statuses('success')),
-    #         errored=len(nds.get_task_statuses('errored')),
-    #         status=nds.get_status(),
-    #         date_started=nds.date_started,
-    #         date_ended=nds.date_ended))
-    # return render_to_response('index.html', dict(nds_data=nds_data))
     nds_set = reporter.get_daemon_statuses(since_date)
     return render_to_response('index.html', dict(nds_set=nds_set))
 
