@@ -48,7 +48,7 @@ from optparse import OptionParser
 
 from norc.core import reporter
 from norc.core.models import NorcDaemonStatus, TaskRunStatus
-from norc.utils import formatting, date_utils, log
+from norc.utils import formatting, parsing, log
 log = log.Log()
 
 def report_daemon_statuses(status_filter=None, since_date=None):
@@ -86,18 +86,11 @@ def report_daemon_statuses(status_filter=None, since_date=None):
             (since_date.strftime("%m/%d/%Y %H:%M:%S"),
              time.strftime("%m/%d/%Y %H:%M:%S"))
     
-    # if not max_tasks_due_to_run in (None, 0):
-    #         # This call is currently super expensive when there's lots of Tasks; limit it!
-    #         to_run = reporter.get_tasks_allowed_to_run(max_to_return=max_tasks_due_to_run)
-    #         if len(to_run) < max_tasks_due_to_run:
-    #             print >>sys.stdout, "%s Task(s) due to run.\n" % (len(to_run))
-    #         else:
-    #             print >>sys.stdout, "At least %s Task(s) due to run.\n" % (len(to_run))
-    
     if len(tabular) == 1:
         print >>sys.stdout, "No %s Norc daemons." % (status_filter.upper())
     else:
-        print >>sys.stdout, "%s %s Norc daemon(s):" % (len(tabular)-1, status_filter.upper())
+        print >>sys.stdout, "%s %s Norc daemon(s):" % (len(tabular)-1,
+            status_filter.upper())
         formatting.pprint_table(sys.stdout, tabular)
         print >>sys.stdout, ""
 
@@ -111,10 +104,6 @@ def report_norcd_details(nds, status_filter, date_started=None):
             trs.get_status(),
             trs.date_started,
             trs.date_ended if trs.date_ended else '-']
-        # if run_status.date_ended == None:
-        #     one_row.append("-")
-        # else:
-        #     one_row.append(run_status.date_ended)
         tabular.append(row)
     if not date_started == None:
         print >>sys.stdout, "From %s - Now" % (date_started.strftime("%m/%d/%Y %H:%M:%S"))
@@ -233,7 +222,7 @@ def main():
     #    raise Exception(usage())
     
     if options.started_since:
-        options.started_since = date_utils.parse_date_relative(options.started_since)
+        options.started_since = parsing.parse_date_relative(options.started_since)
     
     # Perform an action on a Norc daemon.
     flags = ['pause', 'stop', 'kill', 'salvage', 'delete']

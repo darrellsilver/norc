@@ -33,24 +33,19 @@
 from norc.core.models import *
 
 DAEMON_STATUS_DICT = {}
-DAEMON_STATUS_DICT['running'] = [
-    NorcDaemonStatus.STATUS_RUNNING]
-DAEMON_STATUS_DICT['active'] = [
-    NorcDaemonStatus.STATUS_STARTING,
-    NorcDaemonStatus.STATUS_RUNNING,
-    NorcDaemonStatus.STATUS_PAUSEREQUESTED,
-    NorcDaemonStatus.STATUS_STOPREQUESTED,
-    NorcDaemonStatus.STATUS_KILLREQUESTED,
-    NorcDaemonStatus.STATUS_PAUSED,
-    NorcDaemonStatus.STATUS_STOPINPROGRESS,
-    NorcDaemonStatus.STATUS_KILLINPROGRESS]
-DAEMON_STATUS_DICT['errored'] = [
-    NorcDaemonStatus.STATUS_ERROR]
+DAEMON_STATUS_DICT['running'] = [NorcDaemonStatus.STATUS_RUNNING]
+DAEMON_STATUS_DICT['active'] = [NorcDaemonStatus.STATUS_STARTING,
+                                NorcDaemonStatus.STATUS_RUNNING,
+                                NorcDaemonStatus.STATUS_PAUSEREQUESTED,
+                                NorcDaemonStatus.STATUS_STOPREQUESTED,
+                                NorcDaemonStatus.STATUS_KILLREQUESTED,
+                                NorcDaemonStatus.STATUS_PAUSED,
+                                NorcDaemonStatus.STATUS_STOPINPROGRESS,
+                                NorcDaemonStatus.STATUS_KILLINPROGRESS]
+DAEMON_STATUS_DICT['errored'] = [NorcDaemonStatus.STATUS_ERROR]
 DAEMON_STATUS_DICT['interesting'] = []
-DAEMON_STATUS_DICT['interesting'].extend(
-    DAEMON_STATUS_DICT['active'])
-DAEMON_STATUS_DICT['interesting'].extend(
-    DAEMON_STATUS_DICT['errored'])
+DAEMON_STATUS_DICT['interesting'].extend(DAEMON_STATUS_DICT['active'])
+DAEMON_STATUS_DICT['interesting'].extend(DAEMON_STATUS_DICT['errored'])
 DAEMON_STATUS_DICT['all'] = NorcDaemonStatus.ALL_STATUSES
 
 def get_object(class_, **kwargs):

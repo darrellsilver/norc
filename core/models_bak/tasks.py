@@ -47,7 +47,7 @@ class Task(models.Model):
     """Abstract class representing one task."""
     
     STATUS_ACTIVE = 'ACTIVE'
-    # If a task is ephemeral after it runs it 'expires',
+    # If a task is ephemeral then after it runs it 'expires',
     # which is effectively the same as deleting it.
     STATUS_EXPIRED = 'EXPIRED'
     STATUS_DELETED = 'DELETED'
@@ -706,8 +706,8 @@ class RunCommand(Task):
         cmd_n = cmd_n.replace("$DATABASE_PASSWORD", settings.DATABASE_PASSWORD)
         cmd_n = cmd_n.replace("$DATABASE_HOST", settings.DATABASE_HOST)
         cmd_n = cmd_n.replace("$DATABASE_PORT", settings.DATABASE_PORT)
-        cmd_n = cmd_n.replace("$AWS_ACCESS_KEY_ID", settings.AWS_ACCESS_KEY_ID)
-        cmd_n = cmd_n.replace("$AWS_SECRET_ACCESS_KEY", settings.AWS_SECRET_ACCESS_KEY)
+        # cmd_n = cmd_n.replace("$AWS_ACCESS_KEY_ID", settings.AWS_ACCESS_KEY_ID)
+        # cmd_n = cmd_n.replace("$AWS_SECRET_ACCESS_KEY", settings.AWS_SECRET_ACCESS_KEY)
         
         # Local Dates
         now = datetime.datetime.now()

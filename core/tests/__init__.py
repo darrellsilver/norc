@@ -28,5 +28,6 @@
 #
 
 
-from init_db_test import *
 from scheduling_test import *
+from daemon_test import *
+from init_db_test import *

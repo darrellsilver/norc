@@ -3,27 +3,27 @@
 # Copyright (c) 2009, Perpetually.com, LLC.
 # All rights reserved.
 # 
-# Redistribution and use in source and binary forms, with or without modification, 
-# are permitted provided that the following conditions are met:
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
 # 
-#     * Redistributions of source code must retain the above copyright notice, 
-#       this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright notice, 
-#       this list of conditions and the following disclaimer in the documentation 
-#       and/or other materials provided with the distribution.
+#     * Redistributions of source code must retain the above copyright 
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
 #     * Neither the name of the Perpetually.com, LLC. nor the names of its 
 #       contributors may be used to endorse or promote products derived from 
 #       this software without specific prior written permission.
-#     * 
 # 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
-# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
-# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
@@ -95,15 +95,17 @@ class SQSTaskRunStatus(models.Model):
 
 class SQSTask(object):
     
-    date_enqueued = None
-    current_run_status = None
+    # date_enqueued = None
+    # current_run_status = None
     
-    def __init__(self, date_enqueued):
+    def __init__(self, date_enqueued, current_run_status=None):
         self.date_enqueued = date_enqueued
-        self.current_run_status = None
+        self.current_run_status = current_run_status
+        self.LIBRARY_PATH = self.get_library_path()
     
     def __set_run_status(self, status, tmsd_status=None):
-        assert status in SQSTaskRunStatus.ALL_STATUSES, "Unknown status '%s'" % (status)
+        assert status in SQSTaskRunStatus.ALL_STATUSES, \
+            "Unknown status '%s'" % (status)
         if self.current_run_status == None:
             self.current_run_status = SQSTaskRunStatus(queue_name=self.get_queue_name()
                 , task_id=self.get_id()
@@ -161,6 +163,8 @@ class SQSTask(object):
         return fp
     def get_date_enqueued(self):
         return self.date_enqueued
+    def get_library_path(self):
+        raise NotImplementedError
     def get_id(self):
         raise NotImplementedError
     def get_queue_name(self):
@@ -186,28 +190,28 @@ class SQSTask(object):
 #
 #
 
-
-def get_sqs_task_class(queue_name):
-    # TODO poor hard coding!
-    if queue_name in settings.AWS_SQS_ARCHIVE_QUEUES.values():
-        from permalink.norc_impl.models import SQSArchiveRequest
-        return SQSArchiveRequest
-    if queue_name == settings.AWS_SQS_PUBLISH_RECORD:
-        from permalink.norc_impl.models import SQSPublishRecord
-        return SQSPublishRecord
-    if queue_name == settings.AWS_SQS_BROWSER_PUBLISH:
-        from permalink.norc_impl.models import SQSBrowserPublish
-        return SQSBrowserPublish
-    raise Exception("unknown queue_name '%s'.  Configure it in get_sqs_task_class()" \
-        % (queue_name))
-
-def get_task(boto_message, queue_name):
-    task_class = get_sqs_task_class(queue_name)
-    d = pickle.loads(boto_message.get_body())
-    if d.has_key('current_run_status'):
-        d.pop('current_run_status')
-    t = task_class(**d)
-    return t
+# DEPR
+# def get_sqs_task_class(queue_name):
+#     # TODO poor hard coding!
+#     if queue_name in settings.AWS_SQS_ARCHIVE_QUEUES.values():
+#         from permalink.norc_impl.models import SQSArchiveRequest
+#         return SQSArchiveRequest
+#     if queue_name == settings.AWS_SQS_PUBLISH_RECORD:
+#         from permalink.norc_impl.models import SQSPublishRecord
+#         return SQSPublishRecord
+#     if queue_name == settings.AWS_SQS_BROWSER_PUBLISH:
+#         from permalink.norc_impl.models import SQSBrowserPublish
+#         return SQSBrowserPublish
+#     raise Exception("unknown queue_name '%s'.  Configure it in get_sqs_task_class()" \
+#         % (queue_name))
+# 
+# def get_task(boto_message, queue_name):
+#     task_class = get_sqs_task_class(queue_name)
+#     d = pickle.loads(boto_message.get_body())
+#     if d.has_key('current_run_status'):
+#         d.pop('current_run_status')
+#     t = task_class(**d)
+#     return t
 
 
 #

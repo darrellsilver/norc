@@ -35,7 +35,8 @@ Model data structures are split out into other files and imported.
 """
 
 # Possible TODO: only import things that extend models.Model?
-from jobs import *
-from tasks import *
-from resources import *
-from daemons import *
+from norc.core.models.jobs import *
+from norc.core.models.tasks import *
+from norc.core.models.resources import *
+from norc.core.models.daemons import *
+

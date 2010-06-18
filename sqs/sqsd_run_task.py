@@ -4,27 +4,27 @@
 # Copyright (c) 2009, Perpetually.com, LLC.
 # All rights reserved.
 # 
-# Redistribution and use in source and binary forms, with or without modification, 
-# are permitted provided that the following conditions are met:
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
 # 
-#     * Redistributions of source code must retain the above copyright notice, 
-#       this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright notice, 
-#       this list of conditions and the following disclaimer in the documentation 
-#       and/or other materials provided with the distribution.
+#     * Redistributions of source code must retain the above copyright 
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
 #     * Neither the name of the Perpetually.com, LLC. nor the names of its 
 #       contributors may be used to endorse or promote products derived from 
 #       this software without specific prior written permission.
-#     * 
 # 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
-# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
-# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
@@ -46,8 +46,9 @@ from optparse import OptionParser
 from boto.sqs.connection import SQSConnection
 
 from norc import settings, sqs
-from norc.core import models as core
-from norc.sqs import models as sqs
+from norc.core.models import NorcDaemonStatus
+# from norc.sqs import utils as sqs
+# from norc.sqs import models as sqs
 
 from norc.utils import log
 log = log.Log()
@@ -138,18 +139,19 @@ def __redirect_outputs__(task, stdout, stderr):
 def __get_daemon_status__(daemon_status_id):
     # get the controlling daemon
     try:
-        daemon_status = core.NorcDaemonStatus.objects.get(id=daemon_status_id)
+        daemon_status = NorcDaemonStatus.objects.get(id=daemon_status_id)
         return daemon_status
         #if not daemon_status.is_running():
         #    raise Exception("Cannot use daemon '%s'. It is not running!" % (daemon_status))
-    except core.NorcDaemonStatus.DoesNotExist, dne:
+    except NorcDaemonStatus.DoesNotExist, dne:
         raise Exception("No daemon status by id %s" % (daemon_status_id))
 
-def __get_task__(boto_message, queue_name):
-    if boto_message == None:
-        return None
-    t = sqs.get_task(boto_message, queue_name)
-    return t
+# DEPR
+# def __get_task__(boto_message, queue_name):
+#     if boto_message == None:
+#         return None
+#     t = sqs.get_task(boto_message, queue_name)
+#     return t
 
 def __run_task__(task, daemon_status):
     # run the Task!
@@ -200,17 +202,19 @@ sends it a the stream unique to this Task request")
     
     console_stderr = None
     try:
+        # DEPR
         # c = SQSConnection(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_ACCESS_KEY)
         # q = c.get_queue(options.queue_name)
         # boto_message = q.read()
         # task = __get_task__(boto_message, options.queue_name)
-        task = sqs.retrieve_task(options.queue_name)
+        task = sqs.pop_task(options.queue_name)
+        # task = sqs.pop_task(q)
         if task == None:
             log.debug("No task in queue '%s' pid:%s" % (options.queue_name, os.getpid()))
             sys.exit(133)
         else:
             log.debug("Starting SQS Queue '%s' Task:%s pid:%s" % (options.queue_name, task.get_id(), os.getpid()))
-            q.delete_message(boto_message)
+            # q.delete_message(boto_message)
             console_stderr = __redirect_outputs__(task, options.stdout, options.stderr)
             daemon_status = __get_daemon_status__(options.daemon_status_id)
             __run_task__(task, daemon_status)

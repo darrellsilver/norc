@@ -4,27 +4,27 @@
 # Copyright (c) 2009, Perpetually.com, LLC.
 # All rights reserved.
 # 
-# Redistribution and use in source and binary forms, with or without modification, 
-# are permitted provided that the following conditions are met:
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
 # 
-#     * Redistributions of source code must retain the above copyright notice, 
-#       this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright notice, 
-#       this list of conditions and the following disclaimer in the documentation 
-#       and/or other materials provided with the distribution.
+#     * Redistributions of source code must retain the above copyright 
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
 #     * Neither the name of the Perpetually.com, LLC. nor the names of its 
 #       contributors may be used to endorse or promote products derived from 
 #       this software without specific prior written permission.
-#     * 
 # 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
-# ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-# INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
-# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
-# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
-# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
@@ -122,13 +122,13 @@ class SQSTaskInProcess(object):
 class ForkingSQSDaemon(ForkingNorcDaemon):
     # TODO this inheritence is a little lazy; mostly the silly part is that 'region' here means 'queue_name'
     
-    __max_to_run__ = None
+    max_to_run = None
     __queue__ = None
     __queue_size__ = 0
     __runs_since_queue_size_check__ = 0
     
     def __init__(self, *args, **kwargs):
-        self.__max_to_run__ = kwargs['max_to_run']
+        self.max_to_run = kwargs['max_to_run']
         kwargs.pop('max_to_run')
         ForkingNorcDaemon.__init__(self, *args, **kwargs)
         c = SQSConnection(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_ACCESS_KEY)
@@ -137,16 +137,16 @@ class ForkingSQSDaemon(ForkingNorcDaemon):
     def get_name(self):
         return 'SQS Forking Daemon'
     def get_queue_name(self):
-        return self.get_daemon_status().region.get_name()# could also look in queue
+        return str(self.get_daemon_status().region)# could also look in queue
     def get_max_to_run(self):
-        return self.__max_to_run__
+        return self.max_to_run
     def get_queue(self):
         return self.__queue__
-    def __get_task_label__(self, running_task):
+    def _get_task_label(self, running_task):
         return "pid:%s" % (running_task.get_pid())
     def start_task(self):
         log.info("Starting the next SQS Task in new process")
-        tp = SQSTaskInProcess(self.get_daemon_status(), self.__log_dir)
+        tp = SQSTaskInProcess(self.get_daemon_status(), self.log_dir)
         tp.run()
         self.__add_running_task__(tp)
     
@@ -170,7 +170,7 @@ class ForkingSQSDaemon(ForkingNorcDaemon):
         else:
             self.__runs_since_queue_size_check__ += 1
         while num_running < max_to_run and self.__queue_size__ > 0:
-            if self.__break_tasks_to_run_loop__:
+            if self._break_batch_loop:
                 # some other thread (request_stop) doesn't want me to continue.  Stop here.
                 break
             self.start_task()

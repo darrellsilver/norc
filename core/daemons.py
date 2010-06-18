@@ -124,18 +124,17 @@ def _get_tasks_allowed_to_run(asof=None, end_completed_iterations=False, max_to_
 class NorcDaemon(object):
     """Abstract daemon; subclasses implement the running of Tasks."""
     
-    __poll_frequency__ = None
-    __daemon_status__ = None
-    __break_tasks_to_run_loop__ = False
+    #__poll_frequency__ = None
+    #__daemon_status__ = None
     
-    def __init__(self, region, poll_frequency):
-        self.__poll_frequency__ = poll_frequency
+    
+    def __init__(self, region, poll_frequency, daemon_type='NORC'):
+        self.poll_frequency = poll_frequency
         
-        status = NorcDaemonStatus.create(region)
+        status = NorcDaemonStatus.create(region, daemon_type)
         self.__daemon_status__ = status
+        self._break_batch_loop = False
     
-    def get_poll_frequency(self):
-        return self.__poll_frequency__
     def get_daemon_status(self):
         return self.__daemon_status__
     def __set_daemon_status__(self, daemon_status):
@@ -150,7 +149,7 @@ class NorcDaemon(object):
         last_status = self.get_daemon_status().get_status()
         while True:
             if not last_status == self.get_daemon_status().get_status():
-                log.info("tmsd state changed: %s -> %s" % (last_status, self.get_daemon_status().get_status()))
+                log.info("Daemon state changed: %s -> %s" % (last_status, self.get_daemon_status().get_status()))
                 last_status = self.get_daemon_status().get_status()
             self.__set_daemon_status__(self.get_daemon_status().thwart_cache())# see note in this method definition
             if self.get_daemon_status().is_stop_requested() or \
@@ -159,19 +158,19 @@ class NorcDaemon(object):
                 self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_STOPINPROGRESS)
                 num_running_tasks = self.get_num_running_tasks()
                 if num_running_tasks == 0:
-                    log.info("tmsd stop requested and no more tasks. Ending gracefully.")
+                    log.info("Daemon stop requested and no more tasks. Ending gracefully.")
                     self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_ENDEDGRACEFULLY)
                     return True
                 else:
-                    log.info("tmsd stop requested; waiting for %s task(s) to finish." % (num_running_tasks))
+                    log.info("Daemon stop requested; waiting for %s task(s) to finish." % (num_running_tasks))
             elif self.get_daemon_status().is_kill_requested() or self.get_daemon_status().is_being_killed():
                 running_tasks = self.get_running_tasks()
                 if len(running_tasks) == 0:
-                    log.info("tmsd kill requested but no tasks running. Ending gracefully.")
+                    log.info("Daemon kill requested but no tasks running. Ending gracefully.")
                     self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_ENDEDGRACEFULLY)
                     return True
                 else:
-                    log.info("tmsd kill requested; interrupting %s task(s) and stopping immediately." % (len(running_tasks)))
+                    log.info("Daemon kill requested; interrupting %s task(s) and stopping immediately." % (len(running_tasks)))
                     self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_KILLINPROGRESS)
                     for running_task in running_tasks:
                         # There's no way to actually interrupt python threads
@@ -185,26 +184,26 @@ class NorcDaemon(object):
                     self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_KILLED)
                     return False
             elif self.get_daemon_status().is_pause_requested():
-                log.info("tmsd pause requested.  Will just sit here.")
+                log.info("Daemon pause requested.")
                 self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_PAUSED)
             elif self.get_daemon_status().is_paused():
-                log.debug("tmsd paused.  Just sittin' here.")
+                log.debug("Daemon paused.  Just sittin' here.")
             elif self.get_daemon_status().is_running():
-                self.__break_tasks_to_run_loop__ = False# We're definitely running; don't break unless told to now.
+                self._break_batch_loop = False# We're definitely running; don't break unless told to now.
                 self.run_batch()
             else:
                 raise Exception("Don't know how to handle daemon state '%s'" % (self.tmsd_status.get_status()))
             # wait here before polling again
-            time.sleep(self.get_poll_frequency())
+            time.sleep(self.poll_frequency)
         raise Exception("The main loop exited somehow without throwing an error. Bug?")
     
     def run_batch(self):
         tasks_to_run = _get_tasks_allowed_to_run(end_completed_iterations=True, max_to_return=10)
         num_running_tasks = self.get_num_running_tasks()
-        log.debug("tmsd running %s task(s), at least %s task(s) due to run" % (num_running_tasks, len(tasks_to_run)))
+        log.debug("Daemon running %s task(s), at least %s task(s) due to run" % (num_running_tasks, len(tasks_to_run)))
         need_resource_types = []
         for (task, iteration) in tasks_to_run:
-            if self.__break_tasks_to_run_loop__:
+            if self._break_batch_loop:
                 # some other thread (request_stop) doesn't want me to continue.  Stop here.
                 break
             # check that there are currently sufficient resources to prevent
@@ -236,13 +235,13 @@ class NorcDaemon(object):
             return False
     
     def request_stop(self):
-        log.info("tmsd Sending stop request...")
+        log.info("Sending stop request...")
         self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_STOPREQUESTED)
-        self.__break_tasks_to_run_loop__ = True
+        self._break_batch_loop = True
     def request_kill(self):
-        log.info("tmsd Sending kill request...")
+        log.info("Sending kill request...")
         self.get_daemon_status().set_status(NorcDaemonStatus.STATUS_KILLREQUESTED)
-        self.__break_tasks_to_run_loop__ = True
+        self._break_batch_loop = True
     
     def get_num_running_tasks(self):
         """Return the number of currently running Tasks for this daemon"""
@@ -302,7 +301,7 @@ class ThreadedTaskLogger(object):
     
     def __init__(self, log_dir, daemon_id_for_log, buffer_data):
         if not os.path.exists(log_dir):
-            raise Exception("log_dir '%s' not found!" % (log_dir))
+            raise Exception("Log directory '%s' not found!" % (log_dir))
         self.__log_dir = log_dir
         self.daemon_id_for_log = daemon_id_for_log
         if not daemon_id_for_log == None:
@@ -454,13 +453,13 @@ class TaskInProcess(RunnableTask):
 
 class ForkingNorcDaemon(NorcDaemon):
     
-    __log_dir = None
-    __running_tasks__ = None
+    # log_dir = None
+    # __running_tasks__ = None
     
     def __init__(self, region, poll_frequency, log_dir, redirect_daemon_log):
         #import subprocess
         NorcDaemon.__init__(self, region, poll_frequency)
-        self.__log_dir = log_dir
+        self.log_dir = log_dir
         self.__running_tasks__ = []
         daemon_id_for_log = None
         if redirect_daemon_log:
@@ -473,7 +472,7 @@ class ForkingNorcDaemon(NorcDaemon):
     def __add_running_task__(self, running):
         self.__running_tasks__.append(running)
     def _get_task_label(self, running_task):
-        return "%s:%s" % (running_task.get_task().get_job(), running_task.get_task().get_name())
+        return "%s:%s" % (running_task.get_task().job, running_task.task.get_name())
     def get_running_tasks(self):
         """Returns list of currently running RunnableTask's"""
         running_tasks = []
@@ -515,7 +514,7 @@ TaskInProcess.RUN_TASK_EXE '%s' is not executable! BAD!" % (self._get_task_label
         return running_tasks
     def start_task(self, task, iteration):
         log.info("\"%s:%s\" starting in new process" % (task.get_job().get_name(), task.get_name()))
-        tp = TaskInProcess(task, iteration, self.get_daemon_status(), self.__log_dir)
+        tp = TaskInProcess(task, iteration, self.get_daemon_status(), self.log_dir)
         tp.run()
         self.__add_running_task__(tp)
     

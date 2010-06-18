@@ -32,7 +32,6 @@
 
 import os
 import datetime
-import pdb
 
 from django.db import models
 
@@ -82,7 +81,7 @@ class NorcDaemonStatus(models.Model):
     date_ended = models.DateTimeField(blank=True, null=True)
     
     @staticmethod
-    def create(region, status=None, pid=None, host=None):
+    def create(region, daemon_type, status=None, pid=None, host=None):
         if status == None:
             status = NorcDaemonStatus.STATUS_STARTING
         if pid == None:
@@ -114,7 +113,8 @@ class NorcDaemonStatus(models.Model):
         return NorcDaemonStatus.objects.get(id=self.id)
     
     def set_status(self, status):
-        assert status in NorcDaemonStatus.ALL_STATUSES, "Unknown status '%s'" % (status)
+        assert status in NorcDaemonStatus.ALL_STATUSES, \
+            "Unknown status '%s'" % (status)
         self.status = status
         if not status == TaskRunStatus.STATUS_RUNNING:
             self.date_ended = datetime.datetime.utcnow()
