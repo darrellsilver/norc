@@ -27,15 +27,15 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-"""Tests the init_db script."""
+"""Test various utility functions/modules."""
 
 from django.test import TestCase
 
 from norc.utils import init_db
 from norc.core.models import Job, Iteration, Resource, ResourceRegion
 
-class TestParseSchedule(TestCase):
-    """Tests the SchedulableTask.parse_schedule_predefined method."""
+class TestInitDB(TestCase):
+    """Tests the init_db script."""
 
     def setUp(self):
         """Run the init_db script."""
