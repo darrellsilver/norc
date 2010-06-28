@@ -81,17 +81,26 @@ def _get_tasks(job, include_expired=False):
         tasks.extend(matches.all())
     return tasks
 
-def _get_tasks_allowed_to_run(asof=None, end_completed_iterations=False, max_to_return=None):
-    """
-    Get all tasks that are allowed to run, regardless of resources available. Includes all interfaces.
+def _get_tasks_allowed_to_run(asof=None, end_completed_iterations=False,
+                              max_to_return=None):
+    """Get all tasks that are allowed to run.
     
-    TODO Currently this is EXTREMELY expensive to run.  Use max_to_return or beware the sloooowness!
-    *Slowness is due to having to independently query for each Task's lastest status and parent's status.
-     One approach is to query for statuses, then tasks with no statuses, then merge the two lists.
-     But this only satisfies some of the criteria that this slow way uses.
-     Another approach: the daemon should ask for one task at a time, like a proper queue.
+    Regardless of resources available. Includes all interfaces.
+    
+    TODO Currently this is EXTREMELY expensive to run.  Use max_to_return
+    or beware the sloooowness!
+    
+    Slowness is due to having to independently query for each Task's
+    lastest status and parent's status.  One approach is to query for
+    statuses, then tasks with no statuses, then merge the two lists.
+    But this only satisfies some of the criteria that this slow way uses.
+    
+    Another approach: the daemon should ask for one task at a time,
+    like a proper queue.
+    
     """
-    if asof == None:# need to do this here and not in arg so it updates w/ each call
+    # need to do this here and not in arg so it updates w/ each call
+    if asof == None:
         asof = datetime.datetime.utcnow()
     to_run = []#[[Task, Iteration]...]
     for iteration in Iteration.get_running_iterations():
@@ -104,15 +113,17 @@ def _get_tasks_allowed_to_run(asof=None, end_completed_iterations=False, max_to_
                 elif a_task.is_allowed_to_run(iteration, asof=asof):
                     to_run.append([a_task, iteration])
                     iteration_is_done = False
-                elif iteration_is_done and end_completed_iterations and not __status_is_finished__(a_task, iteration):
+                elif iteration_is_done and end_completed_iterations and \
+                     not __status_is_finished__(a_task, iteration):
                     iteration_is_done = False
             except Exception, e:
-                log.error("Could not check if task type '%s' is due to run. Skipping.  \
-                        BAD! Maybe DB is in an inconsistent state or software bug?" 
-                        % (a_task.__class__.__name__), e)
+                log.error("Could not check if task type '%s' is due to run." +
+                    " Skipping.  BAD! Bug?" % (a_task.__class__.__name__), e)
         
-        # TODO there's a bug here! iterations end when tasks are sittign in failed state
-        if iteration_is_done and end_completed_iterations and iteration.is_ephemeral():
+        # TODO there's a bug here!
+        # Iterations end when tasks are sitting in failed state.
+        if iteration_is_done and end_completed_iterations and \
+                                 iteration.is_ephemeral():
             # this iteration has completed and should be set as such
             iteration.set_done()
         if not max_to_return == None and len(to_run) >= max_to_return:
@@ -311,7 +322,8 @@ class ThreadedTaskLogger(object):
         self.open_files = {}
     
     def _get_daemon_log_file_name(self):
-        assert not self.daemon_id_for_log == None, "daemon_id_for_log is None! BUG!"
+        assert not self.daemon_id_for_log == None, \
+            "daemon_id_for_log is None! BUG!"
         fp = "%s/_norcd/norcd.%s" % (self.__log_dir, self.daemon_id_for_log)
         return fp
     
@@ -349,13 +361,17 @@ class ThreadedTaskLogger(object):
         except Exception, e:
             try:
                 if type(current_thread) == TaskInThread:
-                    self.__orig_stderr__.write("Exception occured writing log for Task id:%s \"%s\". BAD!\n" 
-                        % (current_thread.get_task().get_id(), current_thread.get_task()))
+                    self.__orig_stderr__.write(
+                        "Exception occured writing log for " +
+                        "Task id:%s \"%s\". BAD!\n" %
+                        (current_thread.get_task().get_id(),
+                        current_thread.get_task()))
                 else:
-                    self.__orig_stderr__.write("Exception occured writing log: '%s'. BAD!\n" 
-                        % (e))
+                    self.__orig_stderr__.write(
+                        "Exception occured writing log: '%s'. BAD!\n" % (e))
             except:
-                self.__orig_stderr__.write("Exception occured writing log and couldn't determine task. BAD!\n")
+                self.__orig_stderr__.write("Exception occured writing log " +
+                    "and couldn't determine task. BAD!\n")
         except:
             pass
     
@@ -399,7 +415,6 @@ class TaskInProcess(RunnableTask):
         self.__log_dir = log_dir
     
     def run(self):
-        #log.info("Starting Task \"%s\" in new process" % (self.get_task().get_name()))
         log_file_name = self.get_task().get_log_file()
         # TODO change this to get log file in RUN_TASK_EXE
         cmd = [TaskInProcess.RUN_TASK_EXE
@@ -419,7 +434,8 @@ class TaskInProcess(RunnableTask):
         self.__subprocess = subprocess.Popen(cmd)
         # give the Task a chance to start; 
         # this prevents lots of false starts due to unavailable resources
-        # that only are only unavailable to future tasks once this task has kicked off.
+        # that only are only unavailable to future tasks once this task
+        # has kicked off.
         time.sleep(2)
     
     def is_running(self):
@@ -439,17 +455,23 @@ class TaskInProcess(RunnableTask):
     
     def interrupt(self):
         """Interrupt this Task"""
-        assert not self.__subprocess == None, "Cannot interrupt process not started"
-        # A bit of interpretive dance to get this to replicate what's much easier in the 2.6 version
+        assert not self.__subprocess == None, \
+            "Cannot interrupt process not started"
+        # A bit of interpretive dance to get this to 
+        # replicate what's much easier in the 2.6 version
         if self.is_running():
             # task is still running; interrupt it! 
             # TODO kill it? (would be signal.SIGKILL)
-            log.info("sending SIGINT to pid:%s, task:%s" % (self.get_pid(), self.get_task().get_id()))
+            log.info("sending SIGINT to pid:%s, task:%s" %
+                (self.get_pid(), self.get_task().get_id()))
             os.kill(self.get_pid(), signal.SIGINT)
         elif self.get_exit_status():
-            raise Exception("Task cannot be interrupted. It has already succeeded.")
+            raise Exception(
+                "Task cannot be interrupted. It has already succeeded.")
         else:
-            raise Exception("Task cannot be interrupted. It has failed with status %s." % (self.get_exit_status()))
+            raise Exception(
+                "Task cannot be interrupted. It has failed with status %s." %
+                (self.get_exit_status()))
 
 class ForkingNorcDaemon(NorcDaemon):
     
@@ -464,7 +486,8 @@ class ForkingNorcDaemon(NorcDaemon):
         daemon_id_for_log = None
         if redirect_daemon_log:
             daemon_id_for_log = self.get_daemon_status().get_id()
-        self.__logger__ = ThreadedTaskLogger(log_dir, daemon_id_for_log, False)# only daemon output; don't buffer
+        self.__logger__ = ThreadedTaskLogger(
+            log_dir, daemon_id_for_log, False)
     
     def get_name(self):
         """Return a name for this daemon implementation"""
@@ -472,7 +495,8 @@ class ForkingNorcDaemon(NorcDaemon):
     def __add_running_task__(self, running):
         self.__running_tasks__.append(running)
     def _get_task_label(self, running_task):
-        return "%s:%s" % (running_task.get_task().job, running_task.task.get_name())
+        return "%s:%s" % (running_task.get_task().job,
+                          running_task.task.get_name())
     def get_running_tasks(self):
         """Returns list of currently running RunnableTask's"""
         running_tasks = []
@@ -485,36 +509,48 @@ class ForkingNorcDaemon(NorcDaemon):
                 # no longer running; log that fact for convenience
                 exit_status = running_task.get_exit_status()
                 if exit_status == 0:
-                    log.info("\"%s\" succeeded" % (self._get_task_label(running_task)))
+                    log.info("\"%s\" succeeded" %
+                        (self._get_task_label(running_task)))
                 elif exit_status == 130:
-                    log.info("\"%s\" timed out." % (self._get_task_label(running_task)))
+                    log.info("\"%s\" timed out." %
+                        (self._get_task_label(running_task)))
                 elif exit_status == 131:
-                    log.info("\"%s\" was interrupted." % (self._get_task_label(running_task)))
+                    log.info("\"%s\" was interrupted." %
+                        (self._get_task_label(running_task)))
                 elif exit_status == 132:
-                    log.info("\"%s\" was killed." % (self._get_task_label(running_task)))
+                    log.info("\"%s\" was killed." %
+                        (self._get_task_label(running_task)))
                 elif exit_status == 133:
-                    log.info("\"%s\" did not run." % (self._get_task_label(running_task)))
+                    log.info("\"%s\" did not run." %
+                        (self._get_task_label(running_task)))
                 elif exit_status == 134:
-                    log.info("\"%s\" ended without a status." % (self._get_task_label(running_task)))
+                    log.info("\"%s\" ended without a status." %
+                        (self._get_task_label(running_task)))
                 elif exit_status == 127:
-                    raise Exception("\"%s\" failed b/c of internal error.  \
-TaskInProcess.RUN_TASK_EXE '%s' could not be found! BAD!" % (self._get_task_label(running_task) \
-                                , TaskInProcess.RUN_TASK_EXE))
+                    raise Exception("\"%s\" failed b/c of internal error. " +
+                        "TaskInProcess.RUN_TASK_EXE '%s' could not be " +
+                        "found! BAD!" % (self._get_task_label(running_task),
+                                         TaskInProcess.RUN_TASK_EXE))
                 elif exit_status == 126:
-                    raise Exception("\"%s\" failed b/c of internal error.  \
-TaskInProcess.RUN_TASK_EXE '%s' is not executable! BAD!" % (self._get_task_label(running_task) \
-                                , TaskInProcess.RUN_TASK_EXE))
+                    raise Exception("\"%s\" failed b/c of internal error. " +
+                        "TaskInProcess.RUN_TASK_EXE '%s' is not" +
+                        " executable! BAD!" %
+                        (self._get_task_label(running_task),
+                        TaskInProcess.RUN_TASK_EXE))
                 else:
-                    log.info("\"%s\" failed with exit status %s!" % (self._get_task_label(running_task) \
-                        , exit_status))
+                    log.info("\"%s\" failed with exit status %s!" %
+                        (self._get_task_label(running_task), exit_status))
         
-        for no_longer_running in to_cleanup:# TODO can this be done in one loop?
+        # TODO can this be done in one loop?
+        for no_longer_running in to_cleanup:
             self.__running_tasks__.remove(no_longer_running)
         
         return running_tasks
     def start_task(self, task, iteration):
-        log.info("\"%s:%s\" starting in new process" % (task.get_job().get_name(), task.get_name()))
-        tp = TaskInProcess(task, iteration, self.get_daemon_status(), self.log_dir)
+        log.info("\"%s:%s\" starting in new process" %
+            (task.get_job().get_name(), task.get_name()))
+        tp = TaskInProcess(task, iteration,
+            self.get_daemon_status(), self.log_dir)
         tp.run()
         self.__add_running_task__(tp)
     
@@ -543,23 +579,29 @@ class TaskInThread(RunnableTask, threading.Thread):
     def run(self):
         try:
             try:
-                self.get_task().do_run(self.get_iteration(), self.get_daemon_status())
+                self.get_task().do_run(self.get_iteration(),
+                    self.get_daemon_status())
             except Exception, e:
-                log.error("Exception propegated from task.do_run(). BAD! Bug?", e)
+                log.error(
+                    "Exception propegated from task.do_run(). BAD! Bug?", e)
             except:
-                log.error("Poorly thrown exception propegated from task.do_run(). BAD! Bug?")
+                log.error("Poorly thrown exception propegated from " +
+                    "task.do_run(). BAD! Bug?")
                 traceback.print_exc()
         finally:
-            self.__logger__.close_log(self.get_task()) # TODO this feels hacky!
+            # TODO this feels hacky!
+            self.__logger__.close_log(self.get_task())
     
     def interrupt(self):
         """
         Cannot interrupt the Task thread, but can set it as ended on error.
         (Man, I wish I could interrupt threads in Python!)
         """
-        self.get_task().set_ended_on_error(self.get_iteration(), self.get_daemon_status().region)
+        self.get_task().set_ended_on_error(self.get_iteration(),
+                                           self.get_daemon_status().region)
         # a small hack to log in the correct format, but whatever.
-        msg = log.__format_msg__("ERROR", "Task was interrupted by the daemon! Sorry.\n", False, 0)
+        msg = log.__format_msg__("ERROR",
+            "Task was interrupted by the daemon! Sorry.\n", False, 0)
         self.__logger__.write_to_task_log(self.get_task(), msg)
 
 class ThreadingNorcDaemon(NorcDaemon):
@@ -587,8 +629,10 @@ class ThreadingNorcDaemon(NorcDaemon):
     
     def start_task(self, task, iteration):
         """Start the given Task in the given Iteration"""
-        log.info("\"%s:%s\" starting in new thread" % (task.get_job().get_name(), task.get_name()))
-        tt = TaskInThread(task, iteration, self.get_daemon_status(), sys.stdout)
+        log.info("\"%s:%s\" starting in new thread" %
+            (task.get_job().get_name(), task.get_name()))
+        tt = TaskInThread(task, iteration,
+            self.get_daemon_status(), sys.stdout)
         tt.start()
     
     def run(self):
