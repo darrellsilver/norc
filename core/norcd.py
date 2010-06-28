@@ -114,13 +114,17 @@ def main():
     signal.signal(signal.SIGINT, __handle_SIGINT)
     signal.signal(signal.SIGTERM, __handle_SIGTERM)
     
-    ended_gracefully = core.start_daemon(
+    ended_gracefully = core.run_daemon(
         options.threading,
         region,
         options.poll_frequency,
         settings.NORC_LOG_DIR,
         not options.no_log_redirect
     )
+    
+    daemon_class = ThreadingNorcDaemon if options.threading else ForkingNorcDaemon
+    daemon = daemon_class(region, options.poll_frequency,
+        settings.NORC_LOG_DIR, not options.no_log_redirect)
     # if options.threading:
     #     # multi-threaded; spawn new threads for new Tasks
     #     daemon = ThreadingNorcDaemon(region,

@@ -30,10 +30,11 @@ class SQSTaskTest(SQSTask):
         return 0
     
     def run(self):
-        """
-        Run this SQS Task!
-        Daemon records success/failure, but any more detail than that is left 
-        to the internals of the run() implementation.
+        """Run this SQS Task!
+        
+        Daemon records success/failure, but any more detail than that is
+        left to the internals of the run() implementation.
+        
         """
         print "SQSTaskTest has run!!  Great success."
         return True
@@ -44,7 +45,6 @@ class TestSQSConfig(TestCase):
     
     def setUp(self):
         conn = SQSConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-        # assert not conn.lookup('test_queue'), "Test queue should not exist."
         self.queue = conn.lookup('test_queue')
         if not self.queue:
             self.queue = conn.create_queue('test_queue')

@@ -30,11 +30,7 @@
 #
 
 
-"""Runs a single task.  Used internally if forking is activated.
-
-Can also double as 
-
-"""
+"""Runs a single task.  Used internally if forking is activated."""
 
 import sys, os, signal
 import traceback
@@ -53,65 +49,39 @@ log = log.Log()
 #
 #
 
-def _handle_timeout(*args):
-    global task
-    sig_name = 'TIMEOUT'
-    exit_code = 130
-    if task == None:
-        log.error("Received %s but Task not started yet. Stopping with exit code %s." % (sig_name, exit_code))
-    elif not task.has_timeout():
-        raise Exception("Task %s doesn't handle timeouts. How did you get here? BUG!" % (task))
-    _handle_signal(sig_name, exit_code, True)
-
-def _start_timeout_timer():
-    global task
-    assert not task == None, "Task is None; timer started out of order. BUG!"
-    if not task.has_timeout():
-        return False
-    signal.alarm(task.get_timeout())
-    return True
-def _stop_timeout_timer():
-    global task
-    assert not task == None, "Task is None; timer stopped but no Task defined. BUG!"
-    if not task.has_timeout():
-        return False
-    signal.alarm(0)
-    return True
-
-def _handle_signal(sig_name, exit_code, timeout):
+def _handle_signal(sig_name, exit_code):
     global task, iteration, region, sys
     
     if task == None or iteration == None or region == None:
         log.error("\n", noalteration=True)
-        log.error("Received %s but Task not started yet. Stopping with exit code %s." % (sig_name, exit_code))
+        log.error("Received %s but Task not started yet. " + 
+            "Stopping with exit code %s." % (sig_name, exit_code))
         log.error("\n", noalteration=True)
     else:
         log.error("\n", noalteration=True)
-        log.error("Received %s! Norc Stopping Task with exit code %s." % (sig_name, exit_code))
+        log.error("Received %s! Norc Stopping Task with exit code %s." %
+            (sig_name, exit_code))
         log.error("\n", noalteration=True)
-        if timeout:
-            task.set_ended_on_timeout(iteration, region)
-        else:
-            task.set_ended_on_error(iteration, region)
+        task.set_ended_on_error(iteration, region)
     
-    # We call the normal os.exit(), even though it trusts that whatever try: ... except block
-    # is currently executing will propegate the SystemExit exception instead of handling it.
-    # In Python 2.5 SystemExit does not extend Exception so only when catching all (try: ... except:)
-    # would this be a problem.  But we're using Python 2.4, so *all* catchers of Exception need to
-    # distinguish between Exception & SystemExit
+    # We call the normal os.exit(), even though it trusts that whatever
+    # try: ... except block is currently executing will propegate the
+    # SystemExit exception instead of handling it. In Python 2.5 SystemExit
+    # does not extend Exception so only when catching all (try: ... except:)
+    # would this be a problem.  But we're using Python 2.4, so *all* catchers
+    # of Exception need to distinguish between Exception & SystemExit
     sys.exit(exit_code)
 
 def _handle_SIGINT(signum, frame):
     assert signum == signal.SIGINT, "This signal handler only handles SIGINT, not '%s'. BUG!" % (signum)
-    _handle_signal('SIGINT', 131, False)
+    _handle_signal('SIGINT', 131)
 
 def _handle_SIGTERM(signum, frame):
     assert signum == signal.SIGTERM, "This signal handler only handles SIGTERM, not '%s'. BUG!" % (signum)
-    _handle_signal('SIGTERM', 132, False)
+    _handle_signal('SIGTERM', 132)
 
 signal.signal(signal.SIGINT, _handle_SIGINT)
 signal.signal(signal.SIGTERM, _handle_SIGTERM)
-signal.signal(signal.SIGALRM, _handle_timeout)
 
 # So they can be seen by the signal handler.
 task = None
@@ -124,9 +94,7 @@ def _run_task(task, iteration, daemon_status):
         raise Exception("Cannot run task '%s' b/c it does not need to be run!" % (task))
     # run the Task!
     try:
-        _start_timeout_timer()
         task.do_run(iteration, daemon_status)
-        _stop_timeout_timer()
     except SystemExit, se:
         # in python 2.4, SystemExit extends Exception, this is changed in 2.5 to 
         # extend BaseException, specifically so this check isn't necessary. But

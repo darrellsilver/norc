@@ -8,6 +8,7 @@ from norc.utils import parsing
 from datetime import timedelta
 
 def index(request):
+    # Default to the last ten minutes.
     since = request.GET.get('since', 'm10min')
     if since == 'all':
         since_date = None
@@ -28,5 +29,6 @@ def notfound(request, *args):
 #     x = X()
 #     listTest = [1, 2, 3]
 #     mapTest = dict(test="boo!",best="moo!",ex=x)
-#     return render_to_response('sandbox.html', dict(list=listTest, map=mapTest))
+#     return render_to_response('sandbox.html', dict(
+#         list=listTest, map=mapTest))
 

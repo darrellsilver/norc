@@ -4,8 +4,9 @@ import os
 import datetime
 import random
 import subprocess
+import signal
 
-from django.db import models
+from django.db import models, connection
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import (GenericRelation,
@@ -434,18 +435,20 @@ class Task(models.Model):
     TASK_TYPE_PERSISTENT = 'PERSISTENT'  # Runs exactly once per Iteration.
     TASK_TYPE_EPHEMERAL = 'EPHEMERAL'    # Runs exactly once.
     # TASK_TYPE_SCHEDULED is ONLY valid for SchedulableTask subclasses.
-    # However, django doesn't currently allow subclasses to override fields, 
-    # so instead of overriding 'task_type', the cleanest alternative is to define it here,
-    # which is sloppy because now Task knows something about a subclass.
-    # To limit irritation, there is an explicit check during Task.save() that ensures
-    # TASK_TYPE_SCHEDULED Tasks are always ScheduledTask subclasses.
-    # see bottom of http://docs.djangoproject.com/en/dev/topics/db/models/
-    #
-    # Note that SchedulableTask's do not have to be of type SCHEDULED.
-    # TASK_TYPE_EPHEMERAL for a ScheduledTask makes it equiv of an '@ job' in unix.
-    # TASK_TYPE_PERSISTENT for a ScheduledTask makes it equiv of an '@ job' in unix, but for each Iteration.
-    # Just in case, this code explicitly handles these three Task types, in case another one is created 
-    # later which is not compatible with SchedulableTask
+    # However, django doesn't currently allow subclasses to override fields,
+    # so instead of overriding 'task_type', the cleanest alternative is to
+    # define it here, which is sloppy because now Task knows something about a
+    # subclass. To limit irritation, there is an explicit check during
+    # Task.save() that ensures TASK_TYPE_SCHEDULED Tasks are always
+    # ScheduledTask subclasses. see bottom of
+    # http://docs.djangoproject.com/en/dev/topics/db/models/
+    # 
+    #  Note that SchedulableTask's do not have to be of type SCHEDULED.
+    # TASK_TYPE_EPHEMERAL for a ScheduledTask makes it equiv of an '@ job' in
+    # unix. TASK_TYPE_PERSISTENT for a ScheduledTask makes it equiv of an '@
+    # job' in unix, but for each Iteration. Just in case, this code explicitly
+    # handles these three Task types, in case another one is created later which
+    # is not compatible with SchedulableTask
     TASK_TYPE_SCHEDULED = 'SCHEDULED'    # run as often as the schedule dictates as long as the Iteration is running
     
     ALL_TASK_TYPES = (TASK_TYPE_PERSISTENT,
@@ -461,11 +464,6 @@ class Task(models.Model):
     task_type = models.CharField(max_length=16, default=TASK_TYPE_PERSISTENT,
                                  choices=zip(ALL_TASK_TYPES, ALL_TASK_TYPES))
     
-    # These are managed by the Task superclass (this class)
-    
-    # to efficiently change status w/o having to read from db
-    current_run_status = None
-    
     job = models.ForeignKey('Job')
     
     # To find this Task's parents, look where this Task is the child in the dependency table
@@ -477,23 +475,27 @@ class Task(models.Model):
     #child_dependencies = GenericRelation('TaskDependency'
     #                                        , content_type_field='_parent_task_content_type'
     #                                        , object_id_field='_parent_task_object_id')
-    run_statuses = GenericRelation(
-        'TaskRunStatus',
+    run_statuses = GenericRelation('TaskRunStatus',
         content_type_field='_task_content_type',
         object_id_field='_task_object_id')
     
-    resource_relationships = GenericRelation('TaskResourceRelationship'
-                                                    , content_type_field='_task_content_type'
-                                                    , object_id_field='_task_object_id')
+    resource_relationships = GenericRelation('TaskResourceRelationship',
+        content_type_field='_task_content_type',
+        object_id_field='_task_object_id')
     #TODO could track when tasks when in and out of live/deleted status
-    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16, default=STATUS_ACTIVE)
+    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)),
+        max_length=16, default=STATUS_ACTIVE)
     date_added = models.DateTimeField(default=datetime.datetime.utcnow)
     
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
+        self.current_run_status = None
+        self._current_iteration = None
+        self._current_nds = None
     
     def get_parent_dependencies(self):
-        matches = self.parent_dependencies.filter(status=TaskDependency.STATUS_ACTIVE)
+        matches = self.parent_dependencies.filter(
+            status=TaskDependency.STATUS_ACTIVE)
         return matches.all()
     
     def parents_are_finished(self, iteration):
@@ -608,13 +610,14 @@ class Task(models.Model):
         return self.is_due_to_run(iteration, asof) and self.parents_are_finished(iteration)
     
     def __set_run_status(self, iteration, status, nds=None):
-        assert status in TaskRunStatus.ALL_STATUSES, "Unknown status '%s'" % (status)
+        assert status in TaskRunStatus.ALL_STATUSES, \
+            "Unknown status '%s'" % status
         if self.current_run_status == None:
             self.current_run_status = TaskRunStatus(task=self, iteration=iteration, status=status)
         else:
-            assert self.current_run_status.get_iteration() == iteration \
-                    , "Iteration %s does not match current_run_status iteration %s" \
-                        % (iteration, self.current_run_status.get_iteration())
+            assert self.current_run_status.get_iteration() == iteration, \
+                "Iteration %s doesn't match current_run_status iteration %s" \
+                % (iteration, self.current_run_status.get_iteration())
             self.current_run_status.status = status
         if not status == TaskRunStatus.STATUS_RUNNING:
             self.current_run_status.date_ended = datetime.datetime.utcnow()
@@ -626,10 +629,11 @@ class Task(models.Model):
             self.status = Task.STATUS_EXPIRED
             self.save()
         if self.alert_on_failure() and status in (TaskRunStatus.STATUS_ERROR, TaskRunStatus.STATUS_TIMEDOUT):
-            alert_msg = 'Norc Task %s:%s ended with %s!' % (self.get_job().get_name(), self.get_name(), status)
+            alert_msg = 'Norc Task %s:%s ended with %s!' % \
+                (self.get_job().get_name(), self.get_name(), status)
             if settings.NORC_EMAIL_ALERTS:
-                send_mail(alert_msg, "d'oh!" \
-                    , settings.EMAIL_HOST_USER, settings.NORC_EMAIL_ALERT_TO, fail_silently=False)
+                send_mail(alert_msg, "d'oh!", settings.EMAIL_HOST_USER,
+                          settings.NORC_EMAIL_ALERT_TO, fail_silently=False)
             else:
                 log.info(alert_msg)
     
@@ -640,7 +644,7 @@ class Task(models.Model):
     def set_ended_on_timeout(self, iteration, region):
         self.__set_run_status(iteration, TaskRunStatus.STATUS_TIMEDOUT)
         self.__release_resources(region)
-        
+    
     def get_status(self):# This is the Task status, not the run status
         return self.status
     
@@ -661,45 +665,60 @@ class Task(models.Model):
     
     def get_current_run_status(self, iteration):
         # TODO should this take asof param?? is_allowed_to_run() does
-        if not self.current_run_status == None and self.current_run_status.get_iteration() == iteration:
+        if not self.current_run_status == None and \
+            self.current_run_status.get_iteration() == iteration:
             return self.current_run_status
         self.current_run_status = TaskRunStatus.get_latest(self, iteration)
         return self.current_run_status
     
+    def timeout_handler(self, signum, frame):
+        self.set_ended_on_timeout(
+            self.current_iteration, self.current_nds.region)
+    
     def do_run(self, iteration, nds):
         """What's actually called by manager. Don't override!"""
+        self.current_iteration = iteration
+        self.current_nds = nds
+        if not self.__try_reserve_resources(nds.region):
+            raise InsufficientResourcesException()
+        self.__set_run_status(iteration, TaskRunStatus.STATUS_RUNNING, nds=nds)
+        if self.has_timeout():
+            signal.signal(signal.SIGALRM, self.timeout_handler)
+            signal.alarm(self.get_timeout())
+        log.info("Running Task '%s'" % (self))
         try:
-            try:
-                if not self.__try_reserve_resources(nds.region):
-                    raise InsufficientResourcesException()
-                self.__set_run_status(iteration, TaskRunStatus.STATUS_RUNNING, nds=nds)
-                log.info("Running Task '%s'" % (self))
-                success = self.run()
-                if success:
-                    self.__set_run_status(iteration, TaskRunStatus.STATUS_SUCCESS)
-                    log.info("Task '%s' succeeded.\n\n" % (self.__unicode__()))
-                else:
-                    raise Exception("Task returned failure status. See log for details.")
-            except InsufficientResourcesException, ire:
-                log.info("Task asked to run but did not run b/c of insufficient resources.")
-            #except TaskAlreadyRunningException, tare:
-            #    log.info("Task asked to while already running.")
-            except SystemExit, se:
-                # in python 2.4, SystemExit extends Exception, this is changed in 2.5 to 
-                # extend BaseException, specifically so this check isn't necessary. But
-                # we're using 2.4; upon upgrade, this check will be unecessary but ignorable.
-                raise se
-            except Exception, e:
-                log.error("Task failed!", e)
-                log.error("\n\n", noalteration=True)
-                self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)
-            except:
-                # if the error thrown doesn't use Exception(...), ie just throws a string
-                log.error("Task failed with poorly thrown exception!")
-                traceback.print_exc()
-                log.error("\n\n", noalteration=True)
-                self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)
+            success = self.run()
+            if self.current_run_status.status == \
+                TaskRunStatus.STATUS_TIMEDOUT:
+                pass
+            elif success:
+                self.__set_run_status(iteration, TaskRunStatus.STATUS_SUCCESS)
+                log.info("Task '%s' succeeded.\n\n" % (self.__unicode__()))
+            else:
+                raise Exception("Task returned failure status. See log for details.")
+        except InsufficientResourcesException, ire:
+            log.info("Task asked to run but did not run b/c of insufficient resources.")
+        #except TaskAlreadyRunningException, tare:
+        #    log.info("Task asked to while already running.")
+        except SystemExit, se:
+            # in python 2.4, SystemExit extends Exception, this is changed
+            # in 2.5 to extend BaseException, specifically so this check 
+            # isn't necessary. But we're using 2.4; upon upgrade, this check
+            # will be unecessary but ignorable.
+            raise se
+        except Exception, e:
+            log.error("Task failed!", e)
+            log.error("\n\n", noalteration=True)
+            self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)
+        except:
+            # if the error thrown doesn't use Exception(...), ie just throws a string
+            log.error("Task failed with poorly thrown exception!")
+            traceback.print_exc()
+            log.error("\n\n", noalteration=True)
+            self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)
         finally:
+            if self.has_timeout():
+                signal.alarm(0)
             try:
                 self.__release_resources(nds.region)
             except:
@@ -1005,9 +1024,9 @@ class TaskRunStatus(models.Model):
     def was_successful(self):
         return self.get_status() == TaskRunStatus.STATUS_SUCCESS
     def is_finished(self):
-        return self.get_status() in (TaskRunStatus.STATUS_SKIPPED
-            , TaskRunStatus.STATUS_CONTINUE
-            , TaskRunStatus.STATUS_SUCCESS)
+        return self.get_status() in (TaskRunStatus.STATUS_SKIPPED,
+                                     TaskRunStatus.STATUS_CONTINUE,
+                                     TaskRunStatus.STATUS_SUCCESS)
     def get_date_started(self):
         return self.date_started
     def get_date_ended(self):
@@ -1374,11 +1393,12 @@ class SchedulableTask(Task):
                 % (self.get_task_type(), self.get_name()))
     
     def get_pretty_schedule(self):
-        return u"minute:%s hour:%s day:%s day of month:%s day of week:%s" % (SchedulableTask.__prettify_rangestr__(self.__minute_r__)
-            , SchedulableTask.__prettify_rangestr__(self.__hour_r__)
-            , SchedulableTask.__prettify_rangestr__(self.__day_of_month_r__)
-            , SchedulableTask.__prettify_rangestr__(self.__month_r__)
-            , SchedulableTask.__prettify_rangestr__(self.__day_of_week_r__))
+        return u"minute:%s hour:%s day:%s day of month:%s day of week:%s" % (
+            SchedulableTask.__prettify_rangestr__(self.__minute_r__),
+            SchedulableTask.__prettify_rangestr__(self.__hour_r__),
+            SchedulableTask.__prettify_rangestr__(self.__day_of_month_r__),
+            SchedulableTask.__prettify_rangestr__(self.__month_r__),
+            SchedulableTask.__prettify_rangestr__(self.__day_of_week_r__))
     def __unicode__(self):
         return self.get_pretty_schedule()
     
@@ -1390,7 +1410,9 @@ class StartIteration(SchedulableTask):
         db_table = 'norc_startiteration'
     
     target_job = models.ForeignKey(Job, related_name="_ignore_target_job_set")
-    target_iteration_type = models.CharField(choices=(zip(Iteration.ALL_ITER_TYPES, Iteration.ALL_ITER_TYPES)), max_length=16)
+    target_iteration_type = models.CharField(
+        choices=(zip(Iteration.ALL_ITER_TYPES, Iteration.ALL_ITER_TYPES)),
+        max_length=16)
     allow_simultanious = models.BooleanField()
     
     def get_library_name(self):
@@ -1580,4 +1602,5 @@ class NorcInvalidStateException(Exception):
 class InsufficientResourcesException(Exception):
     pass
     
+
 

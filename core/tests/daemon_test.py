@@ -13,7 +13,7 @@ from norc.core.models import NorcDaemonStatus
 from norc.utils import init_db, wait_until
 
 class DaemonThread(threading.Thread):
-    """"""
+    """Thread that will run a daemon."""
     
     def __init__(self, daemon):
         # self.threading = threading
@@ -22,8 +22,14 @@ class DaemonThread(threading.Thread):
     
     def run(self):
         self.daemon.run()
+    
+def start_test_daemon():
+    daemon = ForkingNorcDaemon(reporter.get_region('DEMO_REGION'),
+        3, settings.NORC_LOG_DIR, False)
+    DaemonThread(daemon).start()
+    return daemon
 
-class TestDaemons(TestCase):
+class DaemonTest(TestCase):
     """Tests for Norc daemons.
     
     Creates a ForkingNorcDaemon in a new thread because if you use the
@@ -34,14 +40,11 @@ class TestDaemons(TestCase):
     def setUp(self):
         """Initialize the DB and start the daemon in a thread."""
         init_db.init_static()
-        self.daemon = ForkingNorcDaemon(reporter.get_region('DEMO_REGION'),
-            3, settings.NORC_LOG_DIR, False)
-        DaemonThread(self.daemon).start()
-        self.pid = os.getpid()
+        self.daemon = start_test_daemon()
         # Use a lambda so that the status gets retreived each time
         # it's needed, instead of pulled from a cache.
         self.get_nds = lambda: \
-            reporter.get_object(NorcDaemonStatus, pid=self.pid)
+            reporter.get_object(NorcDaemonStatus, pid=os.getpid())
     
     def test_daemon_started(self):
         """Nice and simple test that the daemon is starting and then running.
