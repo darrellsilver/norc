@@ -973,7 +973,7 @@ class TaskRunStatus(models.Model):
             return matches.all()
         except TaskRunStatus.DoesNotExist, dne:
             return None
-        
+    
     @staticmethod
     def get_latest(task, iteration):
         """

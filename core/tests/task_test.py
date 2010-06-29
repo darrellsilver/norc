@@ -5,7 +5,7 @@ import os, pdb, time
 from django.test import TestCase
 
 from norc import settings
-from norc.core import reporter
+from norc.core import report
 from norc.core.models import *
 from norc.utils import init_db, wait_until
 from norc.core.tests.daemon_test import start_test_daemon
@@ -31,7 +31,7 @@ class TestTasks(TestCase):
         self.iter = Iteration.objects.all()[0]
         self.task = None
         self.get_nds = lambda: \
-            reporter.get_nds(self.daemon.get_daemon_status().id)
+            report.nds(self.daemon.get_daemon_status().id)
         self.get_trs = lambda: \
             TaskRunStatus.objects.get(id=self.task.current_run_status.id)
     

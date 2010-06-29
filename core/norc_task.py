@@ -37,17 +37,9 @@ import traceback
 from optparse import OptionParser
 
 from norc.core import models as core
-from norc.core import reporter
+from norc.core import report
 from norc.utils import log, parsing
 log = log.Log()
-
-#
-#
-#
-
-#
-#
-#
 
 def _handle_signal(sig_name, exit_code):
     global task, iteration, region, sys
@@ -152,16 +144,16 @@ def main():
     if not task_class:
         print "No task class: '%s'" % options.task_library
         sys.exit(2)
-    task = reporter.get_task(task_class, options.task_id)
+    task = report.task(task_class, options.task_id)
     if not task:
         print "No task matching: class '%s', id %s" % \
             (task_class, options.task_id)
         sys.exit(2)
-    daemon_status = reporter.get_nds(options.daemon_status_id)
+    daemon_status = report.nds(options.daemon_status_id)
     if not daemon_status:
         print "No daemon status with id %s." % (options.daemon_status_id)
         sys.exit(2)
-    iteration = reporter.get_iteration(options.iteration_id)
+    iteration = report.iteration(options.iteration_id)
     if not iteration:
         print "No iteration with id %s." % (options.iteration_id)
         sys.exit(2)

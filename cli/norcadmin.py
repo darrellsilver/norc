@@ -46,7 +46,7 @@
 import sys, time
 from optparse import OptionParser
 
-from norc.core import reporter
+from norc.core import report
 from norc.core.models import NorcDaemonStatus, TaskRunStatus
 from norc.utils import formatting, parsing, log
 log = log.Log()
@@ -55,10 +55,10 @@ def report_daemon_statuses(status_filter=None, since_date=None):
     tabular = [["ID", "Type", "Region", "Host", "PID", "Running",
         "Success", "Error", "Status", "Started", "Ended"]]
     if status_filter:
-        nds_set = reporter.get_daemon_statuses(
+        nds_set = report.ndss(
             status_filter=status_filter.lower())
     else:
-        nds_set = reporter.get_daemon_statuses()
+        nds_set = report.ndss()
     for nds in nds_set:
         one_row = [
             str(nds.id),
@@ -234,7 +234,7 @@ def main():
     # TODO: Review all option logic from here on to match with above changes.
     if len(selected_flags) == 1:
         nds_id = getattr(options, selected_flags[0])
-        nds = reporter.get_nds(nds_id)
+        nds = report.nds(nds_id)
         if not nds:
             bad_args("No Norc daemon with id %s found." % nds_id)
         
@@ -275,7 +275,7 @@ def main():
                     if seconds_waited >= options.wait:
                         timeout = True
                         break
-                    nds = reporter.get_nds(nds_id)
+                    nds = report.nds(nds_id)
                     if nds.is_shutting_down():
                         log.info("Waiting for shutdown of norcd %s.  It's been %s seconds." % (nds.id, seconds_waited), indent_chars=4)
                     elif nds.is_done():
@@ -298,7 +298,7 @@ def main():
     report_daemon_statuses(options.filter, since_date=options.started_since)
     if options.details:
         nds_id = options.details
-        nds = reporter.get_nds(nds_id)
+        nds = report.nds(nds_id)
         #daemon_type = nds.get_daemon_type()
         #if daemon_type == NorcDaemonStatus.DAEMON_TYPE_NORC:
         report_norcd_details(nds, options.filter, options.started_since)

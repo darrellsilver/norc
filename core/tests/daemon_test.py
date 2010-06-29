@@ -7,7 +7,7 @@ import threading
 from django.test import TestCase
 
 from norc import settings
-from norc.core import reporter
+from norc.core import report
 from norc.core.daemons import ForkingNorcDaemon, ThreadingNorcDaemon
 from norc.core.models import NorcDaemonStatus
 from norc.utils import init_db, wait_until
@@ -24,7 +24,7 @@ class DaemonThread(threading.Thread):
         self.daemon.run()
     
 def start_test_daemon():
-    daemon = ThreadingNorcDaemon(reporter.get_region('DEMO_REGION'),
+    daemon = ThreadingNorcDaemon(report.region('DEMO_REGION'),
         3, settings.NORC_LOG_DIR, False)
     DaemonThread(daemon).start()
     return daemon
@@ -44,7 +44,7 @@ class DaemonTest(TestCase):
         # Use a lambda so that the status gets retreived each time
         # it's needed, instead of pulled from a cache.
         self.get_nds = lambda: \
-            reporter.get_object(NorcDaemonStatus, pid=os.getpid())
+            report.get_object(NorcDaemonStatus, pid=os.getpid())
     
     def test_daemon_started(self):
         """Nice and simple test that the daemon is starting and then running.

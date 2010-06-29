@@ -45,7 +45,7 @@ from optparse import OptionParser
 
 from boto.sqs.connection import SQSConnection
 from norc import settings
-from norc.core import reporter
+from norc.core import report
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
@@ -208,7 +208,7 @@ def main():
     
     # resolve the region
     # currently an SQS Queue is mapped 1:1 to a ResourceRegion
-    region = reporter.get_region(options.queue_name)
+    region = report.region(options.queue_name)
     # region = norc_models.ResourceRegion.objects.get(options.queue_name)
     if region == None:
         bad_args("Don't know region '%s'" % options.queue_name)

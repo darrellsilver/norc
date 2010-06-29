@@ -61,22 +61,22 @@ def get_object(class_, **kwargs):
     except class_.DoesNotExist, dne:
         return None
 
-def get_job(name):
+def job(name):
     return get_object(Job, name=name)
 
-def get_task(class_, id):
+def task(class_, id):
     return get_object_from_class(class_, id=id)
 
-def get_region(name):
+def region(name):
     return get_object(ResourceRegion, name=name)
 
-def get_iteration(id):
+def iteration(id):
     return get_object(Iteration, id=id)
 
-def get_nds(id):
+def nds(id):
     return get_object(NorcDaemonStatus, id=id)
 
-def get_daemon_statuses(since_date=None, status_filter='all'):
+def ndss(since_date=None, status_filter='all'):
     nds_query = NorcDaemonStatus.objects.all()
     if since_date != None:
         nds_query = nds_query.exclude(date_ended__lte=since_date)

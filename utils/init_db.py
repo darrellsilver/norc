@@ -26,7 +26,7 @@ import os, sys
 import datetime
 from optparse import OptionParser
 from django.contrib.auth.models import User
-from utils import log
+from norc.utils import log
 log = log.Log()
 
 def init_superuser():
@@ -47,10 +47,10 @@ def _create_ResourceRegion(name):
     
     rr, new_rr = ResourceRegion.objects.get_or_create(name=name)
     assert new_rr, "The resource region should not already exit."
-    log_dir = os.path.join(settings.NORC_LOG_DIR, name)
-    if not os.path.exists(log_dir):
-        log.error("Log dir for '%s' should exist at '%s' but doesn't!" 
-            % (name, log_dir))
+    # log_dir = os.path.join(settings.NORC_LOG_DIR, name)
+    # if not os.path.exists(log_dir):
+    #     log.error("Log dir for '%s' should exist at '%s' but doesn't!" 
+    #         % (name, log_dir))
     return rr
 
 def init_norc():
@@ -84,10 +84,10 @@ def init_static():
     return user
 
 def main():
-    parser = OptionParser("%prog")
+    #parser = OptionParser("%prog")
     # parser.add_option("--init", action="store_true"
     #     , help="setup static data to the DBs")
-    (options, args) = parser.parse_args()
+    #(options, args) = parser.parse_args()
     
     user = init_static()
 
