@@ -97,7 +97,7 @@ class Iteration(models.Model):
         assert status in Iteration.ALL_STATUSES
         self.status = status
         if status == Iteration.STATUS_DONE:
-            log.info("Ending Iteration %s" % (self.__str__()))
+            log.info("Ending Iteration %s" % self)
             self.date_ended = datetime.datetime.utcnow()
         self.save()
     def set_paused(self):

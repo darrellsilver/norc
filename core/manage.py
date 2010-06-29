@@ -92,7 +92,7 @@ log = log.Log(settings.LOGGING_DEBUG)
 #         tasks = iteration.get_job().get_tasks()
 #         iteration_is_done = True
 #         for task in tasks:
-#             if not __status_is_finished__(task, iteration):
+#             if not _status_is_finished(task, iteration):
 #                 iteration_is_done = False
 #                 break
 #         if iteration_is_done:

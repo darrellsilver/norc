@@ -65,7 +65,7 @@ def job(name):
     return get_object(Job, name=name)
 
 def task(class_, id):
-    return get_object_from_class(class_, id=id)
+    return get_object(class_, id=id)
 
 def region(name):
     return get_object(ResourceRegion, name=name)

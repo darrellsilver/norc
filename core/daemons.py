@@ -65,6 +65,10 @@ log = log.Log(settings.LOGGING_DEBUG)
 
 # TODO: Can these be run not as daemons?
 
+def _status_is_finished(task, iteration):
+    status = task.get_current_run_status(iteration)
+    return not status == None and status.is_finished()
+
 
 def _get_tasks(job, include_expired=False):
     """Return all active Tasks in this Job"""
@@ -74,7 +78,7 @@ def _get_tasks(job, include_expired=False):
         # Wont work if there's a collision across libraries, but that'll be errored by django on model creation
         # when it will demand a related_name for Job FK.  Solution isnt to create a related_name, but to rename lib entirely
         tci_name = "%s_set" % (tci.class_name.lower())
-        matches = job.__getattribute__(tci_name)
+        matches = getattr(job, tci_name)
         matches = matches.exclude(status=Task.STATUS_DELETED)
         if not include_expired:
             matches = matches.exclude(status=Task.STATUS_EXPIRED)
@@ -114,11 +118,11 @@ def _get_tasks_allowed_to_run(asof=None, end_completed_iterations=False,
                     to_run.append([a_task, iteration])
                     iteration_is_done = False
                 elif iteration_is_done and end_completed_iterations and \
-                     not __status_is_finished__(a_task, iteration):
+                     not _status_is_finished(a_task, iteration):
                     iteration_is_done = False
             except Exception, e:
                 log.error("Could not check if task type '%s' is due to run." +
-                    " Skipping.  BAD! Bug?" % (a_task.__class__.__name__), e)
+                    " Skipping.  BAD! Bug? %s" % (a_task.__class__.__name__), e)
         
         # TODO there's a bug here!
         # Iterations end when tasks are sitting in failed state.
@@ -270,21 +274,17 @@ class NorcDaemon(object):
 class RunnableTask(object):
     """Abstract interface for a runnable Task."""
     
-    __task__ = None
-    __iteration__ = None
-    __daemon_status__ = None
-    
     def __init__(self, task, iteration, daemon_status):
-        self.__task__ = task
-        self.__iteration__ = iteration
-        self.__daemon_status__ = daemon_status
+        self.task = task
+        self.iteration = iteration
+        self.daemon_status = daemon_status
     
     def get_task(self):
-        return self.__task__
+        return self.task
     def get_iteration(self):
-        return self.__iteration__
+        return self.iteration
     def get_daemon_status(self):
-        return self.__daemon_status__
+        return self.daemon_status
     
     def run(self):
         """Run this Task."""
@@ -427,7 +427,6 @@ class TaskInProcess(RunnableTask):
         ]
         if log.get_logging_debug():
             cmd.append("--debug")
-        print cmd
         if not os.path.exists(os.path.dirname(log_file_name)):
             print os.path.dirname(log_file_name)
             os.mkdir(os.path.dirname(log_file_name))
