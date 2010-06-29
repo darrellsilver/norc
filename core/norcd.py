@@ -60,7 +60,7 @@ import traceback
 from optparse import OptionParser
 
 from norc import settings, core
-# from norc.core.daemons import ThreadingNorcDaemon, ForkingNorcDaemon
+from norc.core.daemons import ThreadingNorcDaemon, ForkingNorcDaemon
 from norc.core.models import ResourceRegion
 from norc.core import reporter
 from norc.utils import log
@@ -114,29 +114,9 @@ def main():
     signal.signal(signal.SIGINT, __handle_SIGINT)
     signal.signal(signal.SIGTERM, __handle_SIGTERM)
     
-    ended_gracefully = core.run_daemon(
-        options.threading,
-        region,
-        options.poll_frequency,
-        settings.NORC_LOG_DIR,
-        not options.no_log_redirect
-    )
-    
     daemon_class = ThreadingNorcDaemon if options.threading else ForkingNorcDaemon
     daemon = daemon_class(region, options.poll_frequency,
         settings.NORC_LOG_DIR, not options.no_log_redirect)
-    # if options.threading:
-    #     # multi-threaded; spawn new threads for new Tasks
-    #     daemon = ThreadingNorcDaemon(region,
-    #                                  options.poll_frequency,
-    #                                  settings.NORC_LOG_DIR,
-    #                                  not options.no_log_redirect)
-    # else:
-    #     # single-threaded; fork new Tasks
-    #     daemon = ForkingNorcDaemon(region,
-    #                                options.poll_frequency,
-    #                                settings.NORC_LOG_DIR,
-    #                                not options.no_log_redirect)
     
     ended_gracefully = daemon.run()
     if ended_gracefully:
