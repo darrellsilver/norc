@@ -24,9 +24,8 @@ class TestTasks(TestCase):
     """Tests for Norc tasks."""
     
     def setUp(self):
-        """Initialize the DB."""
+        """Initialize the DB and setup data."""
         init_db.init_static()
-        # pdb.set_trace()
         self.daemon = start_test_daemon()
         self.job = Job.objects.all()[0]
         self.iter = Iteration.objects.all()[0]
@@ -40,13 +39,12 @@ class TestTasks(TestCase):
         """Tests that a task can run successfully."""
         class SuccessTask(TestTask):
             class Meta:
-                proxy = True    # Use the RunCommand database table.
+                proxy = True
             def run(self):
                 self.ran = True
                 return True
         self.task = SuccessTask(job=self.job, timeout=60)
         self.task.save()
-        # pdb.set_trace()
         self.task.do_run(self.iter, self.get_nds())
         self.assertTrue(self.task.ran)
         self.assertEqual(self.get_trs().status, TaskRunStatus.STATUS_SUCCESS)
@@ -55,12 +53,11 @@ class TestTasks(TestCase):
         """Tests that a task can run successfully."""
         class ErrorTask(TestTask):
             class Meta:
-                proxy = True    # Use the RunCommand database table.
+                proxy = True
             def run(self):
                 raise Exception()
         self.task = ErrorTask(job=self.job, timeout=60)
         self.task.save()
-        # pdb.set_trace()
         self.task.do_run(self.iter, self.get_nds())
         self.assertEqual(self.get_trs().status, TaskRunStatus.STATUS_ERROR)
     
@@ -75,8 +72,7 @@ class TestTasks(TestCase):
         self.task.save()
         self.task.do_run(self.iter, self.get_nds())
         self.assertEqual(self.get_trs().status, TaskRunStatus.STATUS_TIMEDOUT)
-        
-            
+    
     def tearDown(self):
         self.daemon.request_stop()
         wait_until(lambda: self.get_nds().is_done(), 3)

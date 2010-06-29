@@ -8,7 +8,7 @@ from django.test import TestCase
 
 from norc import settings
 from norc.core import reporter
-from norc.core.daemons import ForkingNorcDaemon
+from norc.core.daemons import ForkingNorcDaemon, ThreadingNorcDaemon
 from norc.core.models import NorcDaemonStatus
 from norc.utils import init_db, wait_until
 
@@ -24,7 +24,7 @@ class DaemonThread(threading.Thread):
         self.daemon.run()
     
 def start_test_daemon():
-    daemon = ForkingNorcDaemon(reporter.get_region('DEMO_REGION'),
+    daemon = ThreadingNorcDaemon(reporter.get_region('DEMO_REGION'),
         3, settings.NORC_LOG_DIR, False)
     DaemonThread(daemon).start()
     return daemon
