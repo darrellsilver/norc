@@ -7,8 +7,9 @@ import pickle
 from boto.sqs.connection import SQSConnection
 from django.test import TestCase
 
-from norc import sqs, utils
+from norc import sqs
 from norc.sqs.models import SQSTask
+from norc.utils import wait_until
 from norc.settings import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 
 class SQSTaskTest(SQSTask):
@@ -44,28 +45,32 @@ class TestSQSConfig(TestCase):
     """Tests that SQS is properly set up and can push/pop tasks."""
     
     def setUp(self):
-        conn = SQSConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-        self.queue = conn.lookup('test_queue')
+        self.conn = SQSConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+        self.queue = self.conn.lookup('test_queue')
+        self.queue.set_timeout(0)
         if not self.queue:
-            self.queue = conn.create_queue('test_queue')
+            self.queue = self.conn.create_queue('test_queue', 0)
         self.queue.clear()
+        wait_until(lambda: self.queue.count() == 0)
     
     def test_push_task(self):
         # There should be nothing in the test queue.
-        utils.wait_until(lambda: self.queue.clear() == 0)
         task = SQSTaskTest(datetime.datetime.utcnow())
         sqs.push_task(task, self.queue)
-        utils.wait_until(lambda: self.queue.count() == 1)
+        wait_until(lambda: self.queue.read() != None)
     
     def test_pull_task(self):
-        utils.wait_until(lambda: self.queue.clear() == 0)
         task = SQSTaskTest(datetime.datetime.utcnow())
         sqs.push_task(task, self.queue)
-        utils.wait_until(lambda: self.queue.count() == 1)
-        popped = sqs.pop_task(self.queue)
-        self.assertNotEqual(popped, None)
-        self.assertEqual(task.__class__, popped.__class__)
+        wait_until(lambda: self.queue.read() != None)
+        def try_pop():
+            self.popped = sqs.pop_task(self.queue)
+            return self.popped != None
+        # popped = sqs.pop_task(self.queue)
+        wait_until(try_pop)
+        self.assertEqual(task.__class__, self.popped.__class__)
     
     def tearDown(self):
         self.queue.clear()
+        # wait_until(lambda: self.conn.delete_queue(self.queue))
     
