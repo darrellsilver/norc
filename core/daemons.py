@@ -116,9 +116,11 @@ def _get_tasks_allowed_to_run(asof=None, end_completed_iterations=False,
                     break
                 elif a_task.is_allowed_to_run(iteration, asof=asof):
                     to_run.append([a_task, iteration])
+                    print 'tick'
                     iteration_is_done = False
                 elif iteration_is_done and end_completed_iterations and \
                      not _status_is_finished(a_task, iteration):
+                    print 'tock'
                     iteration_is_done = False
             except Exception, e:
                 log.error("Could not check if task type '%s' is due to run." +

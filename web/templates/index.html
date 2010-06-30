@@ -6,7 +6,10 @@
         <meta name="Author" content="Max Bogue">
         <title>Norc View</title>
         <!-- <link href="style.css" type="text/css" rel="stylesheet"> -->
-        <script src="/static/js/jquery-1.4.2.min.js" type="text/javascript"></script>
+        <script src="/static/js/jquery-1.4.2.min.js" type="text/javascript">
+        </script>
+        <script src="/static/js/norc_display.js" type="text/javascript">
+        </script>
         <style type="text/css">
             body {
                 background-color:#FFF;
@@ -32,46 +35,38 @@
                 margin-left:auto;
                 margin-right:auto;
             }
-            .odd_row {
+            .odd {
                 background-color:#EEF;
             }
-            .even_row {
+            .even {
                 background-color:#FFF;
             }
-        </style>
-        <script type="text/javascript">
-            function makeDetailsTable(data) {
-                var table = $('<table></table>');
-                $.each(data, function(k, v) {
-                    var row = $('<tr></tr>')
-                    $.each(v, function(k2, v2) {
-                        var td = $('<td></td>');
-                        td.append(v2);
-                        row.append(td);
-                    });
-                    table.append(row);
-                });
-                return table;
+            table.details {
+                background-color:#EEE;
             }
-            function toggleDetails(id) {
-                if ($('#ndss #' + id + 'd').length > 0) {
-                    $('#ndss #' + id + 'd').detach();
-                } else {
-                    $.get("/daemon/details/",
-                        {'id' : id},
-                        function(data) {
-                            var table = makeDetailsTable(data);
-                            var tr = $('<tr></tr>', {'id' : id + 'd'});
-                            var cols = $('$ndss #' + 'id td').length;
-                            var td = $('<td></td>', {'colspan' : cols});
-                            td.append(table);
-                            tr.append(td);
-                            $('#ndss #' + id).after(tr);
-                        }
-                    );
-                }
-            };
-        </script>
+            table.details .success {
+                background-color:#8F0;
+            }
+            table.details .running {
+                background-color:#3FA;
+            }
+            table.details .error {
+                background-color:#F22;
+            }
+            table.details .skipped {
+                background-color:#33FFAA;
+            }
+            table.details .retry {
+                background-color:#33FFAA;
+            }
+            table.details .timedout {
+                background-color:#33FFAA;
+            }
+            table.details .continue {
+                background-color:#33FFAA;
+            }
+        </style>
+        <script type="text/javascript"></script>
     </head>
     <body>
         <h1>Norc Status</h1>
@@ -101,27 +96,40 @@
                     <th>Started</th>
                     <th>Ended</th>
                 </tr>
-            {% for nds in nds_set %}
-                <tr id="{{ nds.id }}"
-                    class="{% cycle 'odd_row' 'even_row' %}"
-                    onclick="toggleDetails({{ nds.id }})">
-                    <td>{{ nds.id }}</td>
-                    <td>{{ nds.get_daemon_type }}</td>
-                    <td>{{ nds.region }}</td>
-                    <td>{{ nds.host }}</td>
-                    <td>{{ nds.pid }}</td>
-                    <td>{{ nds|task_statuses:"running"|length }}</td>
-                    <td>{{ nds|task_statuses:"success"|length }}</td>
-                    <td>{{ nds|task_statuses:"errored"|length }}</td>
-                    <td>{{ nds.status }}</td>
-                    <td>{{ nds.date_started }}</td>
-                {% if nds.date_ended %}
-                    <td>{{ nds.date_ended }}</td>
-                {% else %}
-                    <td>-</td>
-                {% endif %}
-                </tr>
-            {% endfor %}
+                <!--<tr>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>-->
+            {# {% for nds in nds_set %} #}
+            {#     <tr id="{{ nds.id }}" #}
+            {#         class="{% cycle 'odd_row' 'even_row' %}" #}
+            {#         onclick="toggleDetails({{ nds.id }})"> #}
+            {#         <td>{{ nds.id }}</td> #}
+            {#         <td>{{ nds.get_daemon_type }}</td> #}
+            {#         <td>{{ nds.region }}</td> #}
+            {#         <td>{{ nds.host }}</td> #}
+            {#         <td>{{ nds.pid }}</td> #}
+            {#         <td>{{ nds|task_statuses:"running"|length }}</td> #}
+            {#         <td>{{ nds|task_statuses:"success"|length }}</td> #}
+            {#         <td>{{ nds|task_statuses:"errored"|length }}</td> #}
+            {#         <td>{{ nds.status }}</td> #}
+            {#         <td>{{ nds.date_started }}</td> #}
+            {#     {% if nds.date_ended %} #}
+            {#         <td>{{ nds.date_ended }}</td> #}
+            {#     {% else %} #}
+            {#         <td>-</td> #}
+            {#     {% endif %} #}
+            {#     </tr> #}
+            {# {% endfor %} #}
             </table>
         </div>
     </body>

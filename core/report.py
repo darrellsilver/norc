@@ -28,7 +28,13 @@
 #
 
 
-"""External modules should access Norc data using these functions."""
+"""External modules should access Norc data using these functions.
+
+The main benefit currently is to prevent the occurence of a try block
+everywhere data is needed, and to reduce the amount of code needed for
+retrievals using consistent attributes.
+
+"""
 
 from norc.core.models import *
 
@@ -62,29 +68,42 @@ def get_object(class_, **kwargs):
         return None
 
 def job(name):
+    """Retrieves the Job with the given name, or None."""
     return get_object(Job, name=name)
 
 def task(class_, id):
+    """Retrieves the task of type class_ and with the given ID, or None."""
     return get_object(class_, id=id)
 
 def region(name):
+    """Retrieves the ResourceRegion with the given name, or None."""
     return get_object(ResourceRegion, name=name)
 
 def iteration(id):
+    """Retrieves the Iteration with the given ID, or None."""
     return get_object(Iteration, id=id)
 
 def nds(id):
+    """Retrieves the NorcDaemonStatus with the given ID, or None."""
     return get_object(NorcDaemonStatus, id=id)
 
 def ndss(since_date=None, status_filter='all'):
+    """Retrieve NorcDaemonStatuses.
+    
+    Gets all NDSs that have ended since the given date or are still
+    running and match the given status filter.
+    
+    """
     nds_query = NorcDaemonStatus.objects.all()
     if since_date != None:
+        # Exclude lte instead of filter gte to retain running daemons.
         nds_query = nds_query.exclude(date_ended__lte=since_date)
     if status_filter != 'all' and status_filter in DAEMON_STATUS_DICT:
         include_statuses = DAEMON_STATUS_DICT[status_filter.lower()]
         nds_query = nds_query.filter(status__in=include_statuses)
     return nds_query
 
+# DEPR
 # def get_task_statuses(status_filter='all'):
 #     if status_filter == 'all':
 #         TaskRunStatus.objects.all()

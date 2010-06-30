@@ -17,8 +17,8 @@ class JSONObjectEncoder(simplejson.JSONEncoder):
         if isinstance(obj, datetime.datetime):
             return self.encode_datetime(obj)
         return simplejson.JSONEncoder.default(self, obj)
-    def encode_datetime(self, obj):
-        return obj.strftime("%m/%d/%Y %H:%M:%S")
+    def encode_datetime(self, dt):
+        return dt.strftime("%m/%d/%Y %H:%M:%S")
 
 def get_nds_set(since_str):
     if since_str == 'all':
@@ -36,13 +36,31 @@ def index(request):
     nds_set = get_nds_set(since_str)
     return render_to_response('index.html', dict(nds_set=nds_set))
 
-def notfound(request, *args):
-    return render_to_response('500.html', {})
+def get_daemons(request):
+    """Returns a JSON object containing data on all the daemons statuses."""
+    since_str = request.GET.get('since', 'all')
+    nds_set = get_nds_set(since_str)
+    data = {}
+    for nds in nds_set:
+        data[nds.id] = {
+            'type' : nds.get_daemon_type(),
+            'region' : nds.region.name,
+            'host' : nds.host,
+            'pid' : nds.pid,
+            'running' : len(nds.get_task_statuses('running')),
+            'success' : len(nds.get_task_statuses('success')),
+            'errored' : len(nds.get_task_statuses('errored')),
+            'status' : nds.status,
+            'started' : nds.date_started,
+            'ended' : nds.date_ended if nds.date_ended else '-',
+        }
+    json = simplejson.dumps(data, cls=JSONObjectEncoder)
+    return http.HttpResponse(json, mimetype="json")
 
-def daemon_details(request):
-    d_id = request.GET.get('id', None)
+def daemon_details(request, daemon_id):
+    # d_id = request.GET.get('id', None)
     since_str = request.GET.get('since', 'm10min')
-    nds = report.nds(d_id)
+    nds = report.nds(daemon_id)
     if not nds:
         return
     data = {}
