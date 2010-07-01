@@ -31,39 +31,51 @@
                 margin:0px;
                 padding:0px 5px 1px 5px;
             }
-            #daemon_statuses {
+            #ndss {
                 margin-left:auto;
                 margin-right:auto;
             }
+            #ndss table {
+                font-family:"Trebuchet MS", "Courier New";
+                font-size:10px;
+            }
             .odd {
-                background-color:#EEF;
+                background-color:#DDD;
             }
             .even {
                 background-color:#FFF;
             }
+            .clickable {
+                color:#888;
+                text-decoration:underline;
+                cursor:pointer;
+            }
+            #page_nav {
+                text-align:center;
+            }
             table.details {
                 background-color:#EEE;
             }
-            table.details .success {
+            .success {
                 background-color:#8F0;
             }
-            table.details .running {
-                background-color:#3FA;
+            .running {
+                background-color:#EEEE00;
             }
-            table.details .error {
-                background-color:#F22;
+            .error {
+                background-color:#FF2222;
             }
-            table.details .skipped {
-                background-color:#33FFAA;
+            .skipped {
+                background-color:#FFAA00;
             }
-            table.details .retry {
-                background-color:#33FFAA;
+            .retry {
+                background-color:#FFAA00;
             }
-            table.details .timedout {
-                background-color:#33FFAA;
+            .timedout {
+                background-color:#FF2222;
             }
-            table.details .continue {
-                background-color:#33FFAA;
+            .continue {
+                background-color:#FFAA00;
             }
         </style>
         <script type="text/javascript"></script>
@@ -72,15 +84,15 @@
         <h1>Norc Status</h1>
         <div id="ndss">
             <h2>Daemon Status</h2>
-            <span>Timeframe: 
-                <a href="?since=m10min">10m</a>
-                <a href="?since=m10min">30m</a>
-                <a href="?since=m1h">1h</a>
-                <a href="?since=m3h">3h</a>
-                <a href="?since=m12h">12h</a>
-                <a href="?since=m1d">1d</a>
-                <a href="?since=m7d">7d</a>
-                <a href="?since=all">all</a>
+            <span id="timeframe">Timeframe: 
+                <span onclick="updateDaemons({since:'m10min'});">10m</span>
+                <span onclick="updateDaemons({since:'m30min'});">30m</span>
+                <span onclick="updateDaemons({since:'m1h'});">1h</span>
+                <span onclick="updateDaemons({since:'m3h'});">3h</span>
+                <span onclick="updateDaemons({since:'m12h'});">12h</span>
+                <span onclick="updateDaemons({since:'m1d'});">1d</span>
+                <span onclick="updateDaemons({since:'m7d'});">7d</span>
+                <span onclick="updateDaemons({since:'all'});">all</span>
             </span>
             <table>
                 <tr>
@@ -96,41 +108,11 @@
                     <th>Started</th>
                     <th>Ended</th>
                 </tr>
-                <!--<tr>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                </tr>-->
-            {# {% for nds in nds_set %} #}
-            {#     <tr id="{{ nds.id }}" #}
-            {#         class="{% cycle 'odd_row' 'even_row' %}" #}
-            {#         onclick="toggleDetails({{ nds.id }})"> #}
-            {#         <td>{{ nds.id }}</td> #}
-            {#         <td>{{ nds.get_daemon_type }}</td> #}
-            {#         <td>{{ nds.region }}</td> #}
-            {#         <td>{{ nds.host }}</td> #}
-            {#         <td>{{ nds.pid }}</td> #}
-            {#         <td>{{ nds|task_statuses:"running"|length }}</td> #}
-            {#         <td>{{ nds|task_statuses:"success"|length }}</td> #}
-            {#         <td>{{ nds|task_statuses:"errored"|length }}</td> #}
-            {#         <td>{{ nds.status }}</td> #}
-            {#         <td>{{ nds.date_started }}</td> #}
-            {#     {% if nds.date_ended %} #}
-            {#         <td>{{ nds.date_ended }}</td> #}
-            {#     {% else %} #}
-            {#         <td>-</td> #}
-            {#     {% endif %} #}
-            {#     </tr> #}
-            {# {% endfor %} #}
             </table>
+            <div id="page_nav">
+                <span class='next_page'>Next</span> |
+                <span class='prev_page'>Previous</span>
+            </div>
         </div>
     </body>
 </html>

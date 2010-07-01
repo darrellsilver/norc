@@ -50,7 +50,7 @@ class TestSQSConfig(TestCase):
         self.queue.set_timeout(0)
         if not self.queue:
             self.queue = self.conn.create_queue('test_queue', 0)
-        self.queue.clear()
+        wait_until(lambda: self.queue.clear() == 0)
         wait_until(lambda: self.queue.count() == 0)
     
     def test_push_task(self):

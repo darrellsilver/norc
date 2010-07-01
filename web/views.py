@@ -1,12 +1,14 @@
 import datetime, pdb
+
 from django import http
 from django.shortcuts import render_to_response
 from django.template import Context, Template
 from django.utils import simplejson
+from django.core.paginator import Paginator, InvalidPage
+
 from norc.core.models import *
 from norc.core import report
 from norc.utils import parsing
-from datetime import timedelta
 
 class JSONObjectEncoder(simplejson.JSONEncoder):
     """
@@ -31,18 +33,30 @@ def get_nds_set(since_str):
     return report.ndss(since_date)
 
 def index(request):
-    # Default to the last ten minutes.
-    since_str = request.GET.get('since', 'm10min')
-    nds_set = get_nds_set(since_str)
-    return render_to_response('index.html', dict(nds_set=nds_set))
+    return render_to_response('index.html')
 
 def get_daemons(request):
     """Returns a JSON object containing data on all the daemons statuses."""
-    since_str = request.GET.get('since', 'all')
-    nds_set = get_nds_set(since_str)
-    data = {}
-    for nds in nds_set:
-        data[nds.id] = {
+    since_str = request.GET.get('since', 'm10min')
+    paginator = Paginator(get_nds_set(since_str), 10)
+    try:
+        page_num = int(request.GET.get('page', 1))
+    except ValueError:
+        page_num = 1
+    if 0 > page_num > paginator.num_pages:
+        page_num = 1
+    p = paginator.page(page_num)
+    data = {
+        'daemons' : {},
+        'page' : {
+            'next' : p.next_page_number() if p.has_next() else 0,
+            'prev' : p.previous_page_number() if p.has_previous() else 0,
+            'start' : p.start_index(),
+            'end' : p.end_index(),
+        },
+    }
+    for nds in p.object_list:
+        data['daemons'][nds.id] = {
             'type' : nds.get_daemon_type(),
             'region' : nds.region.name,
             'host' : nds.host,
@@ -74,13 +88,3 @@ def daemon_details(request, daemon_id):
         }
     json = simplejson.dumps(data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")
-    
-# def sandbox(request, *args):
-#     class X():
-#         def test(self): return "foo!"
-#     x = X()
-#     listTest = [1, 2, 3]
-#     mapTest = dict(test="boo!",best="moo!",ex=x)
-#     return render_to_response('sandbox.html', dict(
-#         list=listTest, map=mapTest))
-
