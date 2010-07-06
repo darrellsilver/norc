@@ -2,43 +2,38 @@ import datetime, pdb
 
 from django import http
 from django.shortcuts import render_to_response
-from django.template import Context, Template
 from django.utils import simplejson
+from django.template import Context, Template
 from django.core.paginator import Paginator, InvalidPage
 
-from norc.core.models import *
+# from norc.core.models import *
 from norc.core import report
-from norc.utils import parsing
+from norc.utils.parsing import parse_date_relative
+from norc.utils.web import JSONObjectEncoder
 
-class JSONObjectEncoder(simplejson.JSONEncoder):
-    """
-    simplejson doesn't handle complex objects (like datetime()).
-    Handle encoding of those here
-    """
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return self.encode_datetime(obj)
-        return simplejson.JSONEncoder.default(self, obj)
-    def encode_datetime(self, dt):
-        return dt.strftime("%m/%d/%Y %H:%M:%S")
-
-def get_nds_set(since_str):
+def parse_since(since_str):
+    """A utility function to help parse a since string."""
     if since_str == 'all':
         since_date = None
     else:
         try:
-            since_date = parsing.parse_date_relative(since_str)
-        except:
+            since_date = parse_date_relative(since_str)
+        except TypeError:
             since_date = None
-    return report.ndss(since_date)
+    return since_date
 
 def index(request):
+    """Returns the index.html template."""
     return render_to_response('index.html')
 
 def get_daemons(request):
-    """Returns a JSON object containing data on all the daemons statuses."""
+    """Returns a JSON object containing data on daemons.
+    
+    The data is filtered by GET parameters in the request.
+    
+    """
     since_str = request.GET.get('since', 'm10min')
-    paginator = Paginator(get_nds_set(since_str), 10)
+    paginator = Paginator(report.ndss(parse_since(since_str)), 10)
     try:
         page_num = int(request.GET.get('page', 1))
     except ValueError:
@@ -72,7 +67,7 @@ def get_daemons(request):
     return http.HttpResponse(json, mimetype="json")
 
 def daemon_details(request, daemon_id):
-    # d_id = request.GET.get('id', None)
+    """Gets the details for tasks run by a specific daemon."""
     since_str = request.GET.get('since', 'm10min')
     nds = report.nds(daemon_id)
     if not nds:
