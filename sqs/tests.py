@@ -47,7 +47,6 @@ class TestSQSConfig(TestCase):
     def setUp(self):
         self.conn = SQSConnection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
         self.queue = self.conn.lookup('test_queue')
-        self.queue.set_timeout(0)
         if not self.queue:
             self.queue = self.conn.create_queue('test_queue', 0)
         wait_until(lambda: self.queue.clear() == 0)
