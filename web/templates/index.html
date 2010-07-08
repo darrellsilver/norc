@@ -12,20 +12,28 @@
     </head>
     <body>
         <h1>Norc Status</h1>
-        <div id="ndss">
-            <h2>Daemon Status</h2>
+        <div id="daemons" class="content">
+            <h2>Daemons</h2>
             <span id="timeframe">Timeframe: 
-                <span onclick="refreshDaemonSection({since:'m10min'});">10m</span>
-                <span onclick="refreshDaemonSection({since:'m30min'});">30m</span>
-                <span onclick="refreshDaemonSection({since:'m1h'});">1h</span>
-                <span onclick="refreshDaemonSection({since:'m3h'});">3h</span>
-                <span onclick="refreshDaemonSection({since:'m12h'});">12h</span>
-                <span onclick="refreshDaemonSection({since:'m1d'});">1d</span>
-                <span onclick="refreshDaemonSection({since:'m7d'});">7d</span>
-                <span onclick="refreshDaemonSection({since:'all'});">all</span>
+                <span onclick="refreshSection('daemons', {since:'m10min'});">10m</span>
+                <span onclick="refreshSection('daemons', {since:'m30min'});">30m</span>
+                <span onclick="refreshSection('daemons', {since:'m1h'});">1h</span>
+                <span onclick="refreshSection('daemons', {since:'m3h'});">3h</span>
+                <span onclick="refreshSection('daemons', {since:'m12h'});">12h</span>
+                <span onclick="refreshSection('daemons', {since:'m1d'});">1d</span>
+                <span onclick="refreshSection('daemons', {since:'m7d'});">7d</span>
+                <span onclick="refreshSection('daemons', {since:'all'});">all</span>
             </span>
             <table></table>
-            <div id="page_nav">
+            <div class="page_nav">
+                <span class='prev_page'>Previous</span> |
+                <span class='next_page'>Next</span>
+            </div>
+        </div>
+        <div id="jobs" class="content">
+            <h2>Jobs</h2>
+            <table></table>
+            <div class="page_nav">
                 <span class='prev_page'>Previous</span> |
                 <span class='next_page'>Next</span>
             </div>

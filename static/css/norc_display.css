@@ -1,8 +1,20 @@
 body {
-    background-color:#FFF;
+    background-color:#F6FFF9;
     color:#000;
     font-family:"", "Verdana";
     font-size:10px;
+}
+h1 {
+    color:#000;
+    text-align:center;
+}
+h2 {
+    color:#000;
+}
+div.content {
+    margin-left:auto;
+    margin-right:auto;
+    width:800px;
 }
 table {
     border-spacing:0px;
@@ -11,70 +23,64 @@ table {
     text-align:center;
     width:100%;
 }
+table.data {
+    background-color:#AAA;
+/*    border-top:1px solid #AAA;*/
+/*    border-bottom:1px solid #AAA;*/
+    font-family:"Trebuchet MS", "Futura", "Courier New";
+    font-size:10px;
+}
+
+/* Row styles. */
 tr {
     margin:0px;
     padding:0px;
 }
-th {
-    margin:0px;
-    padding:0px;
+tr.even {
+    background-color:#C4E4C0;
+}
+tr.odd {
+    background-color:#D0F4D0;
+}
+table.data tr.hover {
+    background-color:#EEFEEE;
+    color:#000;
+    cursor:pointer;
+}
+tr.expanded {
+    background-color:#80E0EF;
+}
+table.data tr.expanded.hover {
+    background-color:#90EFFF;
+}
+.details tr.even {
+    background-color:#C0F5FF;
+}
+.details tr.odd {
+    background-color:#A6E9FF;
+}
+.no_tasks {
+    background-color:#C0F5FF;
 }
 td {
     margin:0px;
     padding:0px;
 }
-#ndss {
-    margin-left:auto;
-    margin-right:auto;
-}
-#ndss > table {
-    border-top:1px solid #AAA;
-    border-bottom:1px solid #AAA;
-    font-family:"Trebuchet MS", "Courier New";
-    font-size:10px;
-}
-.odd {
-    background-color:#EEE;
-}
-.even {
-    background-color:#FFF;
-}
-.clickable {
+
+span.clickable {
     color:#888;
     text-decoration:underline;
     cursor:pointer;
 }
-#page_nav {
+.page_nav {
     text-align:center;
 }
-.expanded_row {
-    background-color:#8DF;
-    color:#000;
-}
-.tr_hover {
-/*    background-color:#CEF;*/
-    background-color:#BBB;
-    color:#000;
-    cursor:pointer;
-}
-.details {
-    border:1px solid #000;
-    margin-bottom:1px;
-}
-.details th {
-    background-color:#DDD;
-    font-weight:bold;
-}
 .status_good {
-    background-color:#CCFF66;
+    background-color:#CF6;
 }
 .status_warning {
-    background-color:#FFFF55;
+    background-color:#FF5;
 }
 .status_error {
-    background-color:#FF8855;
-}
-.no_tasks {
-    background-color:#88DDFF;
-    font-weight:bold;
+    background-color:#F85;
 }

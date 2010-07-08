@@ -32,7 +32,8 @@
 
 The main benefit currently is to prevent the occurence of a try block
 everywhere data is needed, and to reduce the amount of code needed for
-retrievals using consistent attributes.
+retrievals using consistent attributes.  Additionally, it prevents
+external modules from having to query core classes directly.
 
 """
 
@@ -87,6 +88,9 @@ def nds(id):
     """Retrieves the NorcDaemonStatus with the given ID, or None."""
     return get_object(NorcDaemonStatus, id=id)
 
+def jobs():
+    return Jobs.objects.all()
+
 def ndss(since_date=None, status_filter='all'):
     """Retrieve NorcDaemonStatuses.
     
@@ -102,6 +106,9 @@ def ndss(since_date=None, status_filter='all'):
         include_statuses = DAEMON_STATUS_DICT[status_filter.lower()]
         nds_query = nds_query.filter(status__in=include_statuses)
     return nds_query
+
+def iterations(jid):
+    return Iterations.objects.filter(job__id=jid)
 
 # DEPR
 # def get_task_statuses(status_filter='all'):
