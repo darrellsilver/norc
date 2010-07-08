@@ -16,14 +16,16 @@
 // ATTN: The names of these headers are unTitle'd and then used directly
 //       to pull data from JSON objects; changing them here requires a
 //       change on the backend as well or stuff will break.
-var DAEMON_DETAIL_HEADERS = [
-    'Task ID', 'Job', 'Task', 'Started', 'Ended', 'Status'
-];
 var HEADERS = {
     'daemons': ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
         'Success', 'Errored', 'Started', 'Ended', 'Status'],
-    'jobs': ['ID', 'Name', ''],
+    'jobs': ['ID', 'Name', 'Description', 'Added'],
 };
+var DETAIL_HEADERS = {
+    'daemons': ['Task ID', 'Job', 'Task', 'Started', 'Ended', 'Status'],
+    'jobs': ['Status', 'Type', 'Started', 'Ended'],
+};
+
 var STATUS_CLASSES = {
     SUCCESS : 'status_good',
     RUNNING : 'status_good',
@@ -39,12 +41,22 @@ var BORDER_DARK = '1px solid #000';
 
 // Saved state of the page.
 var state = {
-    // Whether details were showing for each daemon.
-    daemonDetailsShowing : {},
-    // The last 'since' selection.
-    since : 'all',
-    // What the next and previous page numbers are.
-    nextPage : 0, prevPage : 0,
+    'daemons' : {
+        // Whether details were showing for each daemon.
+        detailsShowing : {},
+        // The last 'since' selection.
+        since : 'all',
+        // What the next and previous page numbers are.
+        nextPage : 0, prevPage : 0,
+    },
+    'jobs': {
+        // Whether details were showing for each daemon.
+        detailsShowing : {},
+        // The last 'since' selection.
+        since : 'all',
+        // What the next and previous page numbers are.
+        nextPage : 0, prevPage : 0,
+    }
 }
 
 
@@ -98,7 +110,7 @@ function makeTable(headers, data, idSetup, colorStatus) {
     return table;
 }
 
-function initDataTable(table) {
+function initDataTable(section, table) {
     table = table.children('tbody');
     table.find('th:first').addClass('leftEdge');
     table.find('th:last').addClass('rightEdge');
@@ -111,12 +123,12 @@ function initDataTable(table) {
         }, function() {
             $(this).removeClass('hover');
         });
-        var id = row.attr('id');
+        var id = row.children('td:first').text();
         row.click(function() {
-            toggleDetails(id);
+            toggleDetails(section, id);
         });
-        if (state.daemonDetailsShowing[id]) {
-            showDetails(id, function(d) {
+        if (state[section].detailsShowing[id]) {
+            showDetails(section, id, function(d) {
                 d.css('display', 'block');
             });
         }
@@ -126,6 +138,7 @@ function initDataTable(table) {
 // Inserts a new row after rowAbove with the given ID and
 // contents using the given animation (defaults to slideDown).
 function insertNewRow(rowAbove, contents, animation) {
+    // debugger;
     var row = $('<tr><td><div></div></td></tr>');
     row.find('td').attr('colspan', rowAbove.children('td').length)
         .find('div').css('display', 'none').append(contents);
@@ -139,107 +152,99 @@ function insertNewRow(rowAbove, contents, animation) {
     return row;
 }
 
-function styleExpandRow(row) {
-    // row.children('td:first').css('borderLeft', BORDER_DARK);
-    // row.children('td:last').css('borderRight', BORDER_DARK);
-    row.addClass('expanded');
-}
-
-function styleCollapseRow(row) {
-    // row.children('td:first').css('borderLeft', '');
-    // row.children('td:last').css('borderRight', '');
-    row.removeClass('expanded');
-}
-
-
 /*********************
     Core Functions
 *********************/
 
-function toggleDetails(id) {
-    if ($('#daemons #' + id + 'details').length > 0) {
-        hideDetails(id);
+function toggleDetails(section, id) {
+    if ($('#' + section + id + 'details').length > 0) {
+        hideDetails(section, id);
     } else {    
-        showDetails(id);
+        showDetails(section, id);
     }
 }
 
-function showDetails(id, animation) {
-    state.daemonDetailsShowing[id] = true;
-    $.get('/data/daemons/' + id + '/', function(data) {
+function showDetails(section, id, animation) {
+    state[section].detailsShowing[id] = true;
+    $.get('/data/' + section + '/' + id + '/', function(data) {
+        // console.log(data);
         var content;
         if (!$.isEmptyObject(data)) {
-            content = makeTable(DAEMON_DETAIL_HEADERS, data, false, true);
+            content = makeTable(DETAIL_HEADERS[section], data, false, true);
         } else {
-            content = $('<div/>', {text : 'No tasks.','class' : 'no_tasks'});
+            content = $('<div/>', {text: 'No details.', 'class': 'no_tasks'});
         }
         content.addClass('details');
-        var row = $('#daemons #' + id);
-        $('#daemons #' + id + ' td').animate({
+        var row = $('#' + section + id);
+        row.find('td').animate({
             paddingTop: '3px',
             paddingBottom: '3px',
         }, 300);
-        insertNewRow(row, content, animation).attr('id', id + 'details');
-        $('#daemons #' + id + 'details').addClass('data_row');
-        styleExpandRow(row);
+        insertNewRow(row, content, animation)
+            .attr('id', section + id + 'details');
+        // $(sid + ' #' + id + 'details').addClass('data_row');
+        row.addClass('expanded');
     });
 }
 
-function hideDetails(id) {
-    state.daemonDetailsShowing[id] = false;
-    row = $('#daemons #' + id + 'details');
-    $('#daemons #' + id + ' td').animate({
+function hideDetails(section, id) {
+    state[section].detailsShowing[id] = false;
+    var detail_id = '#' + section + id;
+    row = $(detail_id + 'details');
+    $(detail_id + ' td').animate({
         paddingTop: '1px',
         paddingBottom: '1px',
     }, 300);
     row.find('div').slideUp(300, function() {
         row.detach();
-        styleCollapseRow($('#daemons #' + id));
+        $(detail_id).removeClass('expanded');
     });
 }
 
-function setupSection(name, data) {
-    table = makeTable(HEADERS[name], data[name], ['', '']);
+function setupSection(section, data) {
+    table = makeTable(HEADERS[section], data[section], [section, '']);
     table.addClass('data');
-    initDataTable(table);
-    $('#' + name + ' > table').replaceWith(table);
+    // console.log(data);
+    initDataTable(section, table);
+    sid = '#' + section;
+    $(sid + ' > table').replaceWith(table);
     table = table.children('tbody');
-    hname = '#' + name;
     if (data.page.next != 0) {
         // $('#daemons .next_page').css('display', 'inline');
-        $(hname + ' .next_page').addClass('clickable').click(function() {
-            refreshSection(name, {page : state.nextPage});
+        $(sid + ' .next_page').addClass('clickable').click(function() {
+            refreshSection(section, {page : state.nextPage});
         });
         state.nextPage = data.page.next;
     } else {
         // $('#daemons .next_page').css('display', 'none');
-        $(hname + ' .next_page').removeClass('clickable').unbind('click');
+        $(sid + ' .next_page').removeClass('clickable').unbind('click');
     }
     if (data.page.prev != 0) {
         // $('#daemons .prev_page').css('display', 'inline');
-        $(hname + ' .prev_page').addClass('clickable').click(function() {
-            refreshSection(name, {page : state.prevPage});
+        $(sid + ' .prev_page').addClass('clickable').click(function() {
+            refreshSection(section, {page : state.prevPage});
         });
         state.prevPage = data.page.prev;
     } else {
-        $(hname + ' .prev_page').removeClass('clickable').unbind('click');
+        $(sid + ' .prev_page').removeClass('clickable').unbind('click');
     }
 }
 
 function refreshSection(name, filters) {
     if (!filters) filters = {};
     if ('since' in filters) {
-        state.since = filters.since;
+        state[name].since = filters.since;
     } else {
-        filters.since = state.since;
+        filters.since = state[name].since;
     }
-    $.get('/data/daemons/', filters, function(data) {
+    $.get('/data/' + name + '/', filters, function(data) {
         setupSection(name, data);
     });
 }
 
 $(document).ready(function() {
     refreshSection('daemons');
+    refreshSection('jobs');
     $('#timeframe span').addClass('clickable');
     $('#page_nav span').addClass('clickable');
 });

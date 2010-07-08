@@ -89,7 +89,7 @@ def nds(id):
     return get_object(NorcDaemonStatus, id=id)
 
 def jobs():
-    return Jobs.objects.all()
+    return Job.objects.all()
 
 def ndss(since_date=None, status_filter='all'):
     """Retrieve NorcDaemonStatuses.
@@ -108,7 +108,7 @@ def ndss(since_date=None, status_filter='all'):
     return nds_query
 
 def iterations(jid):
-    return Iterations.objects.filter(job__id=jid)
+    return Iteration.objects.filter(job__id=jid)
 
 # DEPR
 # def get_task_statuses(status_filter='all'):

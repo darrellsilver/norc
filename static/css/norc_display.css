@@ -62,11 +62,11 @@ table.data tr.expanded.hover {
 .no_tasks {
     background-color:#C0F5FF;
 }
+
 td {
     margin:0px;
     padding:0px;
 }
-
 span.clickable {
     color:#888;
     text-decoration:underline;

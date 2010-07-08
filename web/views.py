@@ -90,6 +90,7 @@ def get_data(request, content_type):
         data[content_type][obj.id] = {}
         for k, f in data_retrieval[content_type].iteritems():
             data[content_type][obj.id][k] = f(obj)
+    print data
     json = simplejson.dumps(data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")
 
