@@ -1,7 +1,7 @@
 body {
     background-color:#F6FFF9;
     color:#000;
-    font-family:"", "Verdana";
+    font-family:"Arial", "Verdana";
     font-size:10px;
 }
 h1 {
@@ -36,6 +36,10 @@ tr {
     margin:0px;
     padding:0px;
 }
+td {
+    margin:0px;
+    padding:0px 4px;
+}
 tr.even {
     background-color:#C4E4C0;
 }
@@ -53,6 +57,9 @@ tr.expanded {
 table.data tr.expanded.hover {
     background-color:#90EFFF;
 }
+.details td {
+    padding:0px;
+}
 .details tr.even {
     background-color:#C0F5FF;
 }
@@ -63,10 +70,6 @@ table.data tr.expanded.hover {
     background-color:#C0F5FF;
 }
 
-td {
-    margin:0px;
-    padding:0px;
-}
 span.clickable {
     color:#888;
     text-decoration:underline;

@@ -56,12 +56,6 @@ def _handle_signal(sig_name, exit_code):
         log.error("\n", noalteration=True)
         task.set_ended_on_error(iteration, region)
     
-    # We call the normal os.exit(), even though it trusts that whatever
-    # try: ... except block is currently executing will propegate the
-    # SystemExit exception instead of handling it. In Python 2.5 SystemExit
-    # does not extend Exception so only when catching all (try: ... except:)
-    # would this be a problem.  But we're using Python 2.4, so *all* catchers
-    # of Exception need to distinguish between Exception & SystemExit
     sys.exit(exit_code)
 
 def _handle_SIGINT(signum, frame):

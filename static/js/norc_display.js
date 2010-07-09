@@ -174,13 +174,13 @@ function showDetails(section, id, animation) {
         } else {
             content = $('<div/>', {text: 'No details.', 'class': 'no_tasks'});
         }
-        content.addClass('details');
+        // content.addClass('details');
         var row = $('#' + section + id);
         row.find('td').animate({
             paddingTop: '3px',
             paddingBottom: '3px',
         }, 300);
-        insertNewRow(row, content, animation)
+        insertNewRow(row, content, animation).addClass('details')
             .attr('id', section + id + 'details');
         // $(sid + ' #' + id + 'details').addClass('data_row');
         row.addClass('expanded');

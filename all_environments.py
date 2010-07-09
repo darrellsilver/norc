@@ -44,7 +44,7 @@ class Envies(object): #for some reason the word Environments caused trouble
         EMAIL_USE_TLS = 'True'
         EMAIL_PORT = '587'
         EMAIL_HOST = 'smtp.gmail.com'
-        DEBUG = False
+        DEBUG = True
         TEMPLATE_DEBUG = False
         LOGGING_DEBUG = False
     class max_env(BaseEnvironment):
