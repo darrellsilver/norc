@@ -44,7 +44,7 @@ class Envies(object): #for some reason the word Environments caused trouble
         EMAIL_USE_TLS = 'True'
         EMAIL_PORT = '587'
         EMAIL_HOST = 'smtp.gmail.com'
-        DEBUG = True
+        DEBUG = False
         TEMPLATE_DEBUG = False
         LOGGING_DEBUG = False
     class max_env(BaseEnvironment):
@@ -54,7 +54,14 @@ class Envies(object): #for some reason the word Environments caused trouble
         TIME_ZONE = 'America/New-York'
         DATABASE_NAME = 'norc_db'
         DATABASE_USER = 'max'
-        #DEBUG = True
+        DEBUG = True
+    class darrell_env(BaseEnvironment):
+        ADMINS = ((),)
+        NORC_LOG_DIR = '/Users/darrell/projects/norc/logs'
+        NORC_TMP_DIR = '/Users/darrell/projects/norc/tmp'
+        TIME_ZONE = 'America/New-York'
+        DATABASE_NAME = 'norc'
+        DATABASE_USER = 'norc_user'
 
 # bad hack code duplication from permalink/all_environments,
 # but this is somewhat better.
