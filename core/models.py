@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
-from norc import settings
+from django.conf import settings
 from norc.utils import django_extras, log
 log = log.Log()
 
@@ -631,11 +631,11 @@ class Task(models.Model):
         if self.alert_on_failure() and status in (TaskRunStatus.STATUS_ERROR, TaskRunStatus.STATUS_TIMEDOUT):
             alert_msg = 'Norc Task %s:%s ended with %s!' % \
                 (self.get_job().get_name(), self.get_name(), status)
-            if settings.NORC_EMAIL_ALERTS:
-                send_mail(alert_msg, "d'oh!", settings.EMAIL_HOST_USER,
-                          settings.NORC_EMAIL_ALERT_TO, fail_silently=False)
-            else:
-                log.info(alert_msg)
+            #if settings.NORC_EMAIL_ALERTS:
+            #    send_mail(alert_msg, "d'oh!", settings.EMAIL_HOST_USER,
+            #              settings.NORC_EMAIL_ALERT_TO, fail_silently=False)
+            #else:
+            log.info(alert_msg)
     
     def set_ended_on_error(self, iteration, region):
         self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)

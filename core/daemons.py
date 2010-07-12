@@ -58,7 +58,8 @@ import datetime
 import threading    # if using thread for running Tasks
 import subprocess   # if using forking for running Tasks
 
-from norc import settings
+from django.conf import settings
+
 from norc.core.models import *
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
@@ -326,7 +327,7 @@ class ThreadedTaskLogger(object):
     def _get_daemon_log_file_name(self):
         assert not self.daemon_id_for_log == None, \
             "daemon_id_for_log is None! BUG!"
-        fp = "%s/_norcd/norcd.%s" % (self.__log_dir, self.daemon_id_for_log)
+        fp = "%s/_norcd/norcd%s" % (self.__log_dir, self.daemon_id_for_log)
         return fp
     
     def _get_log_file(self, fp):

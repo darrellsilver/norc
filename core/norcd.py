@@ -56,10 +56,11 @@
 import sys, os, time
 import signal
 import traceback
-
 from optparse import OptionParser
 
-from norc import settings, core
+from django.conf import settings
+
+from norc import core
 from norc.core.daemons import ThreadingNorcDaemon, ForkingNorcDaemon
 from norc.core.models import ResourceRegion
 from norc.core import report

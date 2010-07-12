@@ -4,7 +4,7 @@
 import os, pdb, time
 from django.test import TestCase
 
-from norc import settings
+from django.conf import settings
 from norc.core import report
 from norc.core.models import *
 from norc.utils import init_db, wait_until
@@ -25,7 +25,7 @@ class TestTasks(TestCase):
     
     def setUp(self):
         """Initialize the DB and setup data."""
-        init_db.init_static()
+        init_db.init()
         self.daemon = start_test_daemon()
         self.job = Job.objects.all()[0]
         self.iter = Iteration.objects.all()[0]

@@ -43,9 +43,10 @@ import sys, os, signal
 import traceback
 from optparse import OptionParser
 
+from django.conf import settings
 from boto.sqs.connection import SQSConnection
 
-from norc import settings, sqs
+from norc import sqs
 from norc.core.models import NorcDaemonStatus
 # from norc.sqs import utils as sqs
 # from norc.sqs import models as sqs

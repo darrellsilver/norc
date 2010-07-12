@@ -39,7 +39,7 @@ class TestInitDB(TestCase):
 
     def setUp(self):
         """Run the init_db script."""
-        init_db.init_static()
+        init_db.init()
         #pdb.set_trace()
 
     def test_job(self):

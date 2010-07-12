@@ -42,7 +42,7 @@ class Log(object):
     
     def __init__(self, logging_debug=None):
         if logging_debug == None:
-            from norc import settings
+            from django.conf import settings
             logging_debug = settings.LOGGING_DEBUG
         self.logging_debug = logging_debug
     def set_logging_debug(self, logging_debug):

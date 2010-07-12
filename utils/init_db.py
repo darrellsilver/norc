@@ -24,10 +24,12 @@
 
 import os, sys
 import datetime
-from optparse import OptionParser
+
 from django.contrib.auth.models import User
-from norc.utils import log
-log = log.Log()
+from django.conf import settings
+
+from norc.utils.log_new import FileLog
+log = FileLog()
 
 def init_superuser():
     assert User.objects.all().count() == 0, "User(s) already exist in the DB!"
@@ -43,7 +45,7 @@ Are there users already defined in the DB?"
 
 def _create_ResourceRegion(name):
     from norc.core.models import ResourceRegion
-    from norc import settings
+    from django.conf import settings
     
     rr, new_rr = ResourceRegion.objects.get_or_create(name=name)
     assert new_rr, "The resource region should not already exit."
@@ -78,18 +80,9 @@ def init_norc():
     
     log.info("Success! Norc database initialized.")
 
-def init_static():
-    user = init_superuser()
+def init():
+    init_superuser()
     init_norc()
-    return user
-
-def main():
-    #parser = OptionParser("%prog")
-    # parser.add_option("--init", action="store_true"
-    #     , help="setup static data to the DBs")
-    #(options, args) = parser.parse_args()
-    
-    user = init_static()
 
 if __name__ == '__main__':
-    main()
+    init()

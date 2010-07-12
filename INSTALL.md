@@ -7,7 +7,7 @@ TODO:
 
 # Installing Norc
 
-The goal of this install script is to setup a simple Norc environment that can run a sample Task.  Much of the power of Norc is in its extensibility beyond simple Task management, so the more hack-happy you are, the better!
+The goal of this walkthrough is to setup a simple Norc environment that can run a sample Task.  Much of the power of Norc is in its extensibility beyond simple Task management, so the more hack-happy you are, the better!
 
 
 ## Environments tested for this example.
@@ -36,6 +36,7 @@ We'll be inside the norc/ directory for the rest of the tutorial.
 
 ## Prepare the Database
 
+Set up your database however you'd like, but you'll need to know the user and password in order to configure Norc.
 We're creating a new account & database for this demo.  We've only tested on MySQL, but Norc should work on anything that Django supports.
 
 Credentials:

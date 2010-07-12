@@ -49,7 +49,7 @@ from optparse import OptionParser
 
 from norc.core.models import Iteration, ResourceRegion, NorcDaemonStatus
 from norc.core import manage as norc_manage
-from norc import settings
+from django.conf import settings
 
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)

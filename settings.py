@@ -1,153 +1,97 @@
-# Django settings for NORC project.
-
-#
-# Copyright (c) 2009, Perpetually.com, LLC.
-# All rights reserved.
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-# 
-#     * Redistributions of source code must retain the above copyright 
-#       notice, this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright
-#       notice, this list of conditions and the following disclaimer in the
-#       documentation and/or other materials provided with the distribution.
-#     * Neither the name of the Perpetually.com, LLC. nor the names of its 
-#       contributors may be used to endorse or promote products derived from 
-#       this software without specific prior written permission.
-# 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-# POSSIBILITY OF SUCH DAMAGE.
-#
-
 # Django settings for Norc project.
 
 import os
+
 from norc.settings_local import *
-from norc.all_environments import ENV
 
-#
-# Determine the environment
-#
+NORC_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+NORC_CODE_ROOT = 'git://github.com/darrellsilver/norc.git'
 
-import itertools
-def expose_env(*args):
+class Envs(type):
+    ALL = {}
+    
+    def __init__(cls, name, bases, dct):
+        super(Envs, cls).__init__(name, bases, dct)
+        Envs.ALL[name] = cls
+    
+    def __getitem__(self, attr):
+        """Allows dictionary-style lookup of attributes."""
+        return getattr(self, attr)
+
+class BaseEnv(object):
+    """Basic Norc setting defaults.
+    
+    This serves as a base class from which specific environments
+    classes can inherit default settings.  Not meant to be instantiated.
+    
     """
-    used to replace repetitive blocks of
+    __metaclass__ = Envs
+    
+    # Norc settings!
+    NORC_LOG_DIR = os.path.join(NORC_DIRECTORY, 'log/')
+    NORC_TMP_DIR = os.path.join(NORC_DIRECTORY, 'tmp/')
+    # Database configuration.
+    DATABASE_ENGINE = 'mysql'
+    DATABASE_HOST = 'localhost'
+    DATABASE_PORT = '3306'
+    # Email configuration.
+    # Email currently does not work, so they're commented out for future use.
+    # EMAIL_HOST = 'smtp.gmail.com'
+    # EMAIL_HOST_USER = ''
+    # EMAIL_PORT = '587'
+    # EMAIL_USE_TLS = 'True'
+    # Debugging switches.
+    DEBUG = False
+    LOGGING_DEBUG = False
+    TEMPLATE_DEBUG = False
+    # Other Django settings.
+    INSTALLED_APPS = (
+        'django.contrib.admin',
+        'django.contrib.auth',
+        'django.contrib.contenttypes',
+        'django.contrib.sessions',
+        'django.contrib.sites',
+        'norc.core',
+        'norc.web',
+    )
+    MEDIA_ROOT = os.path.join(NORC_DIRECTORY, 'static/')
+    ROOT_URLCONF = 'norc.urls'
+    SITE_ID = 1
+    TEMPLATE_DIRS = ()
+    TIME_ZONE = 'America/New-York'
 
-    SETTING_NAME = ENV['SETTING_NAME']
+class MaxEnv(BaseEnv):
+    DATABASE_NAME = 'norc_db'
+    DATABASE_USER = 'max'
+    DEBUG = True
+    INSTALLED_APPS = BaseEnv.INSTALLED_APPS + ('norc.sqs',)
+    INTERNAL_IPS = ('127.0.0.1',)
+    TEMPLATE_DIRS = (
+        '/Library/Python/2.6/site-packages/debug_toolbar/templates/',
+    )
 
-    maybe we could just run
-    expose_env(*ENV.keys())
+class darrell_env(BaseEnv):
+    ADMINS = ((),)
+    NORC_LOG_DIR = '/Users/darrell/projects/norc/logs'
+    NORC_TMP_DIR = '/Users/darrell/projects/norc/tmp'
+    DATABASE_NAME = 'norc'
+    DATABASE_USER = 'norc_user'
 
-    and then write
-    from all_environments import *
-    """
-    for key in args:
-    #for key in itertools.chain(args):
-        globals()[key] = ENV[key]
+# Find the user's environment.
+env_str = os.environ.get('NORC_ENVIRONMENT')
+if not env_str:
+    env_str = 'BaseEnv'
+try:
+    cur_env = Envs.ALL[env_str]
+except KeyError, ke:
+    raise Exception("Unknown NORC_ENVIRONMENT '%s'." % env_str)
 
+def is_constant(s):
+    return 
 
-
-# Debug creates small memory leaks, storing all SQL queries in memory.
-expose_env('DEBUG','TEMPLATE_DEBUG')
-
-expose_env('ADMINS')
-MANAGERS = ADMINS
-
-# Database configuration.
-expose_env('DATABASE_ENGINE','DATABASE_NAME',
-    'DATABASE_USER','DATABASE_HOST','DATABASE_PORT')
-
-# Email configuration.
-expose_env('EMAIL_USE_TLS','EMAIL_HOST','EMAIL_HOST_USER','EMAIL_PORT')
-
-# Local time zone for this installation. Choices can be found here:
-# http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
-# although not all choices may be available on all operating systems.
-# If running in a Windows environment this must be set to the same as your
-# system time zone.
-expose_env('TIME_ZONE')
-
-
-# Language code for this installation. All choices can be found here:
-# http://www.i18nguy.com/unicode/language-identifiers.html
-LANGUAGE_CODE = 'en-us'
-
-SITE_ID = 1
-
-# If you set this to False, Django will make some optimizations so as not
-# to load the internationalization machinery.
-USE_I18N = True
-
-# Absolute path to the directory that holds media.
-# Example: "/home/media/media.lawrence.com/"
-MEDIA_ROOT = ''
-
-# URL that handles the media served from MEDIA_ROOT. Make sure to use a
-# trailing slash if there is a path component (optional in other cases).
-# Examples: "http://media.lawrence.com", "http://example.com/media/"
-MEDIA_URL = ''
-
-# URL prefix for admin media -- CSS, JavaScript and images.
-# Make sure to use a trailing slash.
-# Examples: "http://foo.com/media/", "/media/".
-ADMIN_MEDIA_PREFIX = '/media/'
-
-# List of callables that know how to import templates from various sources.
-TEMPLATE_LOADERS = (
-    'django.template.loaders.filesystem.load_template_source',
-    'django.template.loaders.app_directories.load_template_source',
-#     'django.template.loaders.eggs.load_template_source',
-)
-
-MIDDLEWARE_CLASSES = (
-    'django.middleware.common.CommonMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    #'django.middleware.transaction.TransactionMiddleware',
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-)
-
-INTERNAL_IPS = ('127.0.0.1',)
-
-ROOT_URLCONF = 'norc.urls'
-
-TEMPLATE_DIRS = (
-    # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
-    # Always use forward slashes, even on Windows.
-    # Don't forget to use absolute paths, not relative paths.
-    #os.path.join(ENV['NORC_CODE_ROOT'], '/templates/'),
-    '/Library/Python/2.6/site-packages/debug_toolbar/templates/'
-)
-
-TEMPLATE_STRING_IF_INVALID = "Invalid variable: %s"
-
-INSTALLED_APPS = (
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.sites',
-    'norc.core',
-    'norc.sqs',
-    'norc.web',
-)
-
-#
-# taskmaster specific settings
-#
-
-# Norc alert handling
-expose_env('NORC_EMAIL_ALERTS','NORC_EMAIL_ALERTS_TO')
-
-expose_env('LOGGING_DEBUG','NORC_LOG_DIR','NORC_TMP_DIR')
+# Use the settings from that environment.
+for s in dir(cur_env):
+    # If the setting name is a valid constant, add it to globals.
+    VALID_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_'
+    if not s.startswith('_') and all(map(lambda c: c in VALID_CHARS, s)):
+        globals()[s] = cur_env[s]

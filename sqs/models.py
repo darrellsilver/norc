@@ -46,7 +46,7 @@ import os, datetime, pickle
 
 from django.db import models
 
-from norc import settings
+from django.conf import settings
 from norc.core.daemons import NorcDaemonStatus
 
 from norc.utils import log

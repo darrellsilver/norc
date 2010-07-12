@@ -44,7 +44,7 @@ import signal, subprocess
 from optparse import OptionParser
 
 from boto.sqs.connection import SQSConnection
-from norc import settings
+from django.conf import settings
 from norc.core import report
 from norc.utils import log
 log = log.Log(settings.LOGGING_DEBUG)
