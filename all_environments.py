@@ -54,7 +54,7 @@ class Envies(object): #for some reason the word Environments caused trouble
         TIME_ZONE = 'America/New-York'
         DATABASE_NAME = 'norc_db'
         DATABASE_USER = 'max'
-        DEBUG = True
+        DEBUG = False
     class darrell_env(BaseEnvironment):
         ADMINS = ((),)
         NORC_LOG_DIR = '/Users/darrell/projects/norc/logs'

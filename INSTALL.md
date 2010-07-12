@@ -15,8 +15,8 @@ Other environments will probably work, but we've not tested too many different c
 
  * Python 2.4.x, 2.5.x or 2.6.x.   We've tested on all these versions, 
  * Linux (Redhat Fedora 4) or OS X (Tiger, Leopard or Snow Leopard).
- * Django 1.0.  We haven't tested on Django 1.1, and it may just work. We're not doing anything tricky.
- * A semi-recent version of MySQL (5.x or greater).  If you're not using MySQL everything should still work.  You'll just have to replace the mysql steps with whatever database backend your using and change the configuration in Django's settings.py as necessary.
+ * Django 1.1; 1.0 might not work anymore and later versions haven't been tested..
+ * A semi-recent version of MySQL (5.x or greater).  If you're not using MySQL everything should still work.  You'll just have to replace the mysql steps with whatever database backend you're using and change the configuration in settings.py as necessary.
 
 
 ## Download:
@@ -28,7 +28,6 @@ Other environments will probably work, but we've not tested too many different c
         remote: Total 90 (delta 40), reused 0 (delta 0)
         Receiving objects: 100% (90/90), 59.70 KiB, done.
         Resolving deltas: 100% (40/40), done.
-        $
 
 We'll be inside the norc/ directory for the rest of the tutorial.
 

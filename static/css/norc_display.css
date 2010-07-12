@@ -41,10 +41,10 @@ td {
     padding:0px 4px;
 }
 tr.even {
-    background-color:#C4E4C0;
+    background-color:#D3EAD0;
 }
 tr.odd {
-    background-color:#D0F4D0;
+    background-color:#DEF7DE;
 }
 table.data tr.hover {
     background-color:#EEFEEE;
@@ -52,7 +52,7 @@ table.data tr.hover {
     cursor:pointer;
 }
 tr.expanded {
-    background-color:#80E0EF;
+    background-color:#9FE8F3;
 }
 table.data tr.expanded.hover {
     background-color:#90EFFF;
@@ -61,10 +61,10 @@ table.data tr.expanded.hover {
     padding:0px;
 }
 .details tr.even {
-    background-color:#C0F5FF;
+    background-color:#d0f7ff;
 }
 .details tr.odd {
-    background-color:#A6E9FF;
+    background-color:#bceeff;
 }
 .no_tasks {
     background-color:#C0F5FF;
