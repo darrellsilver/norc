@@ -110,6 +110,9 @@ def ndss(since_date=None, status_filter='all'):
 def iterations(jid):
     return Iteration.objects.filter(job__id=jid)
 
+def tasks_from_iter(iid):
+    return TaskRunStatus.objects.filter(iteration__id=iid)
+
 # DEPR
 # def get_task_statuses(status_filter='all'):
 #     if status_filter == 'all':

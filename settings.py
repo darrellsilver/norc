@@ -1,13 +1,17 @@
-# Django settings for Norc project.
+
+# Settings for Norc, including all Django configuration.
 
 import os
 
 from norc.settings_local import *
 
+# Norc's directory (assumed to be the parent folder of this file).
 NORC_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+# The path to Norc on GitHub.
 NORC_CODE_ROOT = 'git://github.com/darrellsilver/norc.git'
 
 class Envs(type):
+    
     ALL = {}
     
     def __init__(cls, name, bases, dct):
@@ -27,24 +31,12 @@ class BaseEnv(object):
     """
     __metaclass__ = Envs
     
-    # Norc settings!
+    # Norc settings.
     NORC_LOG_DIR = os.path.join(NORC_DIRECTORY, 'log/')
     NORC_TMP_DIR = os.path.join(NORC_DIRECTORY, 'tmp/')
-    # Database configuration.
-    DATABASE_ENGINE = 'mysql'
-    DATABASE_HOST = 'localhost'
-    DATABASE_PORT = '3306'
-    # Email configuration.
-    # Email currently does not work, so they're commented out for future use.
-    # EMAIL_HOST = 'smtp.gmail.com'
-    # EMAIL_HOST_USER = ''
-    # EMAIL_PORT = '587'
-    # EMAIL_USE_TLS = 'True'
-    # Debugging switches.
-    DEBUG = False
-    LOGGING_DEBUG = False
-    TEMPLATE_DEBUG = False
-    # Other Django settings.
+    
+    # Important Django settings.
+    ADMINS = ((),)
     INSTALLED_APPS = (
         'django.contrib.admin',
         'django.contrib.auth',
@@ -54,6 +46,27 @@ class BaseEnv(object):
         'norc.core',
         'norc.web',
     )
+    
+    # Database configuration.
+    DATABASE_ENGINE = 'mysql'
+    DATABASE_NAME = 'norc_db'
+    DATABASE_USER = 'max'
+    DATABASE_HOST = 'localhost'
+    DATABASE_PORT = '3306'
+    
+    # Email configuration; commented out for future use.
+    # EMAIL_HOST = 'smtp.gmail.com'
+    # EMAIL_HOST_USER = ''
+    # EMAIL_PORT = '587'
+    # EMAIL_USE_TLS = 'True'
+    
+    # Debugging switches.
+    DEBUG = False
+    LOGGING_DEBUG = False
+    TEMPLATE_DEBUG = False
+    
+    # Miscellaneous Django settings.
+    INTERNAL_IPS = ('127.0.0.1',)
     MEDIA_ROOT = os.path.join(NORC_DIRECTORY, 'static/')
     ROOT_URLCONF = 'norc.urls'
     SITE_ID = 1
@@ -71,7 +84,6 @@ class MaxEnv(BaseEnv):
     )
 
 class darrell_env(BaseEnv):
-    ADMINS = ((),)
     NORC_LOG_DIR = '/Users/darrell/projects/norc/logs'
     NORC_TMP_DIR = '/Users/darrell/projects/norc/tmp'
     DATABASE_NAME = 'norc'

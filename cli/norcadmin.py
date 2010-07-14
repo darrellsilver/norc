@@ -180,7 +180,7 @@ def main():
     parser.add_option("-f", "--filter", action="store",
         default="interesting", help="if showing status, limit to this set. Defaults to 'interesting', which is active+errored.")
     parser.add_option("--started_since", action="store",
-        help="limit statuses to those since relative start date. Format is 'm{num}{d|h|min}'.")
+        help="limit statuses to those since relative start date. Format is '{num}{d|h|m}'.")
     parser.add_option("--details", action="store", type="int",
         help="Show details for the Norc daemon with the given ID.")
     parser.add_option("--due_to_run", action="store", type="int",

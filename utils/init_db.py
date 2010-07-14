@@ -29,7 +29,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 
 from norc.utils.log_new import FileLog
-log = FileLog()
+log = FileLog(os.devnull)
 
 def init_superuser():
     assert User.objects.all().count() == 0, "User(s) already exist in the DB!"

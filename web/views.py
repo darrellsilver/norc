@@ -9,7 +9,6 @@ from django.core.paginator import Paginator, InvalidPage
 # from norc.core.models import *
 from norc.core import report
 from norc.web import structure
-from norc.utils.parsing import parse_date_relative
 from norc.utils.web import JSONObjectEncoder
 
 def paginate(request, data_set):
@@ -53,12 +52,14 @@ def get_data(request, content_type):
     json = simplejson.dumps(data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")
 
-def get_details(request, content_type, cid):
+def get_details(request, content_type, content_id):
     """Gets the details for tasks run by a specific daemon."""
     data = {}
-    for item in structure.RETRIEVE_DETAILS[content_type](cid):
+    print content_type
+    data_key, data_getter = structure.RETRIEVE_DETAILS[content_type]
+    for item in data_getter(content_id):
         data[item.id] = {}
-        for k, f in structure.DETAIL_DATA[content_type].iteritems():
+        for k, f in structure.DATA[data_key].iteritems():
             data[item.id][k] = f(item)
-    json = simplejson.dumps(data, cls=JSONObjectEncoder)
+    json = simplejson.dumps({data_key: data}, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")

@@ -16,12 +16,13 @@ from django.conf import settings
 from norc.utils import django_extras, log
 log = log.Log()
 
+DB_TABLE_PREFIX = 'norc'
 
 class Job(models.Model):
     """A collection of Tasks across which dependencies can be defined."""
     
     class Meta:
-        db_table = "norc_job"
+        db_table = DB_TABLE_PREFIX + '_job'
     
     name = models.CharField(max_length=128, unique=True)
     description = models.CharField(max_length=512, blank=True, null=True)
@@ -56,7 +57,7 @@ class Iteration(models.Model):
     ALL_ITER_TYPES = (ITER_TYPE_PERSISTENT, ITER_TYPE_EPHEMERAL)
     
     class Meta:
-        db_table = 'norc_iteration'
+        db_table = DB_TABLE_PREFIX + '_iteration'
     
     job = models.ForeignKey(Job)
     status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
@@ -142,7 +143,7 @@ class Resource(models.Model):
     """
     
     class Meta:
-        db_table = 'norc_resource'
+        db_table = DB_TABLE_PREFIX + '_resource'
     
     name = models.CharField(max_length=128)
     # maximum units available for reservation regardless of region. If > -1, 
@@ -206,7 +207,7 @@ class ResourceRegion(models.Model):
     """
     
     class Meta:
-        db_table = 'norc_resourceregion'
+        db_table = DB_TABLE_PREFIX + '_resourceregion'
     
     name = models.CharField(max_length=128, unique=True)
     date_added = models.DateTimeField(default=datetime.datetime.utcnow)
@@ -227,7 +228,7 @@ class ResourceReservation(models.Model):
     """A reservation of a Resource in a given ResourceRegion."""
     
     class Meta:
-        db_table = 'norc_resourcereservation'
+        db_table = DB_TABLE_PREFIX + '_resourcereservation'
         unique_together = (('region', 'task_resource_relationship'),)
     
     objects = django_extras.LockingManager()
@@ -314,7 +315,7 @@ class TaskResourceRelationship(models.Model):
     """Defines how much of a Resource a Task demands in order to run."""
     
     class Meta:
-        db_table = 'norc_taskresourcerelationship'
+        db_table = DB_TABLE_PREFIX + '_taskresourcerelationship'
         unique_together = (('_task_content_type', '_task_object_id', 'resource'),)
     
     _task_content_type = models.ForeignKey(ContentType)
@@ -388,7 +389,7 @@ class RegionResourceRelationship(models.Model):
     """Defines the availability of resources in a given region"""
     
     class Meta:
-        db_table = 'norc_regionresourcerelationship'
+        db_table = DB_TABLE_PREFIX + '_regionresourcerelationship'
         unique_together = (('region','resource'),)
     
     region = models.ForeignKey('ResourceRegion')
@@ -813,7 +814,7 @@ class TaskDependency(models.Model):
     ALL_DEP_TYPES = (DEP_TYPE_STRICT, DEP_TYPE_FLOW)
     
     class Meta:
-        db_table = 'norc_taskdependency'
+        db_table = DB_TABLE_PREFIX + '_taskdependency'
         unique_together = (('_parent_task_content_type', '_parent_task_object_id'
                             , '_child_task_content_type', '_child_task_object_id'),)
     
@@ -944,7 +945,7 @@ class TaskRunStatus(models.Model):
     STATUS_CATEGORIES['all'] = ALL_STATUSES
     
     class Meta:
-        db_table = 'norc_taskrunstatus'
+        db_table = DB_TABLE_PREFIX + '_taskrunstatus'
     
     # @see http://docs.djangoproject.com/en/dev/ref/contrib/contenttypes/
     # or the lesser @see http://www.djangoproject.com/documentation/models/generic_relations/
@@ -1050,7 +1051,7 @@ class TaskClassImplementation(models.Model):
     ALL_STATUSES = (STATUS_ACTIVE, STATUS_INACTIVE)
     
     class Meta:
-        db_table = 'norc_taskclassimplementation'
+        db_table = DB_TABLE_PREFIX + '_taskclassimplementation'
     
     status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
     library_name = models.CharField(max_length=1024)
@@ -1072,7 +1073,7 @@ class RunCommand(Task):
     """Run an arbitrary command line as a Task."""
     
     class Meta:
-        db_table = 'norc_generic_runcommand'
+        db_table = DB_TABLE_PREFIX + '_generic_runcommand'
     
     cmd = models.CharField(max_length=1024)
     nice = models.IntegerField(default=0)
@@ -1407,7 +1408,7 @@ class StartIteration(SchedulableTask):
     """Schedule on which new Norc Iterations are started"""
     
     class Meta:
-        db_table = 'norc_startiteration'
+        db_table = DB_TABLE_PREFIX + '_startiteration'
     
     target_job = models.ForeignKey(Job, related_name="_ignore_target_job_set")
     target_iteration_type = models.CharField(
@@ -1465,7 +1466,7 @@ class NorcDaemonStatus(models.Model):
         STATUS_ENDEDGRACEFULLY, STATUS_KILLED, STATUS_DELETED)
     
     class Meta:
-        db_table = 'norc_daemonstatus'
+        db_table = DB_TABLE_PREFIX + '_daemonstatus'
     
     region = models.ForeignKey('ResourceRegion')
     host = models.CharField(max_length=124)

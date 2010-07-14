@@ -7,6 +7,7 @@ content type, and how to retrieve that data from the appropriate object.
 """
 
 from norc.core import report
+from norc.utils.parsing import parse_date_relative
 
 def parse_since(since_str):
     """A utility function to help parse a since string."""
@@ -24,8 +25,14 @@ def parse_since(since_str):
 # of data objects for each content type.
 RETRIEVE = {
     'daemons': lambda GET: report.ndss(
-        parse_since(GET.get('since', 'm10min'))),
+        parse_since(GET.get('since', '10m'))),
     'jobs': lambda GET: report.jobs(),
+}
+
+RETRIEVE_DETAILS = {
+    'daemons': ('tasks', lambda id: report.nds(id).get_task_statuses()),
+    'jobs': ('iterations', lambda id: report.iterations(id)),
+    'iterations': ('tasks', lambda id: report.tasks_from_iter(id)),
 }
 
 # Dictionary the simultaneously defines the data structure to be returned
@@ -48,26 +55,34 @@ DATA = {
         'description': lambda job: job.description,
         'added': lambda job: job.date_added,
     },
-}
-
-RETRIEVE_DETAILS = {
-    'daemons': lambda did: report.nds(did).get_task_statuses(),
-    'jobs': lambda jid: report.iterations(jid),
-}
-
-DETAIL_DATA = {
-    'daemons': {
+    'tasks': {
         'job': lambda trs: trs.task.job.name,
         'task': lambda trs: trs.task.get_name(),
         'status': lambda trs: trs.status,
         'started': lambda trs: trs.date_started,
         'ended': lambda trs: trs.date_ended,
     },
-    'jobs': {
+    'iterations': {
         'status': lambda i: i.status,
         'type': lambda i: i.iteration_type,
         'started': lambda i: i.date_started,
         'ended': lambda i: i.date_ended if i.date_ended else '-',
-    }
+    },
 }
+
+# DETAIL_DATA = {
+#     'daemons': {
+#         'job': lambda trs: trs.task.job.name,
+#         'task': lambda trs: trs.task.get_name(),
+#         'status': lambda trs: trs.status,
+#         'started': lambda trs: trs.date_started,
+#         'ended': lambda trs: trs.date_ended,
+#     },
+#     'jobs': {
+#         'status': lambda i: i.status,
+#         'type': lambda i: i.iteration_type,
+#         'started': lambda i: i.date_started,
+#         'ended': lambda i: i.date_ended if i.date_ended else '-',
+#     }
+# }
 

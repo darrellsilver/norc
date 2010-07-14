@@ -14,7 +14,7 @@ h2 {
 div.content {
     margin-left:auto;
     margin-right:auto;
-    width:800px;
+    width:700px;
 }
 table {
     border-spacing:0px;
@@ -25,8 +25,6 @@ table {
 }
 table.data {
     background-color:#AAA;
-/*    border-top:1px solid #AAA;*/
-/*    border-bottom:1px solid #AAA;*/
     font-family:"Trebuchet MS", "Futura", "Courier New";
     font-size:10px;
 }
@@ -40,36 +38,56 @@ td {
     margin:0px;
     padding:0px 4px;
 }
-tr.even {
-    background-color:#D3EAD0;
-}
-tr.odd {
-    background-color:#DEF7DE;
-}
-table.data tr.hover {
-    background-color:#EEFEEE;
-    color:#000;
-    cursor:pointer;
-}
-tr.expanded {
-    background-color:#9FE8F3;
-}
-table.data tr.expanded.hover {
-    background-color:#90EFFF;
-}
 .details td {
     padding:0px;
 }
-.details tr.even {
-    background-color:#d0f7ff;
+
+table.L1 tr.even {
+    background-color:#D3EAD0;
 }
-.details tr.odd {
-    background-color:#bceeff;
+table.L1 tr.odd {
+    background-color:#DEF7DE;
 }
-.no_tasks {
-    background-color:#C0F5FF;
+table.L1 tr.hover {
+    background-color:#EEFEEE;
 }
 
+table.L1 tr.expanded {
+    background-color:#9FE8F3;
+}
+table.L1 tr.expanded.hover {
+    background-color:#90EFFF;
+}
+table.L2 tr.even, table.L1 .noDetails {
+    background-color:#D0F7FF;
+}
+table.L2 tr.odd {
+    background-color:#BCEEFF;
+}
+table.L2 tr.hover {
+    background-color:#EBFFFF;
+}
+
+table.L2 tr.expanded {
+    background-color:#FFDF57;
+}
+table.L2 tr.expanded.hover {
+    background-color:#FFEB49;
+}
+table.L3 tr.even, table.L2 .noDetails {
+    background-color:#FFf9a0;
+}
+table.L3 tr.odd {
+    background-color:#FFEE80;
+}
+table.L3 tr.hover {
+    background-color:#FFFADD;
+}
+
+.hover {
+    color:#000;
+    cursor:pointer;
+}
 span.clickable {
     color:#888;
     text-decoration:underline;
