@@ -36,7 +36,7 @@ class BaseEnv(object):
     NORC_TMP_DIR = os.path.join(NORC_DIRECTORY, 'tmp/')
     
     # Important Django settings.
-    ADMINS = ((),)
+    ADMINS = ()
     INSTALLED_APPS = (
         'django.contrib.admin',
         'django.contrib.auth',

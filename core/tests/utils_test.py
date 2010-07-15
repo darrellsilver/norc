@@ -3,7 +3,7 @@
 
 from django.test import TestCase
 
-from norc.utils import init_db
+from norc.norc_utils import init_db
 from norc.core.models import Job, Iteration, Resource, ResourceRegion
 
 class TestInitDB(TestCase):

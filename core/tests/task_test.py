@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.conf import settings
 from norc.core import report
 from norc.core.models import *
-from norc.utils import init_db, wait_until
+from norc.norc_utils import init_db, wait_until
 from norc.core.tests.daemon_test import start_test_daemon
 
 class TestTask(RunCommand):

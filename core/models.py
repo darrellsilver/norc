@@ -13,7 +13,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from django.conf import settings
-from norc.utils import django_extras, log
+from norc.norc_utils import django_extras, log
 log = log.Log()
 
 DB_TABLE_PREFIX = 'norc'

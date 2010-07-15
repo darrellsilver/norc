@@ -48,7 +48,7 @@ from optparse import OptionParser
 
 from norc.core import report
 from norc.core.models import NorcDaemonStatus, TaskRunStatus
-from norc.utils import formatting, parsing, log
+from norc.norc_utils import formatting, parsing, log
 log = log.Log()
 
 def report_daemon_statuses(status_filter=None, since_date=None):

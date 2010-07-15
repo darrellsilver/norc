@@ -34,7 +34,7 @@ import pickle
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
-from norc.utils import parsing
+from norc.norc_utils import parsing
 from norc.settings import \
     AWS_ACCESS_KEY_ID as AWS_ID, \
     AWS_SECRET_ACCESS_KEY as AWS_KEY

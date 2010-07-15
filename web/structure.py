@@ -7,7 +7,7 @@ content type, and how to retrieve that data from the appropriate object.
 """
 
 from norc.core import report
-from norc.utils.parsing import parse_date_relative
+from norc.norc_utils.parsing import parse_date_relative
 
 def parse_since(since_str):
     """A utility function to help parse a since string."""

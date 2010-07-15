@@ -28,7 +28,7 @@ import datetime
 from django.contrib.auth.models import User
 from django.conf import settings
 
-from norc.utils.log_new import FileLog
+from norc.norc_utils.log_new import FileLog
 log = FileLog(os.devnull)
 
 def init_superuser():

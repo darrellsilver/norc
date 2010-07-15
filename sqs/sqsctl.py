@@ -47,8 +47,8 @@ from boto.sqs.connection import SQSConnection
 from boto.exception import SQSError
 
 from django.conf import settings
-from norc.utils import formatting
-from norc.utils import log
+from norc.norc_utils import formatting
+from norc.norc_utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 

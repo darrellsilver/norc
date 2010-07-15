@@ -51,7 +51,7 @@ from norc.core.models import NorcDaemonStatus
 # from norc.sqs import utils as sqs
 # from norc.sqs import models as sqs
 
-from norc.utils import log
+from norc.norc_utils import log
 log = log.Log()
 
 #

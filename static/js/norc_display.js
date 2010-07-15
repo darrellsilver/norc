@@ -121,7 +121,6 @@ function insertNewRow(rowAbove, contents, slide) {
 
 // Creates a table.
 function makeDataTable(chain, data, details) {
-    console.log(chain);
     var dataKey = getKeyFromChain(chain);
     var table = $('<table/>');
     table.addClass('L' + chain.split('-').length);
@@ -151,10 +150,10 @@ function makeDataTable(chain, data, details) {
             row.click(function() {
                 toggleDetails(chain, id);
             });
+            if (state.detailsShowing[rID]) {
+                showDetails(chain, id, false);
+            }
         };
-        if (state.detailsShowing[rID]) {
-            showDetails(chain, id, false);
-        }
         table.append(row);
     });
     table.children('tbody').children('tr:even').addClass('even');
@@ -175,7 +174,6 @@ function showDetails(chain, id, slide) {
     state.detailsShowing[chain + '-' + id] = true;
     var detailKey = DETAIL_KEYS[getKeyFromChain(chain)];
     retrieveData(chain, id, {}, function(content, data) {
-        // content.addClass('details');
         var row = $('#' + chain + '-' + id);
         if (slide) {
             row.find('td').animate({
@@ -190,21 +188,8 @@ function showDetails(chain, id, slide) {
         }
         insertNewRow(row, content, slide).addClass('details')
             .attr('id', [chain, id, detailKey].join('-'));
-        // $(sID + ' #' + id + 'details').addClass('data_row');
         row.addClass('expanded');
     });
-    // $.get('/data/' + getKeyFromChain(chain) + '/' + id + '/', function(data) {
-    //     var content;
-    //     if (!$.isEmptyObject(data)) {
-    //         content = makeDataTable(detailKey, data, parent);
-    //     } else {
-    //         content = $('<div/>', {
-    //             'text': 'No ' + detailKey + '.', 
-    //             'class': 'noDetails',
-    //         });
-    //     }
-    //     
-    // });
 }
 
 function hideDetails(chain, id) {
@@ -224,9 +209,6 @@ function hideDetails(chain, id) {
 
 function retrieveData(chain, id, filters, callback) {
     var dataKey = getKeyFromChain(chain);
-    // var parentChain = getChainRemainder(chain);
-    // console.log(chain);
-    // console.log(id);
     if (!filters) filters = {};
     // if ('since' in filters) {
     //     state[dataKey].since = filters.since;
@@ -239,7 +221,6 @@ function retrieveData(chain, id, filters, callback) {
         dataKey = DETAIL_KEYS[dataKey];
         chain = chain + '-' + dataKey;
     }
-    // console.log(path);
     $.get(path, filters, function(data) {
         var content;
         if (!$.isEmptyObject(data[dataKey])) {
@@ -256,12 +237,11 @@ function retrieveData(chain, id, filters, callback) {
 
 function refreshSection(dataKey, filters) {
     retrieveData(dataKey, false, filters, function(content, data) {
-        // console.log(dataKey);
         content.addClass('data');
         var sID = '#' + dataKey + '-section';
         $(sID + ' > .data').replaceWith(content);
         if (data.page.next != 0) {
-            $(sID + ' .next_page').addClass('clickable').click(function() {
+            $(sID + ' .next_page').addClass('clickable').unbind('click').click(function() {
                 refreshSection(dataKey, {page : state.nextPage});
             });
             state.nextPage = data.page.next;
@@ -269,7 +249,7 @@ function refreshSection(dataKey, filters) {
             $(sID + ' .next_page').removeClass('clickable').unbind('click');
         }
         if (data.page.prev != 0) {
-            $(sID + ' .prev_page').addClass('clickable').click(function() {
+            $(sID + ' .prev_page').addClass('clickable').unbind('click').click(function() {
                 refreshSection(dataKey, {page : state.prevPage});
             });
             state.prevPage = data.page.prev;

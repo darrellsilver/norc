@@ -9,7 +9,7 @@ from django.core.paginator import Paginator, InvalidPage
 # from norc.core.models import *
 from norc.core import report
 from norc.web import structure
-from norc.utils.web import JSONObjectEncoder
+from norc.norc_utils.web import JSONObjectEncoder
 
 def paginate(request, data_set):
     try:

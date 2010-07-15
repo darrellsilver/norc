@@ -61,7 +61,7 @@ import subprocess   # if using forking for running Tasks
 from django.conf import settings
 
 from norc.core.models import *
-from norc.utils import log
+from norc.norc_utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 # TODO: Can these be run not as daemons?

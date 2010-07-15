@@ -49,7 +49,7 @@ from django.db import models
 from django.conf import settings
 from norc.core.daemons import NorcDaemonStatus
 
-from norc.utils import log
+from norc.norc_utils import log
 log = log.Log()
 
 class SQSTaskRunStatus(models.Model):

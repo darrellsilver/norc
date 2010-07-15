@@ -64,7 +64,7 @@ from norc import core
 from norc.core.daemons import ThreadingNorcDaemon, ForkingNorcDaemon
 from norc.core.models import ResourceRegion
 from norc.core import report
-from norc.utils import log
+from norc.norc_utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 def main():

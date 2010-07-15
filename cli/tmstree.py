@@ -44,8 +44,8 @@ import sys
 from norc.core import models as core
 from optparse import OptionParser
 
-from norc.utils import formatting
-from norc.utils import log
+from norc.norc_utils import formatting
+from norc.norc_utils import log
 log = log.Log()
 
 #

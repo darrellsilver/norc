@@ -9,7 +9,7 @@ from django.test import TestCase
 
 from norc import sqs
 from norc.sqs.models import SQSTask
-from norc.utils import wait_until
+from norc.norc_utils import wait_until
 from norc.settings import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 
 class SQSTaskTest(SQSTask):

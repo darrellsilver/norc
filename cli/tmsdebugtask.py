@@ -51,7 +51,7 @@ from norc.core.models import Iteration, ResourceRegion, NorcDaemonStatus
 from norc.core import manage as norc_manage
 from django.conf import settings
 
-from norc.utils import log
+from norc.norc_utils import log
 log = log.Log(settings.LOGGING_DEBUG)
 
 #

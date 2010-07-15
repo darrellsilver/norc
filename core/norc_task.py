@@ -38,7 +38,7 @@ from optparse import OptionParser
 
 from norc.core import models as core
 from norc.core import report
-from norc.utils import log, parsing
+from norc.norc_utils import log, parsing
 log = log.Log()
 
 def _handle_signal(sig_name, exit_code):

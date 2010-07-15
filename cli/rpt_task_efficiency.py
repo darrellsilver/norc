@@ -48,10 +48,10 @@ from optparse import OptionParser
 from norc.core import models as core
 from norc.sqs import models as sqs
 
-from norc.utils import formatting
-from norc.utils.reporting import round_datetime, round_2_delta, calc_avg \
+from norc.norc_utils import formatting
+from norc.norc_utils.reporting import round_datetime, round_2_delta, calc_avg \
     , ensure_hash_depth, ensure_list, mod_timedelta
-from norc.utils import log
+from norc.norc_utils import log
 log = log.Log()
 
 #

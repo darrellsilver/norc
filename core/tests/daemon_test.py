@@ -10,7 +10,7 @@ from django.conf import settings
 from norc.core import report
 from norc.core.daemons import ForkingNorcDaemon, ThreadingNorcDaemon
 from norc.core.models import NorcDaemonStatus
-from norc.utils import init_db, wait_until
+from norc.norc_utils import init_db, wait_until
 
 class DaemonThread(threading.Thread):
     """Thread that will run a daemon."""
