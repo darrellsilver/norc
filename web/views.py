@@ -55,7 +55,6 @@ def get_data(request, content_type):
 def get_details(request, content_type, content_id):
     """Gets the details for tasks run by a specific daemon."""
     data = {}
-    print content_type
     data_key, data_getter = structure.RETRIEVE_DETAILS[content_type]
     for item in data_getter(content_id):
         data[item.id] = {}

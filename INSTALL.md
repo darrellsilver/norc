@@ -171,20 +171,20 @@ We want MY_REGION to offer 10 DATABASE_CONNECTION Resources
 
 Now we're ready to start a Norc Daemon!  In a new terminal session, or the same one if you want to quit the Django dev server, run 
 
-        $ tmsdctl --status
+        $ norc
         Status as of 10/28/2009 22:25:56
-        No INTERESTING tms daemons
+        No INTERESTING norc daemons
 
 This indicates that no Daemons are running, which should be obvious because we haven't started any.  So, let's start one:
 
-        $ tmsd --region MY_REGION
+        $ norcd MY_REGION
         [10/28/2009 22:27:14.059850] (info) NorcD stderr & stdout will be in '/Users/darrell/projects/norc/demo/norc_log/_tmsd/tmsd.1'
 
-Output for this daemon, starting of each task and errors, will be sent to the file indicated.  "Ctl-C" will exit the daemon.  But before exiting, rerun tmsdctl.py and you'll see:
+Output for this daemon, starting of each task and errors, will be sent to the file indicated.  "Ctl-C" will exit the daemon.  But before exiting, rerun norc and you'll see:
 
-        $ tmsdctl --status
+        $ norc
         Status as of 10/28/2009 22:27:23
-        1 INTERESTING tms daemon(s):
+        1 INTERESTING norc daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error    Status               Started   Ended
         1      Norc   MY_REGION   DSmbp.local   12084         0         0       0   RUNNING   2009-10-28 22:27:14       -
 
@@ -220,17 +220,17 @@ We've set up 1 & 2, so we now have to do 3.  The simplest way to do this is to m
     * Status: **RUNNING**
     * Iteration type: **EPHEMERAL** (this Iteration of this Job will run once and end)
 
-Once this is done, our new Task will run.  So, rerun tmsdctl shows:
+Once this is done, our new Task will run.  So, rerunning norc shows:
 
-        $ tmsdctl --status
+        $ norc
         Status as of 10/28/2009 23:05:02
-        1 INTERESTING tms daemon(s):
+        1 INTERESTING norc daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error    Status               Started   Ended
         1      Norc   MY_REGION   DSmbp.local   12084         0         1       0   RUNNING   2009-10-28 22:27:14       -
 
 And if we show details for this Daemon, we'll see a bit more detail:
 
-        $ tmsdctl --status --details 1 --filter ALL
+        $ norc --details 1 --filter ALL
         Status as of 10/28/2009 23:05:02
         1 INTERESTING tms daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error    Status               Started   Ended
@@ -244,7 +244,7 @@ And if we show details for this Daemon, we'll see a bit more detail:
 
 And we can see the log file for this Task:
 
-        $ cat ../norc_log/DEMO_JOB/RunCommand.1
+        $ cat log/DEMO_JOB/RunCommand.1
         [10/28/2009 23:03:41.104560] (info) Running Task 'RunCommand.1'
         [10/28/2009 23:03:41.104689] (info) Running command 'nice -n 3 echo "Hello, Norc! Local time is 10/28/2009"'
         Hello, Norc! Local time is 10/28/2009
@@ -271,7 +271,7 @@ The full list of these variables, which could be easily expanded, can be seen di
 
 Now we shut off our daemon:
 
-        $ tmsdctl --status --stop 1
+        $ norc --stop 1
         Status as of 10/28/2009 23:05:02
         1 INTERESTING tms daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error          Status               Started   Ended
@@ -279,7 +279,7 @@ Now we shut off our daemon:
 
 After which our daemon stops, and the process ends:
 
-        $ tmsdctl --status --det 1 --filter all
+        $ norc --det 1 --filter all
         Status as of 10/28/2009 23:15:37
         1 ALL tms daemon(s):
         ID    Type      Region          Host     PID   Running   Success   Error   Status               Started                 Ended
