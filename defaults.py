@@ -45,6 +45,11 @@ class BaseEnv(object):
         'norc.core',
         'norc.web',
     )
+    MIDDLEWARE_CLASSES = (
+        'django.middleware.common.CommonMiddleware',
+        'django.contrib.sessions.middleware.SessionMiddleware',
+        'django.contrib.auth.middleware.AuthenticationMiddleware',
+    )
     
     # Database configuration.
     DATABASE_ENGINE = 'mysql'

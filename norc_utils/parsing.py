@@ -4,7 +4,7 @@ import re, datetime
 def parse_date_relative(back, date=None):
     if date == None:
         date = datetime.datetime.utcnow()
-    parser = re.compile("([0-9]*)(d|h|min)")
+    parser = re.compile("([0-9]*)(d|h|m)")
     parsed = parser.findall(back)
     if not len(parsed) == 1:
         raise TypeError("Could not parse '%s'" % (back))

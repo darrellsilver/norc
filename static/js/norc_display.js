@@ -48,7 +48,10 @@ var TIME_OPTIONS = ['10m', '30m', '1h', '3h', '12h', '1d', '7d', 'all'];
 // Saved state of the page.
 var state = {
     // Whether details are showing for a row.
-    detailsShowing : {},
+    detailsShowing: {},
+    since: {},
+    nextPage: {},
+    prevPage: {},
     'daemons' : {
         
         // The last 'since' selection.
@@ -90,14 +93,18 @@ function unTitle(str) {
     }).join('_');
 }
 
+function chainLength(chain) {
+    return chain.split('-').length;
+}
+
 // Takes a string like 'x-y-z' and returns 'z'.
-function getKeyFromChain(str) {
-    return str.split('-').slice(-1);
+function getKeyFromChain(chain) {
+    return chain.split('-').slice(-1);
 }
 
 // Takes a string like 'x-y-z' and returns 'x-y'.
-function getChainRemainder(str) {
-    return str.split('-').slice(0, -1).join('-');
+function getChainRemainder(chain) {
+    return chain.split('-').slice(0, -1).join('-');
 }
 
 // Inserts a new row after rowAbove with the given ID and
@@ -123,7 +130,7 @@ function insertNewRow(rowAbove, contents, slide) {
 function makeDataTable(chain, data, details) {
     var dataKey = getKeyFromChain(chain);
     var table = $('<table/>');
-    table.addClass('L' + chain.split('-').length);
+    table.addClass('L' + chainLength(chain));
     var hRow = $('<tr/>');
     var headers = DATA_HEADERS[dataKey];
     $.each(headers, function(i, h) {
@@ -210,11 +217,13 @@ function hideDetails(chain, id) {
 function retrieveData(chain, id, filters, callback) {
     var dataKey = getKeyFromChain(chain);
     if (!filters) filters = {};
-    // if ('since' in filters) {
-    //     state[dataKey].since = filters.since;
-    // } else {
-    //     filters.since = state[dataKey].since;
-    // }
+    if ('since' in filters) {
+        state.since[chain] = filters.since;
+    } else  if (chain in state.since) {
+        filters.since = state.since[chain];
+    } else {
+        filters.since = 'all'
+    }
     var path = '/data/' + dataKey + '/';
     if (id != false) {
         path += id + '/';
@@ -225,6 +234,12 @@ function retrieveData(chain, id, filters, callback) {
         var content;
         if (!$.isEmptyObject(data[dataKey])) {
             content = makeDataTable(chain, data[dataKey], id != false);
+        } else if (chainLength(chain) == 1) {
+            content = makeDataTable(chain, data[dataKey], id != false);
+            insertNewRow(content.find('tr:first'), $('<div/>', {
+                'text': 'No ' + dataKey + '.', 
+                'class': 'noDetails',
+            }));
         } else {
             content = $('<div/>', {
                 'text': 'No ' + dataKey + '.', 
@@ -271,6 +286,8 @@ function makeTimeOptions(dataKey) {
         $('#' + dataKey + '-section .timeframe').append(' ').append(link);
     });
 }
+
+// function 
 
 $(document).ready(function() {
     refreshSection('daemons');

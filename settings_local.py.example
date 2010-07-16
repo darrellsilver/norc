@@ -10,6 +10,10 @@ class DemoEnv(BaseEnv):
     NORC_ENVIRONMENT shell variable to 'DemoEnv'.
     
     """
+    # Norc settings.
+    NORC_LOG_DIR = os.path.join(NORC_DIRECTORY, 'log/')
+    NORC_TMP_DIR = os.path.join(NORC_DIRECTORY, 'tmp/')
+    
     DATABASE_NAME = 'norc_db'
     DATABASE_USER = 'demo'
     DATABASE_PASSWORD = 'norc'

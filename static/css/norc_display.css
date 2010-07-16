@@ -42,7 +42,7 @@ td {
     padding:0px;
 }
 
-table.L1 tr.even {
+table.L1 tr.even, .noDetails {
     background-color:#D3EAD0;
 }
 table.L1 tr.odd {
