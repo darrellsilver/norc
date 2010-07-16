@@ -1,0 +1,107 @@
+body {
+    background-color:#F6FFF9;
+    color:#000;
+    font-family:"Arial", "Verdana";
+    font-size:12px;
+}
+h1 {
+    color:#000;
+    text-align:center;
+}
+h2 {
+    color:#000;
+}
+div.content {
+    margin-left:auto;
+    margin-right:auto;
+    width:700px;
+}
+table {
+    border-spacing:0px;
+    margin:0px;
+    padding:0px;
+    text-align:center;
+    width:100%;
+}
+table.data {
+    background-color:#AAA;
+    font-family:"Trebuchet MS", "Futura", "Courier New";
+    font-size:10px;
+}
+
+/* Row styles. */
+tr {
+    margin:0px;
+    padding:0px;
+}
+td {
+    margin:0px;
+    padding:0px 4px;
+}
+.details td {
+    padding:0px;
+}
+
+table.L1 tr.even {
+    background-color:#D3EAD0;
+}
+table.L1 tr.odd {
+    background-color:#DEF7DE;
+}
+table.L1 tr.hover {
+    background-color:#EEFEEE;
+}
+
+table.L1 tr.expanded {
+    background-color:#9FE8F3;
+}
+table.L1 tr.expanded.hover {
+    background-color:#90EFFF;
+}
+table.L2 tr.even, table.L1 .noDetails {
+    background-color:#D0F7FF;
+}
+table.L2 tr.odd {
+    background-color:#BCEEFF;
+}
+table.L2 tr.hover {
+    background-color:#EBFFFF;
+}
+
+table.L2 tr.expanded {
+    background-color:#FFDF57;
+}
+table.L2 tr.expanded.hover {
+    background-color:#FFEB49;
+}
+table.L3 tr.even, table.L2 .noDetails {
+    background-color:#FFf9a0;
+}
+table.L3 tr.odd {
+    background-color:#FFEE80;
+}
+table.L3 tr.hover {
+    background-color:#FFFADD;
+}
+
+.hover {
+    color:#000;
+    cursor:pointer;
+}
+span.clickable {
+    color:#888;
+    text-decoration:underline;
+    cursor:pointer;
+}
+.page_nav {
+    text-align:center;
+}
+.status_good {
+    background-color:#CF6;
+}
+.status_warning {
+    background-color:#FF5;
+}
+.status_error {
+    background-color:#F85;
+}

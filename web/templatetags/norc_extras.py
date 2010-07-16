@@ -27,7 +27,13 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-# TODO: Get rid of log-spam on tests.  See next todo.
-# TODO: Make everything take a Log object instead of log_dir as a param.
-# TODO: Get rid of all unnecessary getters and setters.
-# TODO: Examine task threading implementation.
+from django import template
+
+register = template.Library()
+
+@register.filter
+def task_statuses(value, arg):
+    if arg:
+        return value.get_task_statuses(arg)
+    else:
+        return value.get_task_statuses()

@@ -1,3 +1,4 @@
+
 #
 # Copyright (c) 2009, Perpetually.com, LLC.
 # All rights reserved.
@@ -27,7 +28,24 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-# TODO: Get rid of log-spam on tests.  See next todo.
-# TODO: Make everything take a Log object instead of log_dir as a param.
-# TODO: Get rid of all unnecessary getters and setters.
-# TODO: Examine task threading implementation.
+"""Some very generic utility functions."""
+
+import time
+import datetime
+# import timer
+
+def wait_until(cond, timeout=60, freq=1, **kwargs):
+    """Tests the condition repeatedly until <timeout> seconds have passed."""
+    seconds = 0
+    while not cond():
+        if seconds >= timeout:
+            raise Exception('Timed out after %s seconds.' % seconds)
+        time.sleep(freq)
+        seconds += freq
+
+def search(ls, cond):
+    while len(ls) > 0:
+        e = ls.pop(0)
+        if cond(e):
+            return e
+    return None

@@ -26,8 +26,3 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
 # POSSIBILITY OF SUCH DAMAGE.
 #
-
-# TODO: Get rid of log-spam on tests.  See next todo.
-# TODO: Make everything take a Log object instead of log_dir as a param.
-# TODO: Get rid of all unnecessary getters and setters.
-# TODO: Examine task threading implementation.

@@ -91,7 +91,7 @@ Each run of each Job does so as a distinct Iteration.  Iterations have three pos
 
 #### Daemons:
 
- * Daemons in Norc (called TMSDaemons for no good reason) are responsible for kicking off all Tasks in Norc.  A daemon is a unix process running on a specific host running as tmsd.py.
+ * Daemons in Norc (called NorcDaemons for no good reason) are responsible for kicking off all Tasks in Norc.  A daemon is a unix process running on a specific host running as tmsd.py.
 
 
 #### Regions:
@@ -121,8 +121,8 @@ Norc could support a web front end that allows full administration of the entire
         Status as of 10/27/2009 19:47:27
         6 INTERESTING tms daemon(s):
         ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
-        409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
-        413     TMS     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
+        409     Norc     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
+        413     Norc     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
 
  * This sample from [perpetually.com](http://www.perpetually.com/) shows a snippet of details for daemon ID 409.  We see the status of just four Tasks in this daemon:
 
@@ -130,9 +130,9 @@ Norc could support a web front end that allows full administration of the entire
         Status as of 10/27/2009 19:50:00
         1 INTERESTING tms daemon(s):
         ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
-        409     TMS     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
+        409     Norc     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
         
-        TMS Daemon perp1:410 (RUNNING) manages 3 task(s):
+        Norc Daemon perp1:410 (RUNNING) manages 3 task(s):
         
         Task ID      Status               Started                 Ended
         7546134    TIMEDOUT   2009-10-25 00:05:30   2009-10-25 00:20:30
