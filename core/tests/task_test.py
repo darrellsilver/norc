@@ -1,7 +1,7 @@
 
 """Module for testing anything related to daemons."""
 
-import os, pdb, time
+import os, time
 from django.test import TestCase
 
 from django.conf import settings
