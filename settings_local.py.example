@@ -1,14 +1,25 @@
-"""Settings local to the current user, such as passwords."""
 
-# Make this unique (long + random), and don't share it with anybody.
-SECRET_KEY = ''
+from norc.defaults import BaseEnv
 
-# Database password
-DATABASE_PASSWORD = ''
+"""Settings local to the current user."""
 
-# Email password for account used to send Norc alerts. Not used yet.
-# EMAIL_HOST_PASSWORD = ''
-
-# Amazon AWS login info.  Only needed if you're using the SQS module.
-AWS_ACCESS_KEY_ID = ''
-AWS_SECRET_ACCESS_KEY = ''
+class DemoEnv(BaseEnv):
+    """A demo of how settings can be inherited from BaseEnv.
+    
+    To use this environment, you would set the
+    NORC_ENVIRONMENT shell variable to 'DemoEnv'.
+    
+    """
+    DATABASE_NAME = 'norc_db'
+    DATABASE_USER = 'demo'
+    DATABASE_PASSWORD = 'norc'
+    
+    # You can add the sqs module like this:
+    # INSTALLED_APPS = BaseEnv.INSTALLED_APPS + ('norc.sqs',)
+    
+    # Make this string unique and random, and don't share it with anybody.
+    SECRET_KEY = ''
+    
+    # Amazon AWS login info.  Only needed if you're using the SQS module.
+    AWS_ACCESS_KEY_ID = ''
+    AWS_SECRET_ACCESS_KEY = ''

@@ -69,20 +69,3 @@ DATA = {
         'ended': lambda i: i.date_ended if i.date_ended else '-',
     },
 }
-
-# DETAIL_DATA = {
-#     'daemons': {
-#         'job': lambda trs: trs.task.job.name,
-#         'task': lambda trs: trs.task.get_name(),
-#         'status': lambda trs: trs.status,
-#         'started': lambda trs: trs.date_started,
-#         'ended': lambda trs: trs.date_ended,
-#     },
-#     'jobs': {
-#         'status': lambda i: i.status,
-#         'type': lambda i: i.iteration_type,
-#         'started': lambda i: i.date_started,
-#         'ended': lambda i: i.date_ended if i.date_ended else '-',
-#     }
-# }
-

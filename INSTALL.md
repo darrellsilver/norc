@@ -39,7 +39,7 @@ We'll be inside the norc/ directory for the rest of the tutorial.
 This step depends on what database you're using, but all you really need to do is make a username and password to have for the Norc/Django settings.
 
 
-## Configure settings.py & settings_local.py
+## Configure settings_local.py
 
 settings_local.py contains private settings that should not be shared, and thus are kept in a file outside of Git.
 
@@ -47,18 +47,17 @@ Create settings_local.py by copying settings_local.py.example:
 
         $ cp -p settings_local.py.example settings_local.py
 
-Edit the file to contains the proper credentials.  Currently, that means the secret key used by Django and the password to your database user.  The AWS settings are only needed if you're going to enable the SQS module.
-
-Edit settings.py, which is stored in Git, with other settings.  Norc uses a class structure to easily allow multiple environments.  If you want to take advantage of this (which we recommend), create your own class that inherits from BaseEnv (see MaxEnv as a reference).  Then, set the NORC_ENVIRONMENT shell variable to the name of that class (see below).  Otherwise, it's ok to just edit the BaseEnv class itself.
+Norc uses a class structure to easily allow for multiple environments with common settings.  Create your own class that inherits from BaseEnv by renaming and editing DemoEnv to have the proper credentials.  Then, set the NORC_ENVIRONMENT shell variable to the name of that class (see below).
 
 Crucial items are listed and explained below:
 
- * **ADMINS**: This is Django's admins list. See the django docs for more details.
  * **NORC_LOG_DIR**: The full path where all logs of all Tasks in Norc should be stored.  Defaults to a folder 'log' within the Norc directory, **which you need to create**.
  * **NORC_TMP_DIR**: The full path to a directory used for any temporary files created by Norc tasks.  This variable is available in the environment to any command run in Norc.  Defaults to a 'tmp' folder within the Norc directory, **which you must create**.
  * **DATABASE_ENGINE**: The name of the DB engine you're using.  See Django docs for specific values.
  * **DATABASE_NAME**: The name of the database that will be created in your DB engine.
  * **DATABASE_USER**: Your DB user name.
+ * **DATABASE_PASSWORD**: Your DB user's password.
+ * **SECRET_KEY**: Required by Django for security purposes.  Make it a random string of characters, the longer the better.
 
 ## Run Environment
 
