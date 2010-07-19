@@ -5,11 +5,9 @@ body {
     font-size:12px;
 }
 h1 {
-    color:#000;
     text-align:center;
 }
 h2 {
-    color:#000;
 }
 div.content {
     margin-left:auto;
@@ -83,9 +81,7 @@ table.L3 tr.odd {
 table.L3 tr.hover {
     background-color:#FFFADD;
 }
-
 .hover {
-    color:#000;
     cursor:pointer;
 }
 span.clickable {

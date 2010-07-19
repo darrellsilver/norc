@@ -168,17 +168,16 @@ function toggleDetails(chain, id) {
 function showDetails(chain, id, slide) {
     var idChain = chain + '-' + id;
     state.detailsShowing[idChain] = true;
-    var k = getKeyFromChain(chain);
-    var detailKey = DETAIL_KEYS[k];
+    var detailKey = DETAIL_KEYS[getKeyFromChain(chain)];
     retrieveData(chain, id, {}, function(content, data) {
-        var row = $('#' + chain + '-' + id);
+        var row = $('#' + idChain);
         if (slide) {
             row.find('td').animate({
                 paddingTop: '3px',
                 paddingBottom: '3px',
             }, 300);
         } else {
-            row.find('td').attr({
+            row.find('td').css({
                 paddingTop: '3px',
                 paddingBottom: '3px',
             });
@@ -218,18 +217,20 @@ function retrieveData(chain, id, filters, callback) {
     if (id != false) {
         path += id + '/';
         dataKey = DETAIL_KEYS[dataKey];
-        if (dataKey == 'tasks' && state.data[chain][id]['type'] == 'SQS') {
+        // Turrible haxxorz to make SQS shit work.
+        if (dataKey == 'tasks' && chain == 'daemons'
+                               && state.data[chain][id]['type'] == 'SQS') {
             dataKey = 'sqstasks';
         }
         chain = chain + '-' + dataKey;
     }
     $.get(path, filters, function(data) {
+        // This is currently only used for fixing SQS tasks.
         if (id != false) {
             state.data[getChainRemainder(chain) + '-' + id] = data[dataKey];
         } else {
             state.data[chain] = data[dataKey];
         }
-        
         var content;
         if (!$.isEmptyObject(data[dataKey])) {
             content = makeDataTable(chain, data[dataKey], id != false);
@@ -296,4 +297,11 @@ $(document).ready(function() {
     });
     $('.timeframe span').addClass('clickable');
     $('.pages span').addClass('clickable');
+    refresh = function() {
+        $.each(SECTIONS, function(i, section) {
+            refreshSection(section);
+        });
+        setTimeout(refresh, 60000);
+    };
+    setTimeout(refresh, 60000);
 });
