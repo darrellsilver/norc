@@ -55,10 +55,9 @@ def report_daemon_statuses(status_filter=None, since_date=None):
     tabular = [["ID", "Type", "Region", "Host", "PID", "Running",
         "Success", "Error", "Status", "Started", "Ended"]]
     if status_filter:
-        nds_set = report.ndss(
-            status_filter=status_filter.lower())
+        nds_set = report.ndss(since_date, status_filter.lower())
     else:
-        nds_set = report.ndss()
+        nds_set = report.ndss(since_date)
     for nds in nds_set:
         one_row = [
             str(nds.id),

@@ -49,6 +49,7 @@ def push_task(task, queue):
     if type(queue) == str:
         queue = SQSConnection(AWS_ID, AWS_KEY).lookup(queue)
     m = Message()
+    # m.set_body(pickle.dumps(task))
     m.set_body(pickle.dumps(task.__dict__))
     queue.write(m)
 
@@ -59,12 +60,15 @@ def pop_task(queue):
     Returns None if no message is found in the given queue.
     
     """
+    # from norc.sqs.push_task import DemoSQSTask
+    # globals()['DemoSQSTask'] = DemoSQSTask
     if type(queue) == str:
         queue = SQSConnection(AWS_ID, AWS_KEY).lookup(queue)
     m = queue.read()
     if not m:
         return None
     queue.delete_message(m)
+    # return pickle.loads(m.get_body())
     dict_ = pickle.loads(m.get_body())
     path = dict_.pop('LIBRARY_PATH')
     class_ = parsing.parse_class(path)

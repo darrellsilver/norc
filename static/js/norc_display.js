@@ -19,13 +19,17 @@
 var DATA_HEADERS = {
     daemons: ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
         'Success', 'Errored', 'Started', 'Ended', 'Status'],
+    sqsdaemons: ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
+        'Success', 'Errored', 'Started', 'Ended', 'Status'],
     jobs: ['Job ID', 'Name', 'Description', 'Added'],
-    tasks: ['Task ID', 'Job', 'Task', 'Started', 'Ended', 'Status'],
+    tasks: ['ID', 'Job', 'Task', 'Started', 'Ended', 'Status'],
+    sqstasks: ['ID', 'Task ID', 'Started', 'Ended', 'Status'],
     iterations: ['Iter ID', 'Type', 'Started', 'Ended', 'Status'],
 };
 
 var DETAIL_KEYS = {
     daemons: 'tasks',
+    sqsdaemons: 'sqstasks',
     jobs: 'iterations',
     iterations: 'tasks',
 }
@@ -49,24 +53,10 @@ var TIME_OPTIONS = ['10m', '30m', '1h', '3h', '12h', '1d', '7d', 'all'];
 var state = {
     // Whether details are showing for a row.
     detailsShowing: {},
+    // The last timeframe selection.
     since: {},
     nextPage: {},
     prevPage: {},
-    'daemons' : {
-        
-        // The last 'since' selection.
-        since : 'all',
-        // What the next and previous page numbers are.
-        nextPage : 0, prevPage : 0,
-    },
-    'jobs': {
-        // Whether details were showing for each daemon.
-        detailsShowing : {},
-        // The last 'since' selection.
-        since : 'all',
-        // What the next and previous page numbers are.
-        nextPage : 0, prevPage : 0,
-    }
 }
 
 
@@ -169,8 +159,7 @@ function makeDataTable(chain, data, details) {
 }
 
 function toggleDetails(chain, id) {
-    var detailKey = DETAIL_KEYS[getKeyFromChain(chain)];
-    if ($('#' + chain + '-' + id + '-' + detailKey).length > 0) {
+    if (state.detailsShowing[chain + '-' + id]) {
         hideDetails(chain, id);
     } else {
         showDetails(chain, id, true);
@@ -290,10 +279,11 @@ function makeTimeOptions(dataKey) {
 // function 
 
 $(document).ready(function() {
-    refreshSection('daemons');
-    makeTimeOptions('daemons');
-    refreshSection('jobs');
-    makeTimeOptions('jobs');
+    SECTIONS = ['daemons', 'sqsdaemons', 'jobs'];
+    $.each(SECTIONS, function(i, section) {
+        refreshSection(section);
+        makeTimeOptions(section);
+    });
     $('.timeframe span').addClass('clickable');
-    $('#page_nav span').addClass('clickable');
+    $('.pages span').addClass('clickable');
 });

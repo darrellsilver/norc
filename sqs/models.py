@@ -49,6 +49,7 @@ from django.db import models
 from django.conf import settings
 from norc.core.daemons import NorcDaemonStatus
 
+from norc.core.models import Task
 from norc.norc_utils import log
 log = log.Log()
 
@@ -63,9 +64,8 @@ class SQSTaskRunStatus(models.Model):
     STATUS_RETRY = 'RETRY'         # Task has been asked to be retried
     STATUS_SUCCESS = 'SUCCESS'     # Task ran successfully. Yay!
     
-    ALL_STATUSES = (STATUS_SKIPPED, STATUS_RUNNING, STATUS_ERROR
-                    , STATUS_CONTINUE, STATUS_TIMEDOUT
-                    , STATUS_RETRY, STATUS_SUCCESS)
+    ALL_STATUSES = (STATUS_SKIPPED, STATUS_RUNNING, STATUS_ERROR,
+        STATUS_CONTINUE, STATUS_TIMEDOUT, STATUS_RETRY, STATUS_SUCCESS)
     
     class Meta:
         db_table = settings.DB_TABLE_PREFIX + '_sqstaskrunstatus'
@@ -107,10 +107,9 @@ class SQSTask(object):
         assert status in SQSTaskRunStatus.ALL_STATUSES, \
             "Unknown status '%s'" % (status)
         if self.current_run_status == None:
-            self.current_run_status = SQSTaskRunStatus(queue_name=self.get_queue_name()
-                , task_id=self.get_id()
-                , status=status
-                , date_enqueued=self.get_date_enqueued())
+            self.current_run_status = SQSTaskRunStatus(
+                queue_name=self.get_queue_name(), task_id=self.get_id,
+                status=status, date_enqueued=self.get_date_enqueued())
         else:
             self.current_run_status.status = status
         if status == SQSTaskRunStatus.STATUS_RUNNING:
@@ -159,7 +158,7 @@ class SQSTask(object):
     
     def get_log_file(self):
         #f = "%s.%s" % (self.get_id(), self.get_date_enqueued().strftime('%Y%m%d_%H%M%S'))
-        fp = os.path.join(settings.TMS_LOG_DIR, self.get_queue_name(), str(self.get_id()))
+        fp = os.path.join(settings.NORC_LOG_DIR, self.get_queue_name(), str(self.get_id()))
         return fp
     def get_date_enqueued(self):
         return self.date_enqueued

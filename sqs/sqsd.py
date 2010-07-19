@@ -150,7 +150,8 @@ class ForkingSQSDaemon(ForkingNorcDaemon):
         tp = SQSTaskInProcess(self.get_daemon_status(), self.log_dir)
         tp.run()
         self.__add_running_task__(tp)
-    
+    def get_daemon_type(self):
+        return 'SQS'
     def run_batch(self):
         num_running = self.get_num_running_tasks()
         max_to_run = self.get_max_to_run()

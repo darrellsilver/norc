@@ -86,7 +86,7 @@ def create_queue(c, queue_name, visibility_timeout=None):
     if not q == None:
         raise Exception("Queue by name '%s' already exists!" % (queue_name))
     log.info("Creating queue '%s' with visibility timeout %s" % (queue_name, visibility_timeout))
-    c.create_queue(queue_name, visibility_timeout=visibility_timeout)
+    c.create_queue(queue_name, visibility_timeout)
 
 def rpt_queues(c):
     all_queues = c.get_all_queues()

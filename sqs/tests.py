@@ -3,9 +3,10 @@
 
 import datetime, time
 import pickle
+import unittest
 
 from boto.sqs.connection import SQSConnection
-from django.test import TestCase
+# from django.test import TestCase
 
 from norc import sqs
 from norc.sqs.models import SQSTask
@@ -41,7 +42,7 @@ class SQSTaskTest(SQSTask):
         return True
     
 
-class TestSQSConfig(TestCase):
+class TestSQSConfig(unittest.TestCase):
     """Tests that SQS is properly set up and can push/pop tasks."""
     
     def setUp(self):
@@ -73,3 +74,5 @@ class TestSQSConfig(TestCase):
         self.queue.clear()
         # wait_until(lambda: self.conn.delete_queue(self.queue))
     
+if __name__ == '__main__':
+    unittest.main()

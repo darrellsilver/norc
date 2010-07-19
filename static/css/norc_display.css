@@ -42,7 +42,7 @@ td {
     padding:0px;
 }
 
-table.L1 tr.even, .noDetails {
+table.L1 tr.even, table .noDetails {
     background-color:#D3EAD0;
 }
 table.L1 tr.odd {
@@ -93,7 +93,7 @@ span.clickable {
     text-decoration:underline;
     cursor:pointer;
 }
-.page_nav {
+.paging {
     text-align:center;
 }
 .status_good {

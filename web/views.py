@@ -14,29 +14,26 @@ def index(request):
     """Returns the index.html template."""
     return render_to_response('index.html')
 
-def get_data(request, content_type):
-    """Returns a JSON object containing data on daemons.
+def get_data(request, content_type, content_id=None):
+    """Retrieves and structures data, then returns it as a JSON object.
     
-    The data is filtered by GET parameters in the request.
+    Returns a JSON object containing data on given content type.
+    If content_id is provided, data on the details of the content_type
+    object associated with that id will be returned.  The data is
+    filtered by GET parameters in the request.
     
     """
-    data_set = structure.RETRIEVE[content_type](request.GET);
+    if content_id == None:
+        data_key = content_type
+        data_set = structure.RETRIEVE[content_type](request.GET)
+    else:
+        data_key, data_getter = structure.RETRIEVE_DETAILS[content_type]
+        data_set = data_getter(content_id)
     page, page_data = paginate(request, data_set)
-    data = {content_type: {}, 'page': page_data}
+    data = {data_key: {}, 'page': page_data}
     for obj in page.object_list:
-        data[content_type][obj.id] = {}
-        for k, f in structure.DATA[content_type].iteritems():
-            data[content_type][obj.id][k] = f(obj)
-    json = simplejson.dumps(data, cls=JSONObjectEncoder)
-    return http.HttpResponse(json, mimetype="json")
-
-def get_details(request, content_type, content_id):
-    """Gets the details for tasks run by a specific daemon."""
-    data = {}
-    data_key, data_getter = structure.RETRIEVE_DETAILS[content_type]
-    for item in data_getter(content_id):
-        data[item.id] = {}
+        data[data_key][obj.id] = {}
         for k, f in structure.DATA[data_key].iteritems():
-            data[item.id][k] = f(item)
-    json = simplejson.dumps({data_key: data}, cls=JSONObjectEncoder)
+            data[data_key][obj.id][k] = f(obj, request.GET)
+    json = simplejson.dumps(data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")

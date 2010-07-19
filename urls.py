@@ -6,7 +6,6 @@ from django.conf.urls.defaults import *
 from django.contrib import admin
 admin.autodiscover()
 
-
 urlpatterns = patterns('',
     # Uncomment the admin/doc line below and add 'django.contrib.admindocs' 
     # to INSTALLED_APPS to enable admin documentation:
@@ -14,7 +13,7 @@ urlpatterns = patterns('',
     (r'^admin/(.*)$', admin.site.root),
     (r'^$', 'norc.web.views.index'),
     (r'^data/(\w+)/$', 'norc.web.views.get_data'),
-    (r'^data/(\w+)/(\w+)/$', 'norc.web.views.get_details'),
+    (r'^data/(\w+)/(\w+)/$', 'norc.web.views.get_data'),
     (r'^static/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': settings.MEDIA_ROOT}),
 )
