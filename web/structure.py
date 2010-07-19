@@ -24,7 +24,7 @@ def get_trss(nds, status_filter='all', since_date=None):
     """
     A hack fix so we can get the statuses for the proper daemon type.
     """
-    if nds.daemon_type == 'NORC':
+    if nds.get_daemon_type() == 'NORC':
         task_statuses = nds.taskrunstatus_set.all()
     else:
         task_statuses = nds.sqstaskrunstatus_set.all()
@@ -44,17 +44,14 @@ def get_trss(nds, status_filter='all', since_date=None):
 # Provides a function to obtain the set
 # of data objects for each content type.
 RETRIEVE = {
-    'daemons': lambda GET: filter(lambda nds: nds.daemon_type == 'NORC',
-        report.ndss(parse_since(GET.get('since', '10m')))),
-    'sqsdaemons': lambda GET: filter(lambda nds: nds.daemon_type == 'SQS',
-        report.ndss(parse_since(GET.get('since', '10m')))),
+    'daemons': lambda GET: report.ndss(parse_since(GET.get('since', '10m'))),
     'jobs': lambda GET: report.jobs(),
 }
 
 RETRIEVE_DETAILS = {
     # 'daemons': ('tasks', lambda id: report.nds(id).get_task_statuses()),
     'daemons': ('tasks', lambda cid: get_trss(report.nds(cid))),
-    'sqsdaemons': ('sqstasks', lambda cid: get_trss(report.nds(cid))),
+    # 'sqsdaemons': ('sqstasks', lambda cid: get_trss(report.nds(cid))),
     'jobs': ('iterations', lambda cid: report.iterations(cid)),
     'iterations': ('tasks', lambda cid: report.tasks_from_iter(cid)),
 }

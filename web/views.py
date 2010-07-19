@@ -9,6 +9,7 @@ from django.template import Context, Template
 from norc.core import report
 from norc.web import structure
 from norc.norc_utils.web import JSONObjectEncoder, paginate
+from norc.core.models import NorcDaemonStatus
 
 def index(request):
     """Returns the index.html template."""
@@ -28,6 +29,13 @@ def get_data(request, content_type, content_id=None):
         data_set = structure.RETRIEVE[content_type](request.GET)
     else:
         data_key, data_getter = structure.RETRIEVE_DETAILS[content_type]
+        # Turrible temporary hackage to get SQS stuff on the frontend.
+        if data_key == 'tasks':
+            d = report.nds(content_id)
+            print d, d.get_daemon_type()
+            if d.get_daemon_type() == 'SQS':
+                data_key = 'sqstasks'
+        # End the ugly.
         data_set = data_getter(content_id)
     page, page_data = paginate(request, data_set)
     data = {data_key: {}, 'page': page_data}

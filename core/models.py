@@ -1487,7 +1487,8 @@ class NorcDaemonStatus(models.Model):
             return 'SQS'
         else:
             return 'NORC'
-    daemon_type = property(get_daemon_type)
+    # Can't use now; must be backwards compatible with old DB for the moment.
+    # daemon_type = property(get_daemon_type)
     
     @staticmethod
     def create(region, daemon_type, status=None, pid=None, host=None):

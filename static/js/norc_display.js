@@ -19,8 +19,6 @@
 var DATA_HEADERS = {
     daemons: ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
         'Success', 'Errored', 'Started', 'Ended', 'Status'],
-    sqsdaemons: ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
-        'Success', 'Errored', 'Started', 'Ended', 'Status'],
     jobs: ['Job ID', 'Name', 'Description', 'Added'],
     tasks: ['ID', 'Job', 'Task', 'Started', 'Ended', 'Status'],
     sqstasks: ['ID', 'Task ID', 'Started', 'Ended', 'Status'],
@@ -57,6 +55,7 @@ var state = {
     since: {},
     nextPage: {},
     prevPage: {},
+    data: {},
 }
 
 
@@ -167,8 +166,10 @@ function toggleDetails(chain, id) {
 }
 
 function showDetails(chain, id, slide) {
-    state.detailsShowing[chain + '-' + id] = true;
-    var detailKey = DETAIL_KEYS[getKeyFromChain(chain)];
+    var idChain = chain + '-' + id;
+    state.detailsShowing[idChain] = true;
+    var k = getKeyFromChain(chain);
+    var detailKey = DETAIL_KEYS[k];
     retrieveData(chain, id, {}, function(content, data) {
         var row = $('#' + chain + '-' + id);
         if (slide) {
@@ -217,9 +218,18 @@ function retrieveData(chain, id, filters, callback) {
     if (id != false) {
         path += id + '/';
         dataKey = DETAIL_KEYS[dataKey];
+        if (dataKey == 'tasks' && state.data[chain][id]['type'] == 'SQS') {
+            dataKey = 'sqstasks';
+        }
         chain = chain + '-' + dataKey;
     }
     $.get(path, filters, function(data) {
+        if (id != false) {
+            state.data[getChainRemainder(chain) + '-' + id] = data[dataKey];
+        } else {
+            state.data[chain] = data[dataKey];
+        }
+        
         var content;
         if (!$.isEmptyObject(data[dataKey])) {
             content = makeDataTable(chain, data[dataKey], id != false);
@@ -279,7 +289,7 @@ function makeTimeOptions(dataKey) {
 // function 
 
 $(document).ready(function() {
-    SECTIONS = ['daemons', 'sqsdaemons', 'jobs'];
+    SECTIONS = ['daemons', 'jobs'];
     $.each(SECTIONS, function(i, section) {
         refreshSection(section);
         makeTimeOptions(section);
