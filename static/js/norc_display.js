@@ -313,7 +313,7 @@ $(document).ready(function() {
         $.each(SECTIONS, function(i, section) {
             refreshSection(section);
         });
-        setTimeout(refresh, 5000);
+        setTimeout(refresh, 60000);
     };
-    // setTimeout(refresh, 5000);
+    setTimeout(refresh, 60000);
 });
