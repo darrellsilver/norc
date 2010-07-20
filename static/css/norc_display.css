@@ -21,13 +21,11 @@ table {
     text-align:center;
     width:100%;
 }
-table.data {
-    background-color:#AAA;
+table.L1 {
     font-family:"Trebuchet MS", "Futura", "Courier New";
-    font-size:10px;
+    font-size:11px;
 }
 
-/* Row styles. */
 tr {
     margin:0px;
     padding:0px;
@@ -36,11 +34,11 @@ td {
     margin:0px;
     padding:0px 4px;
 }
-.details td {
+.inserted td {
     padding:0px;
 }
 
-table.L1 tr.even, table .noDetails {
+table.L1 tr.even {
     background-color:#D3EAD0;
 }
 table.L1 tr.odd {
@@ -56,7 +54,7 @@ table.L1 tr.expanded {
 table.L1 tr.expanded.hover {
     background-color:#90EFFF;
 }
-table.L2 tr.even, table.L1 .noDetails {
+table.L2 tr.even {
     background-color:#D0F7FF;
 }
 table.L2 tr.odd {
@@ -72,7 +70,7 @@ table.L2 tr.expanded {
 table.L2 tr.expanded.hover {
     background-color:#FFEB49;
 }
-table.L3 tr.even, table.L2 .noDetails {
+table.L3 tr.even {
     background-color:#FFf9a0;
 }
 table.L3 tr.odd {
@@ -81,6 +79,7 @@ table.L3 tr.odd {
 table.L3 tr.hover {
     background-color:#FFFADD;
 }
+
 .hover {
     cursor:pointer;
 }

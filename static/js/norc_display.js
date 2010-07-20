@@ -6,7 +6,6 @@
 // TODO: Historical error rates (caching in db) for a region or job or status.
 //       Average run time for each status.  Distribution... standard deviation
 // TODO: Comment this file. (javadoc style?)
-// TODO              
 
 
 /****************
@@ -53,8 +52,12 @@ var state = {
     detailsShowing: {},
     // The last timeframe selection.
     since: {},
-    nextPage: {},
-    prevPage: {},
+    // Paging data; next page and previous page numbers.
+    page: {
+        next: {},
+        prev: {},
+    },
+    type: {},
     data: {},
 }
 
@@ -88,7 +91,7 @@ function chainLength(chain) {
 
 // Takes a string like 'x-y-z' and returns 'z'.
 function getKeyFromChain(chain) {
-    return chain.split('-').slice(-1);
+    return chain.split('-').slice(-1)[0];
 }
 
 // Takes a string like 'x-y-z' and returns 'x-y'.
@@ -99,9 +102,9 @@ function getChainRemainder(chain) {
 // Inserts a new row after rowAbove with the given ID and
 // contents using the given animation (defaults to slideDown).
 function insertNewRow(rowAbove, contents, slide) {
-    var row = $('<tr><td><div></div></td></tr>');
-    row.find('td').attr('colspan', rowAbove.children('td').length)
-        .find('div').css('display', 'none').append(contents);
+    var row = $('<tr><td><div></div></td></tr>').addClass('inserted');
+    row.find('td').attr('colspan', rowAbove.children('td').length);
+    row.find('div').css('display', 'none').append(contents);
     rowAbove.after(row);
     if (slide) {
         row.find('div:first').slideDown(300);
@@ -116,23 +119,28 @@ function insertNewRow(rowAbove, contents, slide) {
 *********************/
 
 // Creates a table.
-function makeDataTable(chain, data, details) {
+function makeDataTable(chain, data) {
     var dataKey = getKeyFromChain(chain);
     var table = $('<table/>');
     table.addClass('L' + chainLength(chain));
     var hRow = $('<tr/>');
-    var headers = DATA_HEADERS[dataKey];
-    $.each(headers, function(i, h) {
-        hRow.append($('<th/>').append(h));
-    });
-    table.append(hRow);
+    if (!$.isEmptyObject(data)) {
+        var headers = DATA_HEADERS[dataKey];
+        $.each(headers, function(i, h) {
+            hRow.append($('<th/>').append(h));
+        });
+        table.append(hRow);
+    } else {
+        table.append($('<tr><td>No ' + dataKey + '.</td></tr>'));
+    }
     $.each(data, function(id, rowData) {
         // Make the row and add the ID cell.
         var rID = chain + '-' + id;
         var row = $('<tr/>').attr('id', rID).append($('<td/>').append(id));
-        $.each(headers.map(unTitle).slice(1), function(i, h) {
-            var cell = $('<td/>').append(rowData[h]);
-            if (h == 'status' && HAS_STATUS_COLOR.indexOf(dataKey) != -1) {
+        $.each(headers.map(unTitle).slice(1), function(i, header) {
+            var cell = $('<td/>').append(rowData[header]);
+            if (header == 'status' &&
+                    HAS_STATUS_COLOR.indexOf(dataKey) != -1) {
                 cell.addClass(STATUS_CSS_MAP[rowData['status']]);
             }
             row.append(cell);
@@ -157,6 +165,19 @@ function makeDataTable(chain, data, details) {
     return table;
 }
 
+// Future work.
+// function makePagination(chain, id) {
+//     var ul = $('<ul/>').addClass('pagination');
+//     var prev = $('<li>Prev</li>').addClass('prev').click(function() {
+//         if (state.page.prev[chain] > 0) {
+//             refreshSection(chain, {page : state.page.prev[dataKey]});
+//         }
+//     });;
+//     var next = $('<li>Next</li>').addClass('next');
+//     ul.append(prev).append(next);
+//     
+// }
+
 function toggleDetails(chain, id) {
     if (state.detailsShowing[chain + '-' + id]) {
         hideDetails(chain, id);
@@ -169,7 +190,7 @@ function showDetails(chain, id, slide) {
     var idChain = chain + '-' + id;
     state.detailsShowing[idChain] = true;
     var detailKey = DETAIL_KEYS[getKeyFromChain(chain)];
-    retrieveData(chain, id, {}, function(content, data) {
+    retrieveData(chain, id, {}, function(data, table) {
         var row = $('#' + idChain);
         if (slide) {
             row.find('td').animate({
@@ -182,7 +203,7 @@ function showDetails(chain, id, slide) {
                 paddingBottom: '3px',
             });
         }
-        insertNewRow(row, content, slide).addClass('details')
+        insertNewRow(row, table, slide).addClass('details')
             .attr('id', [chain, id, detailKey].join('-'));
         row.addClass('expanded');
     });
@@ -214,7 +235,7 @@ function retrieveData(chain, id, filters, callback) {
         filters.since = 'all'
     }
     var path = '/data/' + dataKey + '/';
-    if (id != false) {
+    if (id) {
         path += id + '/';
         dataKey = DETAIL_KEYS[dataKey];
         // Turrible haxxorz to make SQS shit work.
@@ -226,50 +247,31 @@ function retrieveData(chain, id, filters, callback) {
     }
     $.get(path, filters, function(data) {
         // This is currently only used for fixing SQS tasks.
-        if (id != false) {
+        if (id) {
             state.data[getChainRemainder(chain) + '-' + id] = data[dataKey];
         } else {
             state.data[chain] = data[dataKey];
         }
-        var content;
-        if (!$.isEmptyObject(data[dataKey])) {
-            content = makeDataTable(chain, data[dataKey], id != false);
-        } else if (chainLength(chain) == 1) {
-            content = makeDataTable(chain, data[dataKey], id != false);
-            insertNewRow(content.find('tr:first'), $('<div/>', {
-                'text': 'No ' + dataKey + '.', 
-                'class': 'noDetails',
-            }));
-        } else {
-            content = $('<div/>', {
-                'text': 'No ' + dataKey + '.', 
-                'class': 'noDetails',
-            });
-        }
-        callback(content, data);
+        callback(data, makeDataTable(chain, data[dataKey]));
     });
 }
 
 function refreshSection(dataKey, filters) {
-    retrieveData(dataKey, false, filters, function(content, data) {
-        content.addClass('data');
+    retrieveData(dataKey, false, filters, function(data, table) {
+        // table.addClass('data');
         var sID = '#' + dataKey + '-section';
-        $(sID + ' > .data').replaceWith(content);
-        if (data.page.next != 0) {
-            $(sID + ' .next_page').addClass('clickable').unbind('click').click(function() {
-                refreshSection(dataKey, {page : state.nextPage});
-            });
-            state.nextPage = data.page.next;
+        $(sID + ' > table').replaceWith(table);
+        state.page.next[dataKey] = data.page.next;
+        state.page.prev[dataKey] = data.page.prev;
+        if (data.page.next > 0) {
+            $(sID + ' .next_page').addClass('clickable');
         } else {
-            $(sID + ' .next_page').removeClass('clickable').unbind('click');
+            $(sID + ' .next_page').removeClass('clickable');
         }
-        if (data.page.prev != 0) {
-            $(sID + ' .prev_page').addClass('clickable').unbind('click').click(function() {
-                refreshSection(dataKey, {page : state.prevPage});
-            });
-            state.prevPage = data.page.prev;
+        if (data.page.prev > 0) {
+            $(sID + ' .prev_page').addClass('clickable');
         } else {
-            $(sID + ' .prev_page').removeClass('clickable').unbind('click');
+            $(sID + ' .prev_page').removeClass('clickable');
         }
     });
 }
@@ -278,22 +280,32 @@ function refreshSection(dataKey, filters) {
     Initialization
 *********************/
 
-function makeTimeOptions(dataKey) {
+function initSection(dataKey) {
+    var section = '#' + dataKey + '-section';
     $.each(TIME_OPTIONS, function(i, t) {
-        var link = $('<span/>').append(t).addClass('clickable').click(function() {
+        var link = $('<span/>').append(t).addClass('clickable');
+        link.click(function() {
             refreshSection(dataKey, {'since': t});
         });
-        $('#' + dataKey + '-section .timeframe').append(' ').append(link);
+        $(section + ' .timeframe').append(' ').append(link);
+    });
+    $(section + ' .next_page').click(function() {
+        if (state.page.next[dataKey] > 0) {
+            refreshSection(dataKey, {page : state.page.next[dataKey]});
+        }
+    });
+    $(section + ' .prev_page').click(function() {
+        if (state.page.prev[dataKey] > 0) {
+            refreshSection(dataKey, {page : state.page.prev[dataKey]});
+        }
     });
 }
-
-// function 
 
 $(document).ready(function() {
     SECTIONS = ['daemons', 'jobs'];
     $.each(SECTIONS, function(i, section) {
+        initSection(section);
         refreshSection(section);
-        makeTimeOptions(section);
     });
     $('.timeframe span').addClass('clickable');
     $('.pages span').addClass('clickable');
@@ -301,7 +313,7 @@ $(document).ready(function() {
         $.each(SECTIONS, function(i, section) {
             refreshSection(section);
         });
-        setTimeout(refresh, 60000);
+        setTimeout(refresh, 5000);
     };
-    setTimeout(refresh, 60000);
+    // setTimeout(refresh, 5000);
 });
