@@ -398,5 +398,5 @@ $(document).ready(function() {
         });
         setTimeout(refresh, 60000);
     };
-    // setTimeout(refresh, 60000);
+    setTimeout(refresh, 60000);
 });
