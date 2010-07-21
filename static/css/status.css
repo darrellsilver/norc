@@ -23,7 +23,7 @@ table {
 }
 table.L1 {
     font-family:"Trebuchet MS", "Futura", "Courier New";
-    font-size:11px;
+/*    font-size:11px;*/
 }
 
 tr {
@@ -32,7 +32,7 @@ tr {
 }
 td {
     margin:0px;
-    padding:0px 4px;
+    padding:2px;
 }
 .inserted td {
     padding:0px;
@@ -48,6 +48,15 @@ table.L1 tr.hover {
     background-color:#EEFEEE;
 }
 
+table.L1 ul.pagination {
+    background-color:#92E6E7;
+}
+table.L1 ul.pagination li.clickable {
+    background-color:#66A9BD;
+}
+table.L1 ul.pagination li.clickable:hover {
+    background-color:#76B9CD;
+}
 table.L1 tr.expanded {
     background-color:#9FE8F3;
 }
@@ -64,6 +73,15 @@ table.L2 tr.hover {
     background-color:#EBFFFF;
 }
 
+table.L2 ul.pagination {
+    background-color:#FFCF57;
+}
+table.L2 ul.pagination li.clickable {
+    background-color:#86652C;
+}
+table.L2 ul.pagination li.clickable:hover {
+    background-color:#9C8038;
+}
 table.L2 tr.expanded {
     background-color:#FFDF57;
 }
@@ -80,16 +98,58 @@ table.L3 tr.hover {
     background-color:#FFFADD;
 }
 
+
+ul.pagination {
+    background-color:#B8DBB9;
+    display:block;
+    list-style:none;
+    margin:0px;
+    padding:1px;
+    text-align:center;
+}
+ul.pagination li {
+    cursor:default;
+    display:inline;
+    margin:0px 20px;
+    padding:1px 20px;
+}
+ul.pagination li.clickable {
+    background-color:#658869;
+    color:#FFFFFF;
+    cursor:pointer;
+}
+ul.pagination li.clickable:hover {
+    background-color:#7D9E80;
+}
+
+/* Timeframe stuff. */
+ul.timeframe {
+    background-color:#B8DBB9;
+    cursor:default;
+    display:inline-block;
+    margin:0px;
+    padding:0px;
+    text-align:center;
+}
+ul.timeframe li {
+    display:inline-block;
+    margin:0px;
+    padding:2px 5px;
+    width:25px;
+}
+ul.timeframe li.clickable {
+    cursor:pointer;
+}
+ul.timeframe li.clickable:hover {
+    background-color:#7D9E80;
+    color:#FFFFFF;
+}
+ul.timeframe li.selected {
+    background-color:#658869;
+    color:#FFFFFF;
+}
 .hover {
     cursor:pointer;
-}
-span.clickable {
-    color:#888;
-    text-decoration:underline;
-    cursor:pointer;
-}
-.paging {
-    text-align:center;
 }
 .status_good {
     background-color:#CF6;

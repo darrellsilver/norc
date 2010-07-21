@@ -41,10 +41,11 @@ def get_trss(nds, status_filter='all', since_date=None):
         #filtered.extend(sqs_statuses.filter(status__in=only_statuses))
     return task_statuses
 
-# Provides a function to obtain the set
+# Provides a function to obtain the queryset
 # of data objects for each content type.
 RETRIEVE = {
-    'daemons': lambda GET: report.ndss(parse_since(GET.get('since', '10m'))),
+    'daemons': lambda GET: report.ndss(parse_since(
+        GET.get('since', '10m'))).order_by('-date_started'),
     'jobs': lambda GET: report.jobs(),
 }
 
