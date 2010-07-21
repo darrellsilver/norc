@@ -5,7 +5,6 @@ from django.shortcuts import render_to_response
 from django.utils import simplejson
 from django.template import Context, Template
 
-# from norc.core.models import *
 from norc.core import report
 from norc.web import structure
 from norc.norc_utils.web import JSONObjectEncoder, paginate
@@ -37,10 +36,11 @@ def get_data(request, content_type, content_id=None):
         # End the ugly.
         data_set = data_getter(content_id)
     page, page_data = paginate(request, data_set)
-    data = {data_key: {}, 'page': page_data}
+    json_data = {'data': [], 'page': page_data}
     for obj in page.object_list:
-        data[data_key][obj.id] = {}
-        for k, f in structure.DATA[data_key].iteritems():
-            data[data_key][obj.id][k] = f(obj, request.GET)
-    json = simplejson.dumps(data, cls=JSONObjectEncoder)
+        obj_data = {}
+        for key, ret_func in structure.DATA[data_key].iteritems():
+            obj_data[key] = ret_func(obj, request.GET)
+        json_data['data'].append(obj_data)
+    json = simplejson.dumps(json_data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")

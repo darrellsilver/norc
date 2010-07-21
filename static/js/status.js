@@ -29,11 +29,18 @@ var DETAIL_KEYS = {
     daemons: 'tasks',
     jobs: 'iterations',
     iterations: 'tasks',
-}
+};
+
+var STYLE_BY_COLUMN = {
+    'region': 'leftAlign',
+    'running': 'rightAlign',
+    'success': 'rightAlign',
+    'errored': 'rightAlign',
+};
 // The data keys for which statuses should be colored.
-var HAS_STATUS_COLOR = ['tasks'];
+var HAS_STATUS_COLOR = ['tasks', 'sqstasks'];
 // Map of statuses to their style classes.
-var STATUS_CSS_MAP = {
+var STATUS_CSS_CLASSES = {
     SUCCESS : 'status_good',
     RUNNING : 'status_good',
     CONTINUE : 'status_warning',
@@ -59,7 +66,7 @@ var state = {
     per_page: {},
     type: {},
     data: {},
-}
+};
 
 
 /****************
@@ -155,15 +162,21 @@ function makeDataTable(chain, data) {
     } else {
         table.append($('<tr><td>No ' + dataKey + '.</td></tr>'));
     }
-    $.each(data, function(id, rowData) {
+    $.each(data, function(i, rowData) {
         // Make the row and add the ID cell.
+        var id = rowData['id'];
+        // console.log(id);
         var rID = chain + '-' + id;
-        var row = $('<tr/>').attr('id', rID).append($('<td/>').append(id));
-        $.each(headers.map(unTitle).slice(1), function(i, header) {
+        var row = $('<tr/>').attr('id', rID);//.append($('<td/>').append(id));
+        $.each(headers.map(unTitle), function(j, header) {
+            if (j == 0) header = 'id';
             var cell = $('<td/>').append(rowData[header]);
+            if (header in STYLE_BY_COLUMN) {
+                cell.addClass(STYLE_BY_COLUMN[header]);
+            }
             if (header == 'status' &&
                     HAS_STATUS_COLOR.indexOf(dataKey) != -1) {
-                cell.addClass(STATUS_CSS_MAP[rowData['status']]);
+                cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
             }
             row.append(cell);
         });
@@ -263,7 +276,8 @@ function showDetails(chain, id, slide) {
         // Add the detail key to the chain so the pagination functions
         // find the right row to work with.
         chain = chainJoin(idChain, detailKey);
-        var hasData = !$.isEmptyObject(data[detailKey]);
+        // var hasData = !$.isEmptyObject(data.data);
+        var hasData = data.data != [];
         var contents = [table, hasData ? makePagination(chain) : $('')];
         insertNewRow(row, contents, slide).attr('id', chain);
         if (hasData) updatePagination(chain, data.page);
@@ -318,21 +332,27 @@ function retrieveData(chain, id, options, callback) {
         path += id + '/';
         dataKey = DETAIL_KEYS[dataKey];
         // Turrible haxxorz (hardcoding) to make SQS shit work.
-        if (dataKey == 'tasks' && chain == 'daemons'
-                               && state.data[chain][id]['type'] == 'SQS') {
-            dataKey = 'sqstasks';
+        // debugger;
+        if (dataKey == 'tasks' && chain == 'daemons') {
+            var obj = state.data[chain].filter(function(k) {
+                return k.id == id;
+            })[0];
+            if (obj['type'] == 'SQS') {
+                dataKey = 'sqstasks';
+            }
         }
         chain = chainJoin(chain, dataKey);
     }
     $.get(path, options, function(data) {
+        // console.log(data);
         // This is currently only used for fixing SQS tasks.
         if (id) {
             state.data[chainJoin(
-                getChainRemainder(chain), id)] = data[dataKey];
+                getChainRemainder(chain), id)] = data.data;
         } else {
-            state.data[chain] = data[dataKey];
+            state.data[chain] = data.data;
         }
-        callback(data, makeDataTable(chain, data[dataKey]));
+        callback(data, makeDataTable(chain, data.data));
     });
 }
 
@@ -350,6 +370,8 @@ function refreshSection(dataKey, options) {
 
 function initSection(dataKey) {
     var section = '#' + dataKey;
+    // $(section + ' .timeframe').before(
+    //     $('<span>Within</span>').css('width', '45px'));
     $.each(TIME_OPTIONS, function(i, timeString) {
         var tfLink = $('<li/>').append(timeString).addClass('clickable');
         if (timeString == '10m') tfLink.addClass('selected');
@@ -364,7 +386,7 @@ function initSection(dataKey) {
 }
 
 $(document).ready(function() {
-    SECTIONS = ['daemons', 'jobs'];
+    SECTIONS = ['daemons', 'jobs', 'sqsqueues'];
     $.each(SECTIONS, function(i, section) {
         initSection(section);
         refreshSection(section);

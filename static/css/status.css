@@ -12,7 +12,7 @@ h2 {
 div.content {
     margin-left:auto;
     margin-right:auto;
-    width:700px;
+    width:750px;
 }
 table {
     border-spacing:0px;
@@ -32,7 +32,11 @@ tr {
 }
 td {
     margin:0px;
-    padding:2px;
+    padding:0px 5px;
+}
+th {
+    margin:0px;
+    padding:4px;
 }
 .inserted td {
     padding:0px;
@@ -136,6 +140,7 @@ ul.timeframe li {
     margin:0px;
     padding:2px 5px;
     width:25px;
+    text-decoration:underline;
 }
 ul.timeframe li.clickable {
     cursor:pointer;
@@ -159,4 +164,10 @@ ul.timeframe li.selected {
 }
 .status_error {
     background-color:#F85;
+}
+.leftAlign {
+    text-align:left;
+}
+.rightAlign {
+    text-align:right;
 }
