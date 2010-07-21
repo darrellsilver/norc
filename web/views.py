@@ -4,6 +4,7 @@ from django import http
 from django.shortcuts import render_to_response
 from django.utils import simplejson
 from django.template import Context, Template
+from django.conf import settings
 
 from norc.core import report
 from norc.web import structure
@@ -12,7 +13,9 @@ from norc.core.models import NorcDaemonStatus
 
 def index(request):
     """Returns the index.html template."""
-    return render_to_response('index.html')
+    return render_to_response('index.html', {
+        'sqs': 'norc.sqs' in settings.INSTALLED_APPS,
+    })
 
 def get_data(request, content_type, content_id=None):
     """Retrieves and structures data, then returns it as a JSON object.

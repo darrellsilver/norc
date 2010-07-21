@@ -33,21 +33,21 @@ def get_trss(nds, status_filter='all', since_date=None):
     status_filter = status_filter.lower()
     from norc.core.models import TaskRunStatus
     TRS_CATS = TaskRunStatus.STATUS_CATEGORIES
-    #sqs_statuses = self.sqstaskrunstatus_set.filter(controlling_daemon=self)
     if not since_date == None:
         task_statuses = task_statuses.filter(date_started__gte=since_date)
-        #sqs_statuses = sqs_statuses.filter(date_started__gte=since_date)
     if status_filter != 'all' and status_filter in TRS_CATS:
         only_statuses = TRS_CATS[status_filter.lower()]
         task_statuses = task_statuses.filter(status__in=only_statuses)
-        #filtered.extend(sqs_statuses.filter(status__in=only_statuses))
     return task_statuses
 
 def get_sqsqueues():
-    from boto.sqs.connection import SQSConnection
-    c = SQSConnection(settings.AWS_ACCESS_KEY_ID,
-                      settings.AWS_SECRET_ACCESS_KEY)
-    return c.get_all_queues()
+    if 'norc.sqs' in settings.INSTALLED_APPS:
+        from boto.sqs.connection import SQSConnection
+        c = SQSConnection(settings.AWS_ACCESS_KEY_ID,
+                          settings.AWS_SECRET_ACCESS_KEY)
+        return c.get_all_queues()
+    else:
+        return []
 
 # Provides a function to obtain the queryset
 # of data objects for each content type.

@@ -386,7 +386,8 @@ function initSection(dataKey) {
 }
 
 $(document).ready(function() {
-    SECTIONS = ['daemons', 'jobs', 'sqsqueues'];
+    var SECTIONS = ['daemons', 'jobs'];
+    if (SQS_ENABLED) SECTIONS.push('sqsqueues');
     $.each(SECTIONS, function(i, section) {
         initSection(section);
         refreshSection(section);

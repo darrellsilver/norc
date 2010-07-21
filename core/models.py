@@ -1487,7 +1487,6 @@ class NorcDaemonStatus(models.Model):
             return 'SQS'
         else:
             return 'NORC'
-    # Can't use now; must be backwards compatible with old DB for the moment.
     # daemon_type = property(get_daemon_type)
     
     @staticmethod
