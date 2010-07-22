@@ -35,9 +35,15 @@ from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
 from norc.norc_utils import parsing
-from norc.settings import \
+from norc.settings import SQSTASK_IMPLEMENTATIONS, \
     AWS_ACCESS_KEY_ID as AWS_ID, \
     AWS_SECRET_ACCESS_KEY as AWS_KEY
+
+# for st in SQSTASK_IMPLEMENTATIONS:
+#     path = st.split('.')
+#     name = path.pop()
+#     path = '.'.join(path)
+#     setattr(pickle, name, __import__(path, fromlist=name))
 
 def push_task(task, queue):
     """Pushes a task into an SQS queue.

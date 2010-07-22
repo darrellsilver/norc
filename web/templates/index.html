@@ -12,22 +12,27 @@
         <script src="/static/js/status.js" type="text/javascript"></script>
     </head>
     <body>
-        <h1>Norc Status</h1>
-        <div id="daemons" class="content">
-            <h2>Daemons</h2>
-            <ul class="timeframe"></ul>
-            <table></table>
-        </div>
-        {% if sqs %}
-        <div id="sqsqueues" class="content">
-            <h2>SQS Queues</h2>
-            <table></table>
-        </div>
-        {% endif %}
-        <div id="jobs" class="content">
-            <h2>Jobs</h2>
-            <ul class="timeframe"></ul>
-            <table></table>
+        <div class="content">
+            <h1>Norc Status</h1>
+            <div id="auto-reload">
+                <input type="checkbox" checked="true" />Auto-reload
+            </div>
+            <div id="daemons">
+                <h2>Daemons</h2>
+                <ul class="timeframe"></ul>
+                <table></table>
+            </div>
+            {% if sqs %}
+            <div id="sqsqueues">
+                <h2>SQS Queues</h2>
+                <table></table>
+            </div>
+            {% endif %}
+            <div id="jobs">
+                <h2>Jobs</h2>
+                {# <ul class="timeframe"></ul> #}
+                <table></table>
+            </div>
         </div>
     </body>
 </html>

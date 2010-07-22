@@ -1,28 +1,28 @@
 body {
     background-color:#F6FFF9;
     color:#000;
-    font-family:"Arial", "Verdana";
+    font-family:"Bitstream Vera Sans Mono", "Arial", "Verdana";
     font-size:12px;
 }
 h1 {
     text-align:center;
 }
 h2 {
+    margin-bottom:0px;
 }
 div.content {
     margin-left:auto;
     margin-right:auto;
-    width:750px;
+    width:800px;
 }
 table {
     border-spacing:0px;
+    font-family:"Trebuchet MS", "Futura", "Courier New";
     margin:0px;
     padding:0px;
     text-align:center;
     width:100%;
-}
-table.L1 {
-    font-family:"Trebuchet MS", "Futura", "Courier New";
+    white-space:nowrap;
 }
 
 tr {
@@ -40,7 +40,9 @@ th {
 .inserted td {
     padding:0px;
 }
-
+#auto-reload {
+    text-align:right;
+}
 table.L1 tr.even {
     background-color:#D3EAD0;
 }

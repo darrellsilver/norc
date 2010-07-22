@@ -49,6 +49,7 @@ class BaseEnv(object):
         'django.middleware.common.CommonMiddleware',
         'django.contrib.sessions.middleware.SessionMiddleware',
         'django.contrib.auth.middleware.AuthenticationMiddleware',
+        'norc.middleware.ErrorHandlingMiddleware',
     )
     
     # Database configuration.

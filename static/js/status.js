@@ -32,10 +32,8 @@ var DETAIL_KEYS = {
 };
 
 var STYLE_BY_COLUMN = {
-    'region': 'leftAlign',
-    'running': 'rightAlign',
-    'success': 'rightAlign',
-    'errored': 'rightAlign',
+    'leftAlign': ['region', 'name', 'host'],
+    'rightAlign': ['running', 'success', 'errored', 'pid', 'num_items'],
 };
 // The data keys for which statuses should be colored.
 var HAS_STATUS_COLOR = ['tasks', 'sqstasks'];
@@ -147,7 +145,6 @@ function insertNewRow(rowAbove, contents, slide) {
 
 // Creates a table.
 function makeDataTable(chain, data) {
-    
     var dataKey = getKeyFromChain(chain);
     var table = $('<table/>');
     // Data tables have class L<n> to reflect being n layers deep in the tree.
@@ -169,11 +166,10 @@ function makeDataTable(chain, data) {
         var rID = chain + '-' + id;
         var row = $('<tr/>').attr('id', rID);//.append($('<td/>').append(id));
         $.each(headers.map(unTitle), function(j, header) {
-            if (j == 0) header = 'id';
-            var cell = $('<td/>').append(rowData[header]);
-            if (header in STYLE_BY_COLUMN) {
-                cell.addClass(STYLE_BY_COLUMN[header]);
-            }
+            var cell = $('<td/>').append(rowData[j == 0 ? 'id' : header]);
+            $.each(STYLE_BY_COLUMN, function(cls, hs) {
+                if (hs.indexOf(header) >= 0) cell.addClass(cls);
+            })
             if (header == 'status' &&
                     HAS_STATUS_COLOR.indexOf(dataKey) != -1) {
                 cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
@@ -260,7 +256,7 @@ function showDetails(chain, id, slide) {
     var idChain = chainJoin(chain, id);
     state.detailsShowing[idChain] = true;
     var detailKey = DETAIL_KEYS[getKeyFromChain(chain)];
-    retrieveData(chain, id, {per_page: 5}, function(data, table) {
+    retrieveData(chain, id, {}, function(data, table) {
         var row = $('#' + idChain).addClass('expanded');
         if (slide) {
             row.find('td').animate({
@@ -277,10 +273,10 @@ function showDetails(chain, id, slide) {
         // find the right row to work with.
         chain = chainJoin(idChain, detailKey);
         // var hasData = !$.isEmptyObject(data.data);
-        var hasData = data.data != [];
-        var contents = [table, hasData ? makePagination(chain) : $('')];
+        var multiPage = data.page.total > 1;
+        var contents = [table, multiPage ? makePagination(chain) : $('')];
         insertNewRow(row, contents, slide).attr('id', chain);
-        if (hasData) updatePagination(chain, data.page);
+        if (multiPage) updatePagination(chain, data.page);
     });
 }
 
@@ -307,7 +303,7 @@ function initOptions(chain, options) {
     $.each(fields, function(i, o) {
         if (o in options) {
             state[o][chain] = options[o];
-        } else if (o in inherit) {
+        } else if (inherit.indexOf(o) >= 0) {
             var searchChain = chain;
             while (chainLength(searchChain) > 0) {
                 if (searchChain in state[o]) {
@@ -356,7 +352,7 @@ function retrieveData(chain, id, options, callback) {
     });
 }
 
-function refreshSection(dataKey, options) {
+function reloadSection(dataKey, options) {
     retrieveData(dataKey, false, options, function(data, table) {
         var sID = '#' + dataKey;
         $(sID + ' > table').replaceWith(table);
@@ -378,7 +374,8 @@ function initSection(dataKey) {
         tfLink.click(function() {
             $(this).siblings().removeClass('selected');
             $(this).addClass('selected');
-            refreshSection(dataKey, {'since': timeString});
+            delete state.page[dataKey];
+            reloadSection(dataKey, {'since': timeString});
         });
         $(section + ' .timeframe').append(tfLink);
     });
@@ -390,13 +387,21 @@ $(document).ready(function() {
     if (SQS_ENABLED) SECTIONS.push('sqsqueues');
     $.each(SECTIONS, function(i, section) {
         initSection(section);
-        refreshSection(section);
+        reloadSection(section, {'since': '10m'});
     });
-    refresh = function() {
+    function reloadAll() {
         $.each(SECTIONS, function(i, section) {
-            refreshSection(section);
+            reloadSection(section);
         });
-        setTimeout(refresh, 60000);
-    };
-    setTimeout(refresh, 60000);
+    }
+    $('#auto-reload input').click(function() {
+        if (this.checked == true) {
+            reloadAll();
+            state.autoReloadIID = setInterval(reloadAll, 60000);
+        } else {
+            clearInterval(state.autoReloadIID);
+            delete state.autoReloadIID;
+        }
+    });
+    state.autoReloadIID = setInterval(reloadAll, 60000);
 });

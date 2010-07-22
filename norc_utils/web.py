@@ -16,9 +16,9 @@ class JSONObjectEncoder(simplejson.JSONEncoder):
 
 def paginate(request, data_set):
     try:
-        per_page = int(request.GET.get('per_page', 15))
+        per_page = int(request.GET.get('per_page', 20))
     except ValueError:
-        per_page = 15
+        per_page = 20
     paginator = Paginator(data_set, per_page)
     try:
         page_num = int(request.GET.get('page', 1))

@@ -81,7 +81,7 @@ def init_norc():
     log.info("Success! Norc database initialized.")
 
 def init():
-    init_superuser()
+    # init_superuser()
     init_norc()
 
 if __name__ == '__main__':
