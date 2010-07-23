@@ -1,6 +1,17 @@
 
 import re, datetime
 
+def parse_since(since_str):
+    """A utility function to help parse a since string."""
+    if since_str == 'all':
+        since_date = None
+    else:
+        try:
+            since_date = parse_date_relative(since_str)
+        except TypeError:
+            since_date = None
+    return since_date
+
 def parse_date_relative(back, date=None):
     if date == None:
         date = datetime.datetime.utcnow()

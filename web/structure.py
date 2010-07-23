@@ -9,23 +9,13 @@ content type, and how to retrieve that data from the appropriate object.
 from django.conf import settings
 
 from norc.core import report
-from norc.norc_utils.parsing import parse_date_relative
-
-def parse_since(since_str):
-    """A utility function to help parse a since string."""
-    if since_str == 'all':
-        since_date = None
-    else:
-        try:
-            since_date = parse_date_relative(since_str)
-        except TypeError:
-            since_date = None
-    return since_date
+from norc.norc_utils.parsing import parse_since
 
 def get_trss(nds, status_filter='all', since_date=None):
     """
     A hack fix so we can get the statuses for the proper daemon type.
     """
+    status_filter = status_filter.lower()
     if nds.get_daemon_type() == 'NORC':
         task_statuses = nds.taskrunstatus_set.all()
     else:
@@ -34,9 +24,9 @@ def get_trss(nds, status_filter='all', since_date=None):
     from norc.core.models import TaskRunStatus
     TRS_CATS = TaskRunStatus.STATUS_CATEGORIES
     if not since_date == None:
-        task_statuses = task_statuses.filter(date_started__gte=since_date)
+        task_statuses = task_statuses.exclude(date_ended__lt=since_date)
     if status_filter != 'all' and status_filter in TRS_CATS:
-        only_statuses = TRS_CATS[status_filter.lower()]
+        only_statuses = TRS_CATS[status_filter]
         task_statuses = task_statuses.filter(status__in=only_statuses)
     return task_statuses
 
@@ -49,21 +39,28 @@ def get_sqsqueues():
     else:
         return []
 
-# Provides a function to obtain the queryset
-# of data objects for each content type.
-RETRIEVE = {
-    'daemons': lambda GET: report.ndss(parse_since(
-        GET.get('since', '10m'))).order_by('-date_started'),
-    'jobs': lambda _: report.jobs(),
-    'sqsqueues': lambda _: get_sqsqueues(),
-}
+# Provides a function to obtain the set of objects for each content type.
+RETRIEVE = dict(
+    daemons=lambda: report.ndss(),
+    jobs=lambda: report.jobs(),
+    sqsqueues=lambda: get_sqsqueues(),
+)
 
 RETRIEVE_DETAILS = {
-    'daemons': ('tasks', lambda cid: get_trss(report.nds(cid))),
-    'jobs': ('iterations', lambda cid: report.iterations(cid)),
-    'iterations': ('tasks', lambda cid: report.tasks_from_iter(cid)),
+    'daemons': ('tasks', lambda cid, GET:
+        get_trss(report.nds(cid),GET.get('status', 'all'))),
+    'jobs': ('iterations', lambda cid, _: report.iterations(cid)),
+    'iterations': ('tasks', lambda cid, _: report.tasks_from_iter(cid)),
 }
+SINCE_FILTER = dict(
+    daemons=lambda data, since: data.exclude(date_ended__lt=since),
+    tasks=lambda data, since: data.exclude(date_ended__lt=since),
+)
 
+ORDER = dict(
+    daemons=lambda data, o: data.order_by(o if o else '-date_ended'),
+    tasks=lambda data, o: data.order_by(o if o else '-date_ended'),
+)
 # Dictionary the simultaneously defines the data structure to be returned
 # for each content type and how to retrieve that data from an object.
 DATA = {

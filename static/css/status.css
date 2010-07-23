@@ -43,6 +43,9 @@ th {
 #auto-reload {
     text-align:right;
 }
+#sqsqueues {
+    width:50%;
+}
 table.L1 tr.even {
     background-color:#D3EAD0;
 }
@@ -51,6 +54,13 @@ table.L1 tr.odd {
 }
 table.L1 tr.hover {
     background-color:#EEFEEE;
+}
+table.L1 td.hover {
+    background-color:#B8DBB9;
+}
+table.L1 tr.expanded td.selected {
+    background-color:#437F99;
+    color:#FFFFFF;
 }
 
 table.L1 ul.pagination {

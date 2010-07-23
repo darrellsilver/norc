@@ -62,7 +62,7 @@ var state = {
     page: {},
     nextPage: {},
     per_page: {},
-    type: {},
+    // type: {},
     data: {},
 };
 
@@ -117,7 +117,6 @@ function chainJoin() {
         acc += '-' + arguments[i];
     }
     return acc ? acc : '';
-    // return Array.prototype.slice.call(arguments).join('-');
 }
 
 // Inserts a new row after rowAbove with the given ID and
@@ -143,6 +142,36 @@ function insertNewRow(rowAbove, contents, slide) {
     Core Functions
 *********************/
 
+var TABLE_CUSTOMIZATION = {
+    daemons: function(chain, id, header, cell, row) {
+        if (!row.data('click_rewritten')) {
+            row.unbind('click');
+            row.click(function() {
+                if (!row.data('overruled')) {
+                    row.children('td').removeClass('selected');
+                    toggleDetails(chain, id);
+                }
+            });
+            row.data('click_rewritten', true);
+        }
+        if (['running', 'success', 'errored'].indexOf(header) >= 0) {
+            // cell.css('text-decoration', 'underline');
+            cell.click(function() {
+                cell.siblings().removeClass('selected');
+                cell.addClass('selected');
+                toggleDetails(chain, id, {status: header});
+            });
+            cell.hover(function() {
+                row.data('overruled', true);
+                cell.addClass('hover');
+            }, function() {
+                row.data('overruled', false);
+                cell.removeClass('hover');
+            });
+        }
+    },
+};
+
 // Creates a table.
 function makeDataTable(chain, data) {
     var dataKey = getKeyFromChain(chain);
@@ -165,17 +194,6 @@ function makeDataTable(chain, data) {
         // console.log(id);
         var rID = chain + '-' + id;
         var row = $('<tr/>').attr('id', rID);//.append($('<td/>').append(id));
-        $.each(headers.map(unTitle), function(j, header) {
-            var cell = $('<td/>').append(rowData[j == 0 ? 'id' : header]);
-            $.each(STYLE_BY_COLUMN, function(cls, hs) {
-                if (hs.indexOf(header) >= 0) cell.addClass(cls);
-            })
-            if (header == 'status' &&
-                    HAS_STATUS_COLOR.indexOf(dataKey) != -1) {
-                cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
-            }
-            row.append(cell);
-        });
         if (DETAIL_KEYS[dataKey]) {
             row.hover(function() {
                 $(this).addClass('hover');
@@ -189,6 +207,21 @@ function makeDataTable(chain, data) {
                 showDetails(chain, id, false);
             }
         };
+        $.each(headers.map(unTitle), function(j, header) {
+            var cell = $('<td/>').append(rowData[j == 0 ? 'id' : header]);
+            $.each(STYLE_BY_COLUMN, function(cls, hs) {
+                if (hs.indexOf(header) >= 0) cell.addClass(cls);
+            })
+            if (dataKey in TABLE_CUSTOMIZATION) {
+                TABLE_CUSTOMIZATION[dataKey](chain, id, header, cell, row);
+            }
+            if (header == 'status' &&
+                    HAS_STATUS_COLOR.indexOf(dataKey) != -1) {
+                cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
+            }
+            row.append(cell);
+        });
+        
         table.append(row);
     });
     table.children('tbody').children('tr:even').addClass('even');
@@ -244,19 +277,20 @@ function turnPage(chain, page) {
     });
 }
 
-function toggleDetails(chain, id) {
+function toggleDetails(chain, id, options) {
     if (state.detailsShowing[chain + '-' + id]) {
         hideDetails(chain, id);
     } else {
-        showDetails(chain, id, true);
+        showDetails(chain, id, true, options);
     }
 }
 
-function showDetails(chain, id, slide) {
+function showDetails(chain, id, slide, options) {
+    if (!options) options = {};
     var idChain = chainJoin(chain, id);
     state.detailsShowing[idChain] = true;
     var detailKey = DETAIL_KEYS[getKeyFromChain(chain)];
-    retrieveData(chain, id, {}, function(data, table) {
+    retrieveData(chain, id, options, function(data, table) {
         var row = $('#' + idChain).addClass('expanded');
         if (slide) {
             row.find('td').animate({
@@ -328,7 +362,6 @@ function retrieveData(chain, id, options, callback) {
         path += id + '/';
         dataKey = DETAIL_KEYS[dataKey];
         // Turrible haxxorz (hardcoding) to make SQS shit work.
-        // debugger;
         if (dataKey == 'tasks' && chain == 'daemons') {
             var obj = state.data[chain].filter(function(k) {
                 return k.id == id;
@@ -340,7 +373,6 @@ function retrieveData(chain, id, options, callback) {
         chain = chainJoin(chain, dataKey);
     }
     $.get(path, options, function(data) {
-        // console.log(data);
         // This is currently only used for fixing SQS tasks.
         if (id) {
             state.data[chainJoin(
@@ -394,7 +426,7 @@ $(document).ready(function() {
             reloadSection(section);
         });
     }
-    $('#auto-reload input').click(function() {
+    $('#auto-reload input').attr('checked', false).click(function() {
         if (this.checked == true) {
             reloadAll();
             state.autoReloadIID = setInterval(reloadAll, 60000);
@@ -403,5 +435,5 @@ $(document).ready(function() {
             delete state.autoReloadIID;
         }
     });
-    state.autoReloadIID = setInterval(reloadAll, 60000);
+    // state.autoReloadIID = setInterval(reloadAll, 60000);
 });
