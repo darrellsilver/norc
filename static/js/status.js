@@ -354,9 +354,20 @@ function initOptions(chain, options) {
     return options;
 }
 
+function makeSpinner() {
+    return $('<img src="/static/images/spinner.gif" alt="spinner"/>').attr({
+        src: '/static/images/spinner.gif', alt: 'loading...',
+    }).addClass('loading');
+}
+
 function retrieveData(chain, id, options, callback) {
     var dataKey = getKeyFromChain(chain);
     options = initOptions(id ? chainJoin(chain, id) : chain, options);
+    var img = makeSpinner();
+    // console.log($('#' + chain + (id ? '-' + id : '')));
+    var elem = $('#' + chain + (id ? '-' + id : ''));
+    if (chainLength(chain) == 1) elem = elem.find('tr:first');
+    elem.prepend(img);
     var path = '/data/' + dataKey + '/';
     if (id) {
         path += id + '/';
@@ -381,13 +392,14 @@ function retrieveData(chain, id, options, callback) {
             state.data[chain] = data.data;
         }
         callback(data, makeDataTable(chain, data.data));
+        img.remove();
     });
 }
 
 function reloadSection(dataKey, options) {
     retrieveData(dataKey, false, options, function(data, table) {
-        var sID = '#' + dataKey;
-        $(sID + ' > table').replaceWith(table);
+        table.attr('id', dataKey);
+        $('#' + dataKey).replaceWith(table);
         updatePagination(dataKey, data.page);
     });
 }
@@ -397,7 +409,7 @@ function reloadSection(dataKey, options) {
 *********************/
 
 function initSection(dataKey) {
-    var section = '#' + dataKey;
+    var section = '#' + dataKey + '-section';
     // $(section + ' .timeframe').before(
     //     $('<span>Within</span>').css('width', '45px'));
     $.each(TIME_OPTIONS, function(i, timeString) {
@@ -421,10 +433,12 @@ $(document).ready(function() {
         initSection(section);
         reloadSection(section, {'since': '10m'});
     });
+    $('#timestamp').text('Last updated at: ' + new Date());
     function reloadAll() {
         $.each(SECTIONS, function(i, section) {
             reloadSection(section);
         });
+        $('#timestamp').text('Last updated at: ' + new Date());
     }
     $('#auto-reload input').attr('checked', false).click(function() {
         if (this.checked == true) {
@@ -435,5 +449,4 @@ $(document).ready(function() {
             delete state.autoReloadIID;
         }
     });
-    // state.autoReloadIID = setInterval(reloadAll, 60000);
 });

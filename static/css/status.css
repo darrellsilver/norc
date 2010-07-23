@@ -13,7 +13,7 @@ h2 {
 div.content {
     margin-left:auto;
     margin-right:auto;
-    width:800px;
+    width:900px;
 }
 table {
     border-spacing:0px;
@@ -21,8 +21,8 @@ table {
     margin:0px;
     padding:0px;
     text-align:center;
-    width:100%;
     white-space:nowrap;
+    width:100%;
 }
 
 tr {
@@ -41,9 +41,9 @@ th {
     padding:0px;
 }
 #auto-reload {
-    text-align:right;
+    float:right;
 }
-#sqsqueues {
+#sqsqueues-section {
     width:50%;
 }
 table.L1 tr.even {
@@ -166,6 +166,11 @@ ul.timeframe li.selected {
 }
 .hover {
     cursor:pointer;
+}
+.loading {
+    position: relative;
+    float:left;
+    left: -20px;
 }
 .status_good {
     background-color:#CF6;

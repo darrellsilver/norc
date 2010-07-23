@@ -14,24 +14,22 @@
     <body>
         <div class="content">
             <h1>Norc Status</h1>
-            <div id="auto-reload">
-                <input type="checkbox"/>Auto-reload
-            </div>
-            <div id="daemons">
+            <span id="timestamp"></span>
+            <span id="auto-reload"><input type="checkbox"/>Auto-reload</span>
+            <div id="daemons-section">
                 <h2>Daemons</h2>
                 <ul class="timeframe"></ul>
-                <table></table>
+                <table id="daemons"></table>
             </div>
             {% if sqs %}
-            <div id="sqsqueues">
+            <div id="sqsqueues-section">
                 <h2>SQS Queues</h2>
-                <table></table>
+                <table id="sqsqueues"></table>
             </div>
             {% endif %}
-            <div id="jobs">
+            <div id="jobs-section">
                 <h2>Jobs</h2>
-                {# <ul class="timeframe"></ul> #}
-                <table></table>
+                <table id="jobs"></table>
             </div>
         </div>
     </body>
