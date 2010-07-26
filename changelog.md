@@ -17,7 +17,6 @@
   - Improved how the indicator is displayed so that table cells don't get shifted.
   - An exception will be thrown if the NORC_ENVIRONMENT shell variable is not set.  Before it would default to 'BaseEnv', but since Django needs more settings than that to run, a custom environment is now enforced.
 
---------------------
 
 ## Norc Release v1.0
 
@@ -38,7 +37,6 @@
   - Subtables now reflect the correct timeframe (for real this time).
   - Removed erroneous reference in sqs/__init__.py to a test setting, SQSTASK_IMPLEMENTATIONS, that was not supposed to be committed.
 
---------------------
 
 ## Norc Release v0.9
 
