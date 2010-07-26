@@ -57,3 +57,26 @@ def get_data(request, content_type, content_id=None):
         json_data['data'].append(obj_data)
     json = simplejson.dumps(json_data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")
+
+daemon_control = dict(
+    request=dict(
+        kill=lambda d: d.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED),
+        stop=lambda d: d.set_status(NorcDaemonStatus.STATUS_STOPREQUESTED),
+        pause=lambda d: d.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED),
+    ),
+    force=dict(
+        delete=lambda d: d.set_status(NorcDaemonStatus.STATUS_DELETED),
+        salvage=lambda d: d.set_status(NorcDaemonStatus.STATUS_RUNNING),
+    ),
+)
+
+def control(request, content_key, content_id):
+    executed = False
+    if content_key == 'daemons':
+        daemon = report.get_nds(content_id)
+        for k in ('request', 'force'):
+            if k in request.GET:
+                daemon_control[k][request.GET[k]](daemon)
+                executed = True
+                break
+    return http.HttpResponse(simplejson.dumps(executed), mimetype="json")

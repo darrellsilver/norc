@@ -14,6 +14,7 @@ urlpatterns = patterns('',
     (r'^$', 'norc.web.views.index'),
     (r'^data/(\w+)/$', 'norc.web.views.get_data'),
     (r'^data/(\w+)/(\w+)/$', 'norc.web.views.get_data'),
+    (r'^control/(\w+)/(\w+)/$', 'norc.web.views.control'),
     (r'^static/(?P<path>.*)$', 'django.views.static.serve',
         {'document_root': settings.MEDIA_ROOT}),
 )
