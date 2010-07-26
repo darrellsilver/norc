@@ -1,5 +1,6 @@
 
-## Norc Release v1.0.1
+Norc Release v1.0.1
+===================
 
 ### Features:
   - Added 'Failed Tasks' table, which shows all tasks with an error status.
@@ -18,7 +19,8 @@
   - An exception will be thrown if the NORC_ENVIRONMENT shell variable is not set.  Before it would default to 'BaseEnv', but since Django needs more settings than that to run, a custom environment is now enforced.
 
 
-## Norc Release v1.0
+Norc Release v1.0
+=================
 
 ### Features:
   - populate_db.py script in utils can fill your DB with large amounts of random data for testing.  Requires init_db to be run first from an empty database.
@@ -38,7 +40,8 @@
   - Removed erroneous reference in sqs/__init__.py to a test setting, SQSTASK_IMPLEMENTATIONS, that was not supposed to be committed.
 
 
-## Norc Release v0.9
+Norc Release v0.9
+=================
 
 ### Features:
   - Proper pagination of all subtables!
