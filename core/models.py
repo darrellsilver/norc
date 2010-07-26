@@ -1476,17 +1476,25 @@ class NorcDaemonStatus(models.Model):
     def get_daemon_type(self):
         # TODO This is a temporary hack until we can backfill
         # a daemon_type database field.
-        tms_c = self.taskrunstatus_set.count()
         if 'norc.sqs' in settings.INSTALLED_APPS:
-            sqs_c = self.sqstaskrunstatus_set.count()
-        else:
-            sqs_c = 0
-        if tms_c > 0 and sqs_c == 0:
-            return 'NORC'
-        elif tms_c == 0 and sqs_c > 0:
-            return 'SQS'
-        else:
-            return 'NORC'
+            try:
+                self.sqstaskrunstatus_set.all()[0]
+                return 'SQS'
+            except IndexError:
+                pass
+        return 'NORC'
+        
+        # tms_c = self.taskrunstatus_set.count()
+        # if 'norc.sqs' in settings.INSTALLED_APPS:
+        #     sqs_c = self.sqstaskrunstatus_set.count()
+        # else:
+        #     sqs_c = 0
+        # if tms_c > 0 and sqs_c == 0:
+        #     return 'NORC'
+        # elif tms_c == 0 and sqs_c > 0:
+        #     return 'SQS'
+        # else:
+        #     return 'NORC'
     # daemon_type = property(get_daemon_type)
     
     @staticmethod

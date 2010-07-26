@@ -198,7 +198,7 @@ def main():
     parser.add_option("--delete", action="store", type="int",
         help="mark tms daemon of given ID as deleted for convenience. Only changes DB.")
     parser.add_option("-s", "--status", action="store_true",
-        help="Force a status report after performing an action.")
+        help="Show a status report after performing an action.")
     parser.add_option("--wait", action="store", default=0, type="int",
         help="wait for N seconds for norcd to stop after kill or stop is issued. Default is 0")
     parser.add_option("--force", action="store_true",

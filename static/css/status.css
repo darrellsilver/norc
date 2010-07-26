@@ -3,6 +3,8 @@ body {
     color:#000;
     font-family:"Bitstream Vera Sans Mono", "Arial", "Verdana";
     font-size:12px;
+    padding-bottom:30px;
+    padding-left:30px;
 }
 h1 {
     text-align:center;
@@ -11,40 +13,37 @@ h2 {
     margin-bottom:0px;
 }
 div.content {
-    margin-left:auto;
-    margin-right:auto;
-    width:900px;
+    display:table;
+}
+div.section {
+    display:table;
+    min-width:500px;
 }
 table {
     border-spacing:0px;
     font-family:"Trebuchet MS", "Futura", "Courier New";
     margin:0px;
+    width:100%;
     padding:0px;
     text-align:center;
     white-space:nowrap;
+}
+table.L2 {
     width:100%;
 }
-
 tr {
     margin:0px;
     padding:0px;
 }
-td {
+td, th {
     margin:0px;
-    padding:0px 5px;
-}
-th {
-    margin:0px;
-    padding:4px;
+    padding:0px 10px;
 }
 .inserted td {
     padding:0px;
 }
 #auto-reload {
     float:right;
-}
-#sqsqueues-section {
-    width:50%;
 }
 table.L1 tr.even {
     background-color:#D3EAD0;
@@ -55,11 +54,15 @@ table.L1 tr.odd {
 table.L1 tr.hover {
     background-color:#EEFEEE;
 }
-table.L1 td.hover {
+table.L1 td.clickable:hover {
     background-color:#B8DBB9;
 }
 table.L1 tr.expanded td.selected {
     background-color:#437F99;
+    color:#FFFFFF;
+}
+table.L1 tr.expanded td.clickable:hover {
+    background-color:#8BDCDD;
     color:#FFFFFF;
 }
 
@@ -168,9 +171,17 @@ ul.timeframe li.selected {
     cursor:pointer;
 }
 .loading {
-    position: relative;
     float:left;
-    left: -20px;
+    height:0px;
+    left:-20px;
+    margin:0px;
+    padding:0px;
+    position:relative;
+    width:0px;
+}
+.loading img {
+    width:16px;
+    height:16px;
 }
 .status_good {
     background-color:#CF6;

@@ -23,6 +23,7 @@ var DATA_HEADERS = {
     sqstasks: ['ID', 'Task ID', 'Started', 'Ended', 'Status'],
     iterations: ['Iter ID', 'Type', 'Started', 'Ended', 'Status'],
     sqsqueues: ['Name', 'Num Items', 'Timeout'],
+    failedtasks: ['ID', 'Job', 'Task', 'Started', 'Ended', 'Status'],
 };
 
 var DETAIL_KEYS = {
@@ -54,16 +55,20 @@ var TIME_OPTIONS = ['10m', '30m', '1h', '3h', '12h', '1d', '7d', 'all'];
 // Saved state of the page.
 var state = {
     // Whether details are showing for a row.
-    detailsShowing: {},
+    'detailsShowing': {},
     // The last timeframe selection.
-    since: {},
+    'since': {
+        'daemons': '10m',
+        'failedtasks': '10m',
+    },
     // Paging data; next page and previous page numbers.
-    prevPage: {},
-    page: {},
-    nextPage: {},
-    per_page: {},
-    // type: {},
-    data: {},
+    'prevPage': {},
+    'nextPage': {},
+    // Data request options.
+    'page': {},
+    'per_page': {},
+    // Data cache; unnecessary except for the need to know daemon types.
+    'data': {},
 };
 
 
@@ -156,17 +161,26 @@ var TABLE_CUSTOMIZATION = {
         }
         if (['running', 'success', 'errored'].indexOf(header) >= 0) {
             // cell.css('text-decoration', 'underline');
+            cell.addClass('clickable');
             cell.click(function() {
-                cell.siblings().removeClass('selected');
-                cell.addClass('selected');
-                toggleDetails(chain, id, {status: header});
+                if (cell.hasClass('selected')) {
+                    cell.removeClass('selected');
+                    hideDetails(chain, id);
+                } else {
+                    cell.siblings().removeClass('selected');
+                    cell.addClass('selected');
+                    oldDetailsID = '#' + chainJoin(chain, id,
+                        DETAIL_KEYS[getKeyFromChain(chain)]);
+                    if ($)
+                    showDetails(chain, id, true, {status: header});
+                }
             });
             cell.hover(function() {
                 row.data('overruled', true);
-                cell.addClass('hover');
+                // cell.addClass('hover');
             }, function() {
                 row.data('overruled', false);
-                cell.removeClass('hover');
+                // cell.removeClass('hover');
             });
         }
     },
@@ -277,11 +291,11 @@ function turnPage(chain, page) {
     });
 }
 
-function toggleDetails(chain, id, options) {
+function toggleDetails(chain, id) {
     if (state.detailsShowing[chain + '-' + id]) {
         hideDetails(chain, id);
     } else {
-        showDetails(chain, id, true, options);
+        showDetails(chain, id, true);
     }
 }
 
@@ -306,11 +320,20 @@ function showDetails(chain, id, slide, options) {
         // Add the detail key to the chain so the pagination functions
         // find the right row to work with.
         chain = chainJoin(idChain, detailKey);
-        // var hasData = !$.isEmptyObject(data.data);
-        var multiPage = data.page.total > 1;
-        var contents = [table, multiPage ? makePagination(chain) : $('')];
-        insertNewRow(row, contents, slide).attr('id', chain);
-        if (multiPage) updatePagination(chain, data.page);
+        var initRow = function() {
+            var contents = [table];
+            if (data.page.total > 1) contents.push(makePagination(chain));
+            insertNewRow(row, contents, slide).attr('id', chain);
+            if (data.page.total > 1) updatePagination(chain, data.page);
+        };
+        if ($('#' + chain).length > 0) {
+            $('#' + chain + ' div:first').slideUp(200, function() {
+                $('#' + chain).remove();
+                initRow();
+            });
+        } else {
+            initRow();
+        }
     });
 }
 
@@ -354,22 +377,21 @@ function initOptions(chain, options) {
     return options;
 }
 
-function makeSpinner() {
+function makeLoadingIndicator() {
     return $('<img src="/static/images/spinner.gif" alt="spinner"/>').attr({
         src: '/static/images/spinner.gif', alt: 'loading...',
-    }).addClass('loading');
+    });
 }
 
 function retrieveData(chain, id, options, callback) {
     var dataKey = getKeyFromChain(chain);
     options = initOptions(id ? chainJoin(chain, id) : chain, options);
-    var img = makeSpinner();
-    // console.log($('#' + chain + (id ? '-' + id : '')));
-    var elem = $('#' + chain + (id ? '-' + id : ''));
-    if (chainLength(chain) == 1) elem = elem.find('tr:first');
-    elem.prepend(img);
+    var loading = makeLoadingIndicator();
     var path = '/data/' + dataKey + '/';
     if (id) {
+        loading = $('<tr/>').addClass('loading').append(loading);
+        // console.log($('#' + chain + '-' + id));
+        $('#' + chain + '-' + id).before(loading);
         path += id + '/';
         dataKey = DETAIL_KEYS[dataKey];
         // Turrible haxxorz (hardcoding) to make SQS shit work.
@@ -382,6 +404,9 @@ function retrieveData(chain, id, options, callback) {
             }
         }
         chain = chainJoin(chain, dataKey);
+    } else {
+        loading = $('<span/>').addClass('loading').append(loading);
+        $('#' + chain).find('h2').after(loading);
     }
     $.get(path, options, function(data) {
         // This is currently only used for fixing SQS tasks.
@@ -391,15 +416,16 @@ function retrieveData(chain, id, options, callback) {
         } else {
             state.data[chain] = data.data;
         }
+        loading.remove();
         callback(data, makeDataTable(chain, data.data));
-        img.remove();
     });
 }
 
 function reloadSection(dataKey, options) {
     retrieveData(dataKey, false, options, function(data, table) {
-        table.attr('id', dataKey);
-        $('#' + dataKey).replaceWith(table);
+        // table.attr('id', dataKey);
+        // $('#' + dataKey).replaceWith(table);
+        $('#' + dataKey + ' > table').replaceWith(table);
         updatePagination(dataKey, data.page);
     });
 }
@@ -409,7 +435,7 @@ function reloadSection(dataKey, options) {
 *********************/
 
 function initSection(dataKey) {
-    var section = '#' + dataKey + '-section';
+    var section = '#' + dataKey;
     // $(section + ' .timeframe').before(
     //     $('<span>Within</span>').css('width', '45px'));
     $.each(TIME_OPTIONS, function(i, timeString) {
@@ -427,19 +453,20 @@ function initSection(dataKey) {
 }
 
 $(document).ready(function() {
-    var SECTIONS = ['daemons', 'jobs'];
+    var SECTIONS = ['daemons', 'jobs', 'failedtasks'];
     if (SQS_ENABLED) SECTIONS.push('sqsqueues');
     $.each(SECTIONS, function(i, section) {
         initSection(section);
-        reloadSection(section, {'since': '10m'});
+        // reloadSection(section);
     });
-    $('#timestamp').text('Last updated at: ' + new Date());
+    // $('#timestamp').text('Last updated at: ' + new Date());
     function reloadAll() {
         $.each(SECTIONS, function(i, section) {
             reloadSection(section);
         });
         $('#timestamp').text('Last updated at: ' + new Date());
     }
+    reloadAll()
     $('#auto-reload input').attr('checked', false).click(function() {
         if (this.checked == true) {
             reloadAll();

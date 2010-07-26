@@ -8,9 +8,9 @@ from django.conf import settings
 from django.db.models.query import QuerySet
 
 from norc.core import report
+from norc.core.models import NorcDaemonStatus
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.web import JSONObjectEncoder, paginate
-# from norc.core.models import NorcDaemonStatus
 from norc.web.structure import \
     RETRIEVE, RETRIEVE_DETAILS, DATA, SINCE_FILTER, ORDER
 
@@ -46,10 +46,6 @@ def get_data(request, content_type, content_id=None):
         since_date = parse_since(request.GET['since'])
         if since_date and data_key in SINCE_FILTER:
             data_set = SINCE_FILTER[data_key](data_set, since_date)
-        # try:
-        #     data_set = data_set.filter(date_started__gte=since_date)
-        # except Exception:
-        #     pass
     if data_key in ORDER:
         data_set = ORDER[data_key](data_set, request.GET.get('order'))
     page, page_data = paginate(request, data_set)

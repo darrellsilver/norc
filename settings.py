@@ -15,7 +15,7 @@ from norc.defaults import Envs
 # Find the user's environment.
 env_str = os.environ.get('NORC_ENVIRONMENT')
 if not env_str:
-    env_str = 'BaseEnv'
+    raise Exception('You must set the NORC_ENVIRONMENT shell variable.')
 try:
     cur_env = Envs.ALL[env_str]
 except KeyError, ke:

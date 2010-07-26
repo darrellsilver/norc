@@ -16,20 +16,25 @@
             <h1>Norc Status</h1>
             <span id="timestamp"></span>
             <span id="auto-reload"><input type="checkbox"/>Auto-reload</span>
-            <div id="daemons-section">
+            <div id="daemons" class="section">
                 <h2>Daemons</h2>
                 <ul class="timeframe"></ul>
-                <table id="daemons"></table>
+                <table></table>
+            </div>
+            <div id="failedtasks" class="section">
+                <h2>Failed Tasks</h2>
+                <ul class="timeframe"></ul>
+                <table></table>
             </div>
             {% if sqs %}
-            <div id="sqsqueues-section">
+            <div id="sqsqueues" class="section">
                 <h2>SQS Queues</h2>
-                <table id="sqsqueues"></table>
+                <table></table>
             </div>
             {% endif %}
-            <div id="jobs-section">
+            <div id="jobs" class="section">
                 <h2>Jobs</h2>
-                <table id="jobs"></table>
+                <table></table>
             </div>
         </div>
     </body>

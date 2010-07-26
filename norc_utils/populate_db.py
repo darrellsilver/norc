@@ -3,15 +3,15 @@
 import sys
 import random, string
 import datetime
-# from datetime.datetime import datetime.datetime, datetime.timedelta
 from norc.core.models import *
+from django.conf.settings import INSTALLED_APPS
 
-def randomString(a, b=None):
+def random_string(a, b=None):
     CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_'
     length = random.randint(a, b) if b else a
     return "".join([random.choice(CHARS) for _ in range(length)])
     
-HOSTS = ['.'.join([randomString(3) for _ in range(3)]) for _ in range(20)]
+HOSTS = ['.'.join([random_string(3) for _ in range(3)]) for _ in range(20)]
 
 def choiceFromQueryset(q):
     return q[random.randint(0, len(q) - 1)]
@@ -21,7 +21,7 @@ def printPeriod():
     sys.stdout.flush()
 
 def addRegion():
-    ResourceRegion(name=randomString(10,20)).save()
+    ResourceRegion(name=random_string(10,20)).save()
 
 def addDaemon():
     region = choiceFromQueryset(ResourceRegion.objects.all())
@@ -50,10 +50,9 @@ def addDaemon():
         ended = None
     NorcDaemonStatus(region=region, host=host, pid=pid, status=status,
         date_started=started, date_ended=ended).save()
-    
 
 def addJob():
-    job = Job(name=randomString(5,15), description=randomString(20, 30))
+    job = Job(name=random_string(5,15), description=random_string(20, 30))
     job.save()
     for _ in range(random.randint(1, 10)):
         addIteration(job)
@@ -112,9 +111,13 @@ def populate():
     for _ in range(10):
         addRegion()
     printPeriod()
-    for _ in range(random.randint(100, 1000)):
+    for _ in range(random.randint(500, 1000)):
         addDaemon()
     printPeriod()
+    # if 'norc.sqs' in INSTALLED_APPS:
+    #     for _ in range(random.randint(100, 200)):
+    #         addSQSDaemon()
+    #     printPeriod()
     for _ in range(10):
         addJob()
     print ''

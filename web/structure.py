@@ -9,6 +9,7 @@ content type, and how to retrieve that data from the appropriate object.
 from django.conf import settings
 
 from norc.core import report
+from norc.core.models import TaskRunStatus
 from norc.norc_utils.parsing import parse_since
 
 def get_trss(nds, status_filter='all', since_date=None):
@@ -21,7 +22,6 @@ def get_trss(nds, status_filter='all', since_date=None):
     else:
         task_statuses = nds.sqstaskrunstatus_set.all()
     status_filter = status_filter.lower()
-    from norc.core.models import TaskRunStatus
     TRS_CATS = TaskRunStatus.STATUS_CATEGORIES
     if not since_date == None:
         task_statuses = task_statuses.exclude(date_ended__lt=since_date)
@@ -44,6 +44,8 @@ RETRIEVE = dict(
     daemons=lambda: report.ndss(),
     jobs=lambda: report.jobs(),
     sqsqueues=lambda: get_sqsqueues(),
+    failedtasks=lambda: TaskRunStatus.objects.filter(
+        status__in=TaskRunStatus.STATUS_CATEGORIES['errored'])
 )
 
 RETRIEVE_DETAILS = {
@@ -52,14 +54,17 @@ RETRIEVE_DETAILS = {
     'jobs': ('iterations', lambda cid, _: report.iterations(cid)),
     'iterations': ('tasks', lambda cid, _: report.tasks_from_iter(cid)),
 }
+date_ended_filter = lambda data, since: data.exclude(date_ended__lt=since)
 SINCE_FILTER = dict(
-    daemons=lambda data, since: data.exclude(date_ended__lt=since),
-    tasks=lambda data, since: data.exclude(date_ended__lt=since),
+    daemons=date_ended_filter,
+    tasks=date_ended_filter,
+    failedtasks=date_ended_filter,
 )
 
 ORDER = dict(
     daemons=lambda data, o: data.order_by(o if o else '-date_ended'),
     tasks=lambda data, o: data.order_by(o if o else '-date_ended'),
+    failedtasks=lambda data, o: data.order_by(o if o else '-date_ended'),
 )
 # Dictionary the simultaneously defines the data structure to be returned
 # for each content type and how to retrieve that data from an object.
@@ -112,4 +117,12 @@ DATA = {
         'num_items': lambda q, _: q.count(),
         'timeout': lambda q, _: q.get_timeout(),
     },
+    'failedtasks': {
+        'id': lambda trs, _: trs.id,
+        'job': lambda trs, _: trs.task.job.name,
+        'task': lambda trs, _: trs.task.get_name(),
+        'status': lambda trs, _: trs.status,
+        'started': lambda trs, _: trs.date_started,
+        'ended': lambda trs, _: trs.date_ended,
+    }
 }
