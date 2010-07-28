@@ -1,41 +1,17 @@
 
-#
-# Copyright (c) 2009, Perpetually.com, LLC.
-# All rights reserved.
-# 
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-# 
-#     * Redistributions of source code must retain the above copyright 
-#       notice, this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above copyright
-#       notice, this list of conditions and the following disclaimer in the
-#       documentation and/or other materials provided with the distribution.
-#     * Neither the name of the Perpetually.com, LLC. nor the names of its 
-#       contributors may be used to endorse or promote products derived from 
-#       this software without specific prior written permission.
-# 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE 
-# POSSIBILITY OF SUCH DAMAGE.
-#
+"""
 
-"""Contains some functions useful throughout the sqs module."""
+Contains some functions useful throughout the sqs module as well as the
+data definitions for the SQS portions of the web status page.
+
+"""
 
 import pickle
 from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
 from norc.norc_utils import parsing
-from norc.web.data_defs import DataDefinition
+from norc.web.data_defs import DataDefinition, DATA_DEFS
 from norc.settings import AWS_ACCESS_KEY_ID as AWS_ID, \
                           AWS_SECRET_ACCESS_KEY as AWS_KEY
 
@@ -80,3 +56,30 @@ def pop_task(queue):
     class_ = parsing.parse_class(path)
     task = class_(**dict_)
     return task
+
+# Data definitions for the web status display.
+
+tasks_def = DATA_DEFS['tasks']
+
+DataDefinition(
+    key='sqstasks',
+    since_filter=tasks_def.since_filter,
+    order_by=tasks_def.order_by,
+    data={
+        'id': lambda trs, _: trs.id,
+        'task_id': lambda trs, _: str(trs.get_task_id()),
+        'status': lambda trs, _: trs.get_status(),
+        'started': lambda trs, _: trs.date_started,
+        'ended': lambda trs, _: trs.date_ended if trs.date_ended else '-',
+    },
+)
+
+DataDefinition(
+    key='sqsqueues',
+    retrieve=lambda: SQSConnection(AWS_ID, AWS_KEY).get_all_queues(),
+    data={
+        'id': lambda q, _: q.url.split('/')[-1],
+        'num_items': lambda q, _: q.count(),
+        'timeout': lambda q, _: q.get_timeout(),
+    },
+)

@@ -4,13 +4,15 @@ Norc Release v1.0.2
 
 ## Tweaks:
   - Added tmp/ and log/ directories to Norc by default.
-  - sqs_populate_db.py script now exists to add random SQS data.  It takes a long time to run because adds hundreds of thousands of items to the database.
+  - An sqs_populate_db.py script now exists to add random SQS data.  It takes a long time to run because adds hundreds of thousands of items to the database.
   - Renamed structure.py to data_defs.py and rewrote it to use objects.
+  - SQS data definitions now live inside the sqs/__init__.py file.
 
 ## Bug Fixes:
   - Loading indicators will now disappear if an AJAX request fails.
-  - get_daemon_type() now checks for existence of sqstaskrunstatus_set before querying it.
-  - Added timeframe filtering and ordering to sqstasks.
+  - The get_daemon_type() function now checks for existence of sqstaskrunstatus_set before querying it.
+  - Added timeframe filtering and ordering to SQS tasks.
+  - Added ordering to failed tasks.
 
 
 Norc Release v1.0.1

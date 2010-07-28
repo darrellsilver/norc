@@ -280,9 +280,9 @@ function updatePagination(chain, pageData) {
             next.removeClass('clickable');
         }
     } else {
-        base.find('.next').text('');
+        base.find('.next').removeClass('clickable').text('');
         base.find('.page').text('');
-        base.find('.prev').text('');
+        base.find('.prev').removeClass('clickable').text('');
     }
 }
 

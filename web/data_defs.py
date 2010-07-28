@@ -17,7 +17,7 @@ from norc.norc_utils.formatting import to_title
 DATA_DEFS = {}
 
 class DataDefinition(object):
-    """ A definition for the data of a status table on the frontend.
+    """A definition for the data of a status table on the frontend.
     
     Contains all the information needed for retrieving and organizing the
     data for displaying in a table on the status page.
@@ -54,6 +54,7 @@ class DataDefinition(object):
 
 date_ended_filter = lambda data, since: data.exclude(date_ended__lt=since)
 date_ended_order = lambda data, o: data.order_by(o if o else '-date_ended')
+date_ended_getter = lambda obj, _: obj.date_ended if obj.date_ended else '-'
 
 DataDefinition(
     key='daemons',
@@ -76,7 +77,7 @@ DataDefinition(
                                         parse_since(GET.get('since')))),
         'status': lambda nds, _: nds.status,
         'started': lambda nds, _: nds.date_started,
-        'ended': lambda nds, _: nds.date_ended if nds.date_ended else '-',
+        'ended': date_ended_getter,
     },
 )
 
@@ -90,7 +91,7 @@ DataDefinition(
         'task': lambda trs, _: trs.task.get_name(),
         'status': lambda trs, _: trs.status,
         'started': lambda trs, _: trs.date_started,
-        'ended': lambda trs, _: trs.date_ended if trs.date_ended else '-',
+        'ended': date_ended_getter,
     },
 )
 
@@ -104,20 +105,7 @@ tasks = DataDefinition(
         'task': lambda trs, _: trs.task.get_name(),
         'status': lambda trs, _: trs.status,
         'started': lambda trs, _: trs.date_started,
-        'ended': lambda trs, _: trs.date_ended if trs.date_ended else '-',
-    },
-)
-
-DataDefinition(
-    key='sqstasks',
-    since_filter=tasks.since_filter,
-    order_by=tasks.order_by,
-    data={
-        'id': lambda trs, _: trs.id,
-        'task_id': lambda trs, _: str(trs.get_task_id()),
-        'status': lambda trs, _: trs.get_status(),
-        'started': lambda trs, _: trs.date_started,
-        'ended': lambda trs, _: trs.date_ended if trs.date_ended else '-',
+        'ended': date_ended_getter,
     },
 )
 
@@ -153,25 +141,6 @@ DataDefinition(
         'status': lambda i, _: i.status,
         'type': lambda i, _: i.iteration_type,
         'started': lambda i, _: i.date_started,
-        'ended': lambda i, _: i.date_ended if i.date_ended else '-',
-    },
-)
-
-def get_sqsqueues():
-    if 'norc.sqs' in settings.INSTALLED_APPS:
-        from boto.sqs.connection import SQSConnection
-        c = SQSConnection(settings.AWS_ACCESS_KEY_ID,
-                          settings.AWS_SECRET_ACCESS_KEY)
-        return c.get_all_queues()
-    else:
-        return []
-
-DataDefinition(
-    key='sqsqueues',
-    retrieve=get_sqsqueues,
-    data={
-        'id': lambda q, _: q.url.split('/')[-1],
-        'num_items': lambda q, _: q.count(),
-        'timeout': lambda q, _: q.get_timeout(),
+        'ended': date_ended_getter,
     },
 )
