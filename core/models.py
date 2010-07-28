@@ -937,9 +937,8 @@ class TaskRunStatus(models.Model):
     STATUS_CATEGORIES['active'] = [STATUS_RUNNING]
     STATUS_CATEGORIES['errored'] = [STATUS_ERROR, STATUS_TIMEDOUT]
     STATUS_CATEGORIES['success'] = [STATUS_SUCCESS, STATUS_CONTINUE]
-    STATUS_CATEGORIES['interesting'] = []
-    STATUS_CATEGORIES['interesting'].extend(STATUS_CATEGORIES['active'])
-    STATUS_CATEGORIES['interesting'].extend(STATUS_CATEGORIES['errored'])
+    STATUS_CATEGORIES['interesting'] = STATUS_CATEGORIES['active'] + \
+                                       STATUS_CATEGORIES['errored']
     STATUS_CATEGORIES['all'] = ALL_STATUSES
     
     class Meta:

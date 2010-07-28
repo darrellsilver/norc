@@ -183,6 +183,32 @@ ul.timeframe li.selected {
     width:16px;
     height:16px;
 }
+.slideout {
+    display:inline-block;
+    float:right;
+    height:0px;
+    margin:0px;
+    overflow:visible;
+    padding:0px;
+    width:0px;
+}
+.slideout ul {
+    bottom:12px;
+    display:inline-block;
+    list-style:none;
+    padding:0px;
+    position:relative;
+    right:-10px;
+}
+.slideout li {
+    background-color:#B8DBB9;
+    cursor:pointer;
+    display:inline-block;
+    padding:0px 5px;
+}
+.slideout li:hover {
+    background-color:#A0CAA4;
+}
 .status_good {
     background-color:#CF6;
 }

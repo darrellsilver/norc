@@ -59,24 +59,33 @@ def get_data(request, content_type, content_id=None):
     return http.HttpResponse(json, mimetype="json")
 
 daemon_control = dict(
-    request=dict(
-        kill=lambda d: d.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED),
-        stop=lambda d: d.set_status(NorcDaemonStatus.STATUS_STOPREQUESTED),
-        pause=lambda d: d.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED),
-    ),
-    force=dict(
-        delete=lambda d: d.set_status(NorcDaemonStatus.STATUS_DELETED),
-        salvage=lambda d: d.set_status(NorcDaemonStatus.STATUS_RUNNING),
-    ),
+    kill=lambda d: d.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED),
+    stop=lambda d: d.set_status(NorcDaemonStatus.STATUS_STOPREQUESTED),
+    pause=lambda d: d.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED),
+    delete=lambda d: d.set_status(NorcDaemonStatus.STATUS_DELETED),
+    salvage=lambda d: d.set_status(NorcDaemonStatus.STATUS_RUNNING),
 )
+
+requests = ['kill', 'stop', 'pause']
+force = ['delete', 'salvage']
+allowed_status_changes = {
+    'RUNNING': ['kill', 'stop', 'pause', 'delete'],
+    'STARTING': ['delete'],
+    'RUNNING': requests,
+    'PAUSED': ['kill', 'stop', 'delete', 'salvage'],
+    'PAUSEREQUESTED': force,
+    'STOPREQUESTED': force,
+    'KILLREQUESTED': force,
+    'BEING_STOPPED': force,
+    'BEING_KILLED': force,
+}
 
 def control(request, content_key, content_id):
     executed = False
-    if content_key == 'daemons':
-        daemon = report.get_nds(content_id)
-        for k in ('request', 'force'):
-            if k in request.GET:
-                daemon_control[k][request.GET[k]](daemon)
-                executed = True
-                break
+    if content_key == 'daemon':
+        daemon = report.nds(content_id)
+        do = request.POST.get('do')
+        if do and do in allowed_status_changes.get(daemon.status, []):
+            daemon_control[do](daemon)
+            executed = True
     return http.HttpResponse(simplejson.dumps(executed), mimetype="json")

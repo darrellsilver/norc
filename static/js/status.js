@@ -19,11 +19,12 @@ var DATA_HEADERS = {
     daemons: ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
         'Success', 'Errored', 'Started', 'Ended', 'Status'],
     jobs: ['Job ID', 'Name', 'Description', 'Added'],
-    tasks: ['ID', 'Job', 'Task', 'Started', 'Ended', 'Status'],
+    tasks: ['ID', 'Job', 'Iteration', 'Task', 'Started', 'Ended', 'Status'],
     sqstasks: ['ID', 'Task ID', 'Started', 'Ended', 'Status'],
     iterations: ['Iter ID', 'Type', 'Started', 'Ended', 'Status'],
     sqsqueues: ['Name', 'Num Items', 'Timeout'],
-    failedtasks: ['ID', 'Job', 'Task', 'Started', 'Ended', 'Status'],
+    failedtasks: ['ID', 'Job', 'Iteration', 'Task',
+        'Started', 'Ended', 'Status'],
 };
 
 var DETAIL_KEYS = {
@@ -152,6 +153,22 @@ function insertNewRow(rowAbove, contents, slide) {
     Core Functions
 *********************/
 
+function makeDaemonControls(id) {
+    var div = $('<div/>').addClass('slideout');
+    var ul = $('<ul/>');
+    $.each(['pause', 'stop', 'kill', 'delete', 'salvage'], function(i, v) {
+        var li = $('<li/>').text(v);
+        li.click(function() {
+            var path = '/control/daemon/' + id + '/';
+            $.post(path, {'do': v}, function(data) {
+                console.log(data);
+            });
+        });
+        ul.append(li);
+    });
+    return div.append(ul);
+}
+
 var TABLE_CUSTOMIZATION = {
     daemons: function(chain, id, header, cell, row) {
         if (!row.data('click_rewritten')) {
@@ -165,7 +182,6 @@ var TABLE_CUSTOMIZATION = {
             row.data('click_rewritten', true);
         }
         if (isIn(header, ['running', 'success', 'errored'])) {
-            // cell.css('text-decoration', 'underline');
             cell.addClass('clickable');
             cell.click(function() {
                 if (cell.hasClass('selected')) {
@@ -179,10 +195,20 @@ var TABLE_CUSTOMIZATION = {
             });
             cell.hover(function() {
                 row.data('overruled', true);
-                // cell.addClass('hover');
             }, function() {
                 row.data('overruled', false);
-                // cell.removeClass('hover');
+            });
+        } else if (header == 'status') {
+            cell.addClass('clickable');
+            var controls = makeDaemonControls(id);
+            cell.hover(function() {
+                row.data('overruled', true);
+                controls.find('ul').css('width', '0px');
+                cell.append(controls);
+                controls.find('ul').animate({width: '100px'}, 300);
+            }, function() {
+                row.data('overruled', false);
+                controls.detach();
             });
         }
     },
@@ -207,9 +233,8 @@ function makeDataTable(chain, data) {
     $.each(data, function(i, rowData) {
         // Make the row and add the ID cell.
         var id = rowData['id'];
-        // console.log(id);
         var rID = chain + '-' + id;
-        var row = $('<tr/>').attr('id', rID);//.append($('<td/>').append(id));
+        var row = $('<tr/>').attr('id', rID);
         if (DETAIL_KEYS[dataKey]) {
             row.hover(function() {
                 $(this).addClass('hover');
@@ -399,7 +424,6 @@ function retrieveData(chain, id, options, callback) {
     var path = '/data/' + dataKey + '/';
     if (id) {
         loading = $('<tr/>').addClass('loading').append(loading);
-        // console.log($('#' + chain + '-' + id));
         $('#' + chain + '-' + id).before(loading);
         path += id + '/';
         dataKey = DETAIL_KEYS[dataKey];
@@ -436,8 +460,6 @@ function retrieveData(chain, id, options, callback) {
 
 function reloadSection(dataKey, options) {
     retrieveData(dataKey, false, options, function(data, table) {
-        // table.attr('id', dataKey);
-        // $('#' + dataKey).replaceWith(table);
         $('#' + dataKey + ' > table').replaceWith(table);
         updatePagination(dataKey, data.page);
     });
@@ -472,9 +494,7 @@ $(document).ready(function() {
     if (SQS_ENABLED) SECTIONS.push('sqsqueues');
     $.each(SECTIONS, function(i, section) {
         initSection(section);
-        // reloadSection(section);
     });
-    // $('#timestamp').text('Last updated at: ' + new Date());
     reloadAll = function() {
         $.each(SECTIONS, function(i, section) {
             reloadSection(section);

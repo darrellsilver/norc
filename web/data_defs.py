@@ -102,6 +102,7 @@ tasks = DataDefinition(
     data={
         'id': lambda trs, _: trs.id,
         'job': lambda trs, _: trs.task.job.name,
+        'iteration': lambda trs, _: trs.iteration.id,
         'task': lambda trs, _: trs.task.get_name(),
         'status': lambda trs, _: trs.status,
         'started': lambda trs, _: trs.date_started,
