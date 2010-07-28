@@ -37,7 +37,7 @@ var STYLE_BY_COLUMN = {
     'rightAlign': ['running', 'success', 'errored', 'pid', 'num_items'],
 };
 // The data keys for which statuses should be colored.
-var HAS_STATUS_COLOR = ['tasks', 'sqstasks'];
+var HAS_STATUS_COLOR = ['tasks', 'sqstasks', 'failedtasks'];
 // Map of statuses to their style classes.
 var STATUS_CSS_CLASSES = {
     SUCCESS : 'status_good',
@@ -59,7 +59,7 @@ var state = {
     // The last timeframe selection.
     'since': {
         'daemons': '10m',
-        'failedtasks': '10m',
+        'failedtasks': 'all',
     },
     // Paging data; next page and previous page numbers.
     'prevPage': {},
@@ -93,6 +93,11 @@ function unTitle(str) {
     return str.split(' ').map(function(word){
         return word.toLowerCase();
     }).join('_');
+}
+
+// Containment test for lists, since 'x in y' doesn't work with them.
+function isIn(element, list_) {
+    return list_.indexOf(element) >= 0;
 }
 
 // Chain utilities!  Chains are the strings of the form 'x-y-z' that are used
@@ -159,7 +164,7 @@ var TABLE_CUSTOMIZATION = {
             });
             row.data('click_rewritten', true);
         }
-        if (['running', 'success', 'errored'].indexOf(header) >= 0) {
+        if (isIn(header, ['running', 'success', 'errored'])) {
             // cell.css('text-decoration', 'underline');
             cell.addClass('clickable');
             cell.click(function() {
@@ -169,9 +174,6 @@ var TABLE_CUSTOMIZATION = {
                 } else {
                     cell.siblings().removeClass('selected');
                     cell.addClass('selected');
-                    oldDetailsID = '#' + chainJoin(chain, id,
-                        DETAIL_KEYS[getKeyFromChain(chain)]);
-                    if ($)
                     showDetails(chain, id, true, {status: header});
                 }
             });
@@ -224,13 +226,12 @@ function makeDataTable(chain, data) {
         $.each(headers.map(unTitle), function(j, header) {
             var cell = $('<td/>').append(rowData[j == 0 ? 'id' : header]);
             $.each(STYLE_BY_COLUMN, function(cls, hs) {
-                if (hs.indexOf(header) >= 0) cell.addClass(cls);
+                if (isIn(header, hs)) cell.addClass(cls);
             })
             if (dataKey in TABLE_CUSTOMIZATION) {
                 TABLE_CUSTOMIZATION[dataKey](chain, id, header, cell, row);
             }
-            if (header == 'status' &&
-                    HAS_STATUS_COLOR.indexOf(dataKey) != -1) {
+            if (header == 'status' && isIn(dataKey, HAS_STATUS_COLOR)) {
                 cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
             }
             row.append(cell);
@@ -245,13 +246,13 @@ function makeDataTable(chain, data) {
 
 function makePagination(chain) {
     var ul = $('<ul/>').addClass('pagination');
-    var prev = $('<li>Prev</li>').addClass('prev').click(function() {
+    var prev = $('<li/>').addClass('prev').click(function() {
         if (state.prevPage[chain] > 0) {
             turnPage(chain, state.prevPage[chain]);
         }
     });
     var curr = $('<li/>').addClass('page');
-    var next = $('<li>Next</li>').addClass('next').click(function() {
+    var next = $('<li/>').addClass('next').click(function() {
         if (state.nextPage[chain] > 0) {
             turnPage(chain, state.nextPage[chain]);
         }
@@ -264,17 +265,25 @@ function updatePagination(chain, pageData) {
     state.nextPage[chain] = pageData.nextPage;
     state.prevPage[chain] = pageData.prevPage;
     var base = $('#' + chain);
-    if (pageData.nextPage > 0) {
-        base.find('.next').addClass('clickable');
+    if (pageData.total > 1) {
+        base.find('.page').text(pageData.current + ' of ' + pageData.total);
+        var prev = base.find('.prev').text('Prev');
+        var next = base.find('.next').text('Next');
+        if (pageData.prevPage > 0) {
+            prev.addClass('clickable');
+        } else {
+            prev.removeClass('clickable');
+        }
+        if (pageData.nextPage > 0) {
+            next.addClass('clickable');
+        } else {
+            next.removeClass('clickable');
+        }
     } else {
-        base.find('.next').removeClass('clickable');
+        base.find('.next').text('');
+        base.find('.page').text('');
+        base.find('.prev').text('');
     }
-    if (pageData.prevPage > 0) {
-        base.find('.prev').addClass('clickable');
-    } else {
-        base.find('.prev').removeClass('clickable');
-    }
-    base.find('.page').text(pageData.current + ' of ' + pageData.total);
 }
 
 function turnPage(chain, page) {
@@ -360,7 +369,7 @@ function initOptions(chain, options) {
     $.each(fields, function(i, o) {
         if (o in options) {
             state[o][chain] = options[o];
-        } else if (inherit.indexOf(o) >= 0) {
+        } else if (isIn(o, inherit)) {
             var searchChain = chain;
             while (chainLength(searchChain) > 0) {
                 if (searchChain in state[o]) {
@@ -408,6 +417,11 @@ function retrieveData(chain, id, options, callback) {
         loading = $('<span/>').addClass('loading').append(loading);
         $('#' + chain).find('h2').after(loading);
     }
+    loading.ajaxComplete(function(e, xhr, settings) {
+        if (settings.url.substr(0, path.length) == path) {
+            $(this).remove();
+        }
+    });
     $.get(path, options, function(data) {
         // This is currently only used for fixing SQS tasks.
         if (id) {
@@ -416,7 +430,6 @@ function retrieveData(chain, id, options, callback) {
         } else {
             state.data[chain] = data.data;
         }
-        loading.remove();
         callback(data, makeDataTable(chain, data.data));
     });
 }
@@ -435,20 +448,22 @@ function reloadSection(dataKey, options) {
 *********************/
 
 function initSection(dataKey) {
-    var section = '#' + dataKey;
-    // $(section + ' .timeframe').before(
-    //     $('<span>Within</span>').css('width', '45px'));
-    $.each(TIME_OPTIONS, function(i, timeString) {
-        var tfLink = $('<li/>').append(timeString).addClass('clickable');
-        if (timeString == '10m') tfLink.addClass('selected');
-        tfLink.click(function() {
-            $(this).siblings().removeClass('selected');
-            $(this).addClass('selected');
-            delete state.page[dataKey];
-            reloadSection(dataKey, {'since': timeString});
+    var section = $('#' + dataKey);
+    if (dataKey in state.since && isIn(state.since[dataKey], TIME_OPTIONS)) {
+        var timeframe = $('<ul/>').addClass('timeframe');
+        $.each(TIME_OPTIONS, function(i, timeString) {
+            var t = $('<li/>').append(timeString).addClass('clickable');
+            if (timeString == state.since[dataKey]) t.addClass('selected');
+            t.click(function() {
+                $(this).siblings().removeClass('selected');
+                $(this).addClass('selected');
+                delete state.page[dataKey];
+                reloadSection(dataKey, {'since': timeString});
+            });
+            timeframe.append(t);
         });
-        $(section + ' .timeframe').append(tfLink);
-    });
+        section.find('table:first').before(timeframe);
+    }
     $(section).append(makePagination(dataKey));
 }
 
@@ -460,7 +475,7 @@ $(document).ready(function() {
         // reloadSection(section);
     });
     // $('#timestamp').text('Last updated at: ' + new Date());
-    function reloadAll() {
+    reloadAll = function() {
         $.each(SECTIONS, function(i, section) {
             reloadSection(section);
         });
