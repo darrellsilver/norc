@@ -1478,8 +1478,9 @@ class NorcDaemonStatus(models.Model):
         # a daemon_type database field.
         if 'norc.sqs' in settings.INSTALLED_APPS:
             try:
-                self.sqstaskrunstatus_set.all()[0]
-                return 'SQS'
+                if hasattr(self, 'sqstaskrunstatus_set'):
+                    self.sqstaskrunstatus_set.all()[0]
+                    return 'SQS'
             except IndexError:
                 pass
         return 'NORC'
