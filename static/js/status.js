@@ -161,7 +161,7 @@ function makeDaemonControls(id) {
         li.click(function() {
             var path = '/control/daemon/' + id + '/';
             $.post(path, {'do': v}, function(data) {
-                console.log(data);
+                // console.log(data);
             });
         });
         ul.append(li);
