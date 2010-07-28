@@ -4,7 +4,6 @@ import sys
 import random, string
 import datetime
 from norc.core.models import *
-from django.conf.settings import INSTALLED_APPS
 
 def random_string(a, b=None):
     CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_'
@@ -13,18 +12,18 @@ def random_string(a, b=None):
     
 HOSTS = ['.'.join([random_string(3) for _ in range(3)]) for _ in range(20)]
 
-def choiceFromQueryset(q):
+def choice_from_queryset(q):
     return q[random.randint(0, len(q) - 1)]
 
-def printPeriod():
+def print_period():
     sys.stdout.write('.')
     sys.stdout.flush()
 
-def addRegion():
+def add_region():
     ResourceRegion(name=random_string(10,20)).save()
 
-def addDaemon():
-    region = choiceFromQueryset(ResourceRegion.objects.all())
+def add_daemon():
+    region = choice_from_queryset(ResourceRegion.objects.all())
     global HOSTS
     host = random.choice(HOSTS)
     pid = random.randint(15000, 25000)
@@ -51,16 +50,16 @@ def addDaemon():
     NorcDaemonStatus(region=region, host=host, pid=pid, status=status,
         date_started=started, date_ended=ended).save()
 
-def addJob():
+def add_job():
     job = Job(name=random_string(5,15), description=random_string(20, 30))
     job.save()
     for _ in range(random.randint(1, 10)):
-        addIteration(job)
-    printPeriod()
+        add_iteration(job)
+    print_period()
     for _ in range(random.randint(0, 20)):
-        addTask(job)
+        add_task(job)
 
-def addIteration(job):
+def add_iteration(job):
     status = random.choice(Iteration.ALL_STATUSES)
     type_ = random.choice(Iteration.ALL_ITER_TYPES)
     started = datetime.datetime.now() - datetime.timedelta(
@@ -73,7 +72,7 @@ def addIteration(job):
     Iteration(job=job, iteration_type=type_, status=status,
         date_started=started, date_ended=ended).save()
 
-def addTask(job):
+def add_task(job):
     r = random.random()
     if r < 0.9:
         status = Task.STATUS_ACTIVE
@@ -86,10 +85,10 @@ def addTask(job):
     for _ in xrange(random.randint(0, 500)):
         iteration = random.choice(iterations)
         daemon = random.choice(daemons)
-        addTRS(rc, iteration, daemon)
-    printPeriod()
+        add_trs(rc, iteration, daemon)
+    print_period()
 
-def addTRS(task, iteration, daemon):
+def add_trs(task, iteration, daemon):
     r = random.random()
     if r < 0.8:
         status = TaskRunStatus.STATUS_SUCCESS
@@ -109,17 +108,13 @@ def addTRS(task, iteration, daemon):
 
 def populate():
     for _ in range(10):
-        addRegion()
-    printPeriod()
+        add_region()
+    print_period()
     for _ in range(random.randint(500, 1000)):
-        addDaemon()
-    printPeriod()
-    # if 'norc.sqs' in INSTALLED_APPS:
-    #     for _ in range(random.randint(100, 200)):
-    #         addSQSDaemon()
-    #     printPeriod()
+        add_daemon()
+    print_period()
     for _ in range(10):
-        addJob()
+        add_job()
     print ''
 
 if __name__ == '__main__':
