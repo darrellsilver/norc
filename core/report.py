@@ -113,6 +113,22 @@ def iterations(jid):
 def tasks_from_iter(iid):
     return TaskRunStatus.objects.filter(iteration__id=iid)
 
+def trss(nds, status_filter='all', since_date=None):
+    """A hack fix so we can get the statuses for the proper daemon type."""
+    status_filter = status_filter.lower()
+    if nds.get_daemon_type() == 'NORC':
+        task_statuses = nds.taskrunstatus_set.all()
+    else:
+        task_statuses = nds.sqstaskrunstatus_set.all()
+    status_filter = status_filter.lower()
+    TRS_CATS = TaskRunStatus.STATUS_CATEGORIES
+    if not since_date == None:
+        task_statuses = task_statuses.exclude(date_ended__lt=since_date)
+    if status_filter != 'all' and status_filter in TRS_CATS:
+        only_statuses = TRS_CATS[status_filter]
+        task_statuses = task_statuses.filter(status__in=only_statuses)
+    return task_statuses
+
 # DEPR
 # def get_task_statuses(status_filter='all'):
 #     if status_filter == 'all':

@@ -78,6 +78,9 @@ def pprint_table(out, table):
             print >> out, col,
         print >> out
 
+def to_title(s):
+    return ' '.join(map(lambda w: w.capitalize(), s.split('_')))
+
 if __name__ == "__main__":
     table = [["", "taste", "land speed", "life"],
         ["spam", 300101, 4, 1003],
@@ -87,4 +90,3 @@ if __name__ == "__main__":
     import sys
     out = sys.stdout
     pprint_table(out, table)
-#

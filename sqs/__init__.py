@@ -35,6 +35,7 @@ from boto.sqs.connection import SQSConnection
 from boto.sqs.message import Message
 
 from norc.norc_utils import parsing
+from norc.web.data_defs import DataDefinition
 from norc.settings import AWS_ACCESS_KEY_ID as AWS_ID, \
                           AWS_SECRET_ACCESS_KEY as AWS_KEY
 
