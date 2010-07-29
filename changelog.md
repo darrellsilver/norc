@@ -1,21 +1,20 @@
 
-
-Norc Release v1.0.3
+Norc Release v1.1
 ===================
 
 ## Features:
+  - (DEV) New function init_test_db creates a suitable test database.
+  - Several useful unit test for the web module now exist!
+  - Better version of daemon control!  Vertical orientation, some lovely
+    padding, and the security elements listed below.
+
+## Security:
   - The daemon control interface only appears if the user is a superuser.
   - Even for superusers it now requires confirmation before trying the
     POST request.
-  - (DEV) New function init_test_db creates a suitable test database.
-  - Several useful unit test for the web module now exist!
 
 ## Tweaks:
-  - Better version of daemon control!  Vertical orientation, some lovely
-    padding, and the security elements listed below.
-  - Renamed 
-
-## Security:
+  - Renamed init_db.py to just db.py.
 
 
 Norc Release v1.0.2
