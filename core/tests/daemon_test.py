@@ -10,7 +10,8 @@ from django.conf import settings
 from norc.core import report
 from norc.core.daemons import ForkingNorcDaemon, ThreadingNorcDaemon
 from norc.core.models import NorcDaemonStatus
-from norc.norc_utils import init_db, wait_until
+from norc.norc_utils import wait_until
+from norc.norc_utils.db import init_norc
 
 class DaemonThread(threading.Thread):
     """Thread that will run a daemon."""
@@ -39,7 +40,7 @@ class DaemonTest(TestCase):
     
     def setUp(self):
         """Initialize the DB and start the daemon in a thread."""
-        init_db.init()
+        init_norc()
         self.daemon = start_test_daemon()
         # Use a lambda so that the status gets retreived each time
         # it's needed, instead of pulled from a cache.

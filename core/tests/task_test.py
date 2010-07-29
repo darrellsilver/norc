@@ -7,7 +7,8 @@ from django.test import TestCase
 from django.conf import settings
 from norc.core import report
 from norc.core.models import *
-from norc.norc_utils import init_db, wait_until
+from norc.norc_utils import wait_until
+from norc.norc_utils.db import init_norc
 from norc.core.tests.daemon_test import start_test_daemon
 
 class TestTask(RunCommand):
@@ -25,7 +26,7 @@ class TestTasks(TestCase):
     
     def setUp(self):
         """Initialize the DB and setup data."""
-        init_db.init()
+        init_norc()
         self.daemon = start_test_daemon()
         self.job = Job.objects.all()[0]
         self.iter = Iteration.objects.all()[0]

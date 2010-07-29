@@ -50,6 +50,9 @@ class TestSQSConfig(unittest.TestCase):
         self.queue = self.conn.lookup('test_queue')
         if not self.queue:
             self.queue = self.conn.create_queue('test_queue', 0)
+        if not self.queue.get_timeout() == 0:
+            self.queue.set_timeout(0)
+            wait_until(lambda: self.queue.get_timeout() == 0)
         wait_until(lambda: self.queue.clear() == 0)
         wait_until(lambda: self.queue.count() == 0)
     

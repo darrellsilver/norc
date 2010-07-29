@@ -3,15 +3,16 @@
 
 from django.test import TestCase
 
-from norc.norc_utils import init_db
 from norc.core.models import Job, Iteration, Resource, ResourceRegion
+from norc.norc_utils import init_db
+from norc.norc_utils.db import init_norc
 
 class TestInitDB(TestCase):
     """Tests the init_db script."""
 
     def setUp(self):
         """Run the init_db script."""
-        init_db.init()
+        init_norc()
 
     def test_job(self):
         """Tests that there is exactly one job, 'DEMO_JOB'."""
