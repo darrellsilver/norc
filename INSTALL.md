@@ -51,8 +51,8 @@ Norc uses a class structure to easily allow for multiple environments with commo
 
 Crucial items are listed and explained below:
 
- * **NORC_LOG_DIR**: The full path where all logs of all Tasks in Norc should be stored.  Defaults to a folder 'log' within the Norc directory, **which you need to create**.
- * **NORC_TMP_DIR**: The full path to a directory used for any temporary files created by Norc tasks.  This variable is available in the environment to any command run in Norc.  Defaults to a 'tmp' folder within the Norc directory, **which you must create**.
+ * **NORC_LOG_DIR**: The full path where all logs of all Tasks in Norc should be stored.  Defaults to the 'log' folder within the Norc directory.
+ * **NORC_TMP_DIR**: The full path to a directory used for any temporary files created by Norc tasks.  This variable is available in the environment to any command run in Norc.  Defaults to the 'tmp' folder within the Norc directory.
  * **DATABASE_ENGINE**: The name of the DB engine you're using.  See Django docs for specific values.
  * **DATABASE_NAME**: The name of the database that will be created in your DB engine.
  * **DATABASE_USER**: Your DB user name.
