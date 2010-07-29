@@ -16,6 +16,7 @@ def index(request):
     """Returns the index.html template."""
     return render_to_response('index.html', {
         'sqs': 'norc.sqs' in settings.INSTALLED_APPS,
+        'is_superuser': request.user.is_superuser,
     })
 
 def get_data(request, content_type, content_id=None):
@@ -82,7 +83,7 @@ allowed_status_changes = {
 
 def control(request, content_key, content_id):
     executed = False
-    if content_key == 'daemon':
+    if content_key == 'daemon' and request.user.is_superuser:
         daemon = report.nds(content_id)
         do = request.POST.get('do')
         if do and do in allowed_status_changes.get(daemon.status, []):

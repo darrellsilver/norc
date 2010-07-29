@@ -162,8 +162,16 @@ function makeDaemonControls(id) {
     $.each(['pause', 'stop', 'kill', 'salvage', 'delete'], function(i, v) {
         var li = $('<li/>').text(v);
         li.click(function() {
-            var path = '/control/daemon/' + id + '/';
-            $.post(path, {'do': v});
+            var reply = prompt('Are you sure you want to try to ' +
+                v + ' daemon ' + id + '?  If so, type "' + v + '" below.');
+            if (reply == v) {
+                var path = '/control/daemon/' + id + '/';
+                $.post(path, {'do': v}, function(data) {
+                    if (data == true) {
+                        reloadSection('daemons');
+                    }
+                });
+            }
         });
         ul.append(li);
     });
@@ -199,7 +207,7 @@ var TABLE_CUSTOMIZATION = {
             }, function() {
                 row.data('overruled', false);
             });
-        } else if (header == 'status') {
+        } else if (header == 'status' && IS_SUPERUSER) {
             cell.addClass('clickable');
             var controls = makeDaemonControls(id);
             cell.hover(function() {
