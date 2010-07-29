@@ -37,8 +37,10 @@ var STYLE_BY_COLUMN = {
     'leftAlign': ['region', 'name', 'host'],
     'rightAlign': ['running', 'success', 'errored', 'pid', 'num_items'],
 };
+
 // The data keys for which statuses should be colored.
 var HAS_STATUS_COLOR = ['tasks', 'sqstasks', 'failedtasks'];
+
 // Map of statuses to their style classes.
 var STATUS_CSS_CLASSES = {
     SUCCESS : 'status_good',
@@ -51,6 +53,7 @@ var STATUS_CSS_CLASSES = {
     ENDED : 'status_good',
     DELETED : 'status_error',
 };
+
 var TIME_OPTIONS = ['10m', '30m', '1h', '3h', '12h', '1d', '7d', 'all'];
 
 // Saved state of the page.
@@ -101,9 +104,9 @@ function isIn(element, list_) {
     return list_.indexOf(element) >= 0;
 }
 
+
 // Chain utilities!  Chains are the strings of the form 'x-y-z' that are used
 // throughout this file in order to track what section is being operated on.
-
 
 function chainLength(chain) {
     if (chain == '') return 0;
@@ -156,13 +159,11 @@ function insertNewRow(rowAbove, contents, slide) {
 function makeDaemonControls(id) {
     var div = $('<div/>').addClass('slideout');
     var ul = $('<ul/>');
-    $.each(['pause', 'stop', 'kill', 'delete', 'salvage'], function(i, v) {
+    $.each(['pause', 'stop', 'kill', 'salvage', 'delete'], function(i, v) {
         var li = $('<li/>').text(v);
         li.click(function() {
             var path = '/control/daemon/' + id + '/';
-            $.post(path, {'do': v}, function(data) {
-                // console.log(data);
-            });
+            $.post(path, {'do': v});
         });
         ul.append(li);
     });
@@ -203,12 +204,15 @@ var TABLE_CUSTOMIZATION = {
             var controls = makeDaemonControls(id);
             cell.hover(function() {
                 row.data('overruled', true);
-                controls.find('ul').css('width', '0px');
+                var ul = controls.find('ul');
                 cell.append(controls);
-                controls.find('ul').animate({width: '100px'}, 300);
+                ul.animate({width: 'hide'}, 0);
+                ul.animate({width: 'show'}, 300);
             }, function() {
                 row.data('overruled', false);
-                controls.detach();
+                controls.find('ul').animate({width: 'hide'}, 0, function() {
+                    controls.detach();
+                });
             });
         }
     },
