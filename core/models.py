@@ -1,100 +1,85 @@
 
 import sys
 import os
-import datetime
 import random
 import subprocess
 import signal
+from datetime import datetime, timedelta
 
-from django.db import models, connection
+from django.db.models import Model, \
+    BooleanField, CharField, DateTimeField, \
+    IntegerField, PositiveIntegerField, SmallPositiveIntegerField, TextField
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from django.conf import settings
-from norc.norc_utils import django_extras, log
-log = log.Log()
+from norc.norc_utils.log import make_log
 
-class Job(models.Model):
-    """A collection of Tasks across which dependencies can be defined."""
+class AbstractTask(models.Model):
     
     class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_job'
+        abstract = True
+    
+    date_added = models.DateTimeField(auto_now_add=True)
+    timeout = models.IntegerField(null=True)
+    
+    def __init__(self):
+        Model.__init__(self)
+    
+    def start(self):
+        """Called by a daemon to execute the task.  Do not overwrite."""
+        pass
+    
+class Task(AbstractTask):
+    
+    STATUSES = {
+        1: 'ACTIVE',
+        2: 'COMPLETE',
+    }
     
     name = models.CharField(max_length=128, unique=True)
-    description = models.CharField(max_length=512, blank=True, null=True)
-    date_added = models.DateTimeField(default=datetime.datetime.utcnow)
+    description = models.CharField(max_length=512, blank=True, default='')
+    schedule = models.DateTimeField()
+    repetitions = models.Posit
     
-    def get_name(self):
-        return self.name
-    def has_description(self):
-        return not self.get_description() == None
-    def get_description(self):
-        return self.description
+    def __init__(self, target=None, repeat=1, delay=None):
+        if repeat != 1 and delay == None:
+            raise TypeError("Must have a delay to have a repeat.")
+        if type(target) != datetime:
+            target = datetime.now() + timedelta(seconds=target)
+        self.target = target
+        self.repeat = repeat
+        self.delay = delay
+        
+        
     
-    def __unicode__(self):
-        return u"%s" % (self.get_name())
-    def __str__(self):
-        return str(self.__unicode__())
-    __repr__ = __str__
+class Job(Task):
+    "A Task with SubTasks, or a group of tasks that execute together."
+
+
+class SubTask(AbstractTask):
+    parent_dependencies = GenericRelation('TaskDependency',
+        content_type_field='_child_task_content_type',
+        object_id_field='_child_task_object_id')
+
+class Iteration(Model):
     
+    STATUSES = {
+        1: 'RUNNING',
+    }
+    
+    task = GenericForeignKey(...)
+    status = models.SmallPositiveIntegerField(default=1,
+        choices=[(k, v.title()) for k, v in Iteration.STATUSES.iteritems()])
+    date_started = models.DateTimeField(default=datetime.datetime.utcnow)
+    date_ended = models.DateTimeField(null=True)
+    
+    # status = property...
+
 
 class Iteration(models.Model):
-    """One iteration of a Job.
-    
-    A Job can have more than one Iteration simultaniously.
-    
-    """
-    STATUS_RUNNING = 'RUNNING'       # Iteration is running: run Tasks when possible
-    STATUS_PAUSED = 'PAUSED'         # Iteration is paused; don't start any Tasks
-    STATUS_DONE = 'DONE'             # Iteration is done; no more Tasks will ever be run
-    
-    ALL_STATUSES = (STATUS_RUNNING, STATUS_PAUSED, STATUS_DONE)
-    
-    ITER_TYPE_PERSISTENT = 'PERSISTENT'  # Iteration stays 'RUNNING' until manually set to 'DONE'
-    ITER_TYPE_EPHEMERAL = 'EPHEMERAL'    # Iteration automatically 'DONE' as soon as all Tasks in the Job have satisfactory completed
-    
-    ALL_ITER_TYPES = (ITER_TYPE_PERSISTENT, ITER_TYPE_EPHEMERAL)
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_iteration'
-    
-    job = models.ForeignKey(Job)
-    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
-    iteration_type = models.CharField(choices=(zip(ALL_ITER_TYPES, ALL_ITER_TYPES)), max_length=16)
-    date_started = models.DateTimeField(default=datetime.datetime.utcnow)
-    date_ended = models.DateTimeField(blank=True, null=True)
-    
-    @staticmethod
-    def create(job, iteration_type):
-        ji = Iteration(job=job, iteration_type=iteration_type, status=Iteration.STATUS_RUNNING)
-        ji.save()
-        return ji
-    @staticmethod
-    def get(iteration_id):
-        return Iteration.objects.get(id=iteration_id)
-    
-    @staticmethod
-    def get_running_iterations(job=None, iteration_type=None):
-        matches = Iteration.objects.filter(status=Iteration.STATUS_RUNNING)
-        if not job == None:
-            matches = matches.filter(job=job)
-        if not iteration_type == None:
-            matches = matches.filter(iteration_type=iteration_type)
-        return matches.all()
-    
-    def get_id(self):
-        return self.id
-    get_id.short_description = 'Iteration #'# for admin interface
-    
-    def get_job(self):
-        return self.job
-    def get_date_started(self):
-        return self.date_started
-    def get_date_ended(self):
-        return self.date_ended
-    
     def set_status(self, status):
         assert status in Iteration.ALL_STATUSES
         self.status = status
@@ -102,697 +87,9 @@ class Iteration(models.Model):
             log.info("Ending Iteration %s" % self)
             self.date_ended = datetime.datetime.utcnow()
         self.save()
-    def set_paused(self):
-        self.set_status(Iteration.STATUS_PAUSE)
-    def set_done(self):
-        self.set_status(Iteration.STATUS_DONE)
-    def set_running(self):
-        self.set_status(Iteration.STATUS_RUNNING)
-    def get_status(self):
-        return self.status
-    def is_running(self):
-        return self.get_status() == Iteration.STATUS_RUNNING
-    def is_paused(self):
-        return self.get_status() == Iteration.STATUS_PAUSED
-    def is_done(self):
-        return self.get_status() == Iteration.STATUS_DONE
-    
-    def get_iteration_type(self):
-        return self.iteration_type
-    def is_ephemeral(self):
-        return self.get_iteration_type() == Iteration.ITER_TYPE_EPHEMERAL
-    def is_persistent(self):
-        return self.get_iteration_type() == Iteration.ITER_TYPE_PERSISTENT
-    
-    def __unicode__(self):
-        return u"%s_%s" % (self.get_job().get_name(), self.id)
-    def __str__(self):
-        return str(self.__unicode__())
-    __repr__ = __str__
-    
-
-class Resource(models.Model):
-    """A resource represents something of finite availability to Tasks.
-    
-    Naturally, a task will be run only if all resources necessary to
-    run it are available in sufficient quantity.  Resources define total
-    units of availability of the resource (units_in_existence) and a task
-    demands a specific amount of these units to be available at runtime.
-    
-    Tasks are run within Regions, which are islands of resource availability.
-    
-    """
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_resource'
-    
-    name = models.CharField(max_length=128)
-    # maximum units available for reservation regardless of region. If > -1, 
-    # this takes precedence over all settings made at the regional level.
-    # When = -1 (the default) regional availability is used.
-    # There are checks and warnings in place when to help ensure that 
-    # the data integrity is ensured.
-    # TODO write check on saving RegionResourceRelationship & Resource
-    # TODO issue warning when data integrity is broken.
-    #global_units_available = models.IntegerField(default=-1)
-    #seconds_between_runs = models.PositiveIntegerField()# TODO hmmmm.
-    
-    @staticmethod
-    def get(name):
-        try:
-            return Resource.objects.get(name=name)
-        except Resource.DoesNotExist, dne:
-            return None
-    @staticmethod
-    def create(name):
-        r = Resource(name=name)
-        r.save()
-        return r
-    
-    def get_name(self):
-        return self.name
-    
-    def get_reservations(self, region):
-        existing_rsvps = self.resourcereservation_set.filter(region=region)
-        #existing_rsvps = ResourceReservation.objects.filter(region=region)
-        #existing_rsvps = existing_rsvps.filter(resource=self)
-        return existing_rsvps.all()
-    def get_units_reserved(self, region):
-        units_reserved = 0
-        for rsvp in self.get_reservations(region):
-            units_reserved += rsvp.get_units_reserved()
-        return units_reserved
-    def get_units_available(self, region):
-        rrr = RegionResourceRelationship.get(region, self)
-        if rrr == None:
-            return 0
-        return rrr.get_units_in_existence() - self.get_units_reserved(region)
-    
-    def __unicode__(self):
-        return u"%s" % (self.get_name())
-    def __str__(self):
-        return str(self.__unicode__())
-    __repr__ = __str__
-    
-
-class ResourceRegion(models.Model):
-    """A ResourceRegion defines an island of resource availability.
-    
-    Each task is run within a single Region, where resources are finite
-    within that region.  A region might naturally be a single computer,
-    where the shared resource is CPU usage.
-    
-    At this time, there is no way to define usage of a resource that spans
-    multiple regions.
-    
-    """
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_resourceregion'
-    
-    name = models.CharField(max_length=128, unique=True)
-    date_added = models.DateTimeField(default=datetime.datetime.utcnow)
-    
-    def get_name(self):
-        return self.name
-    
-    def __unicode__(self):
-        return self.name
-    
-    def __str__(self):
-        return str(self.__unicode__())
-    
-    __repr__ = __str__
-    
-
-class ResourceReservation(models.Model):
-    """A reservation of a Resource in a given ResourceRegion."""
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_resourcereservation'
-        unique_together = (('region', 'task_resource_relationship'),)
-    
-    objects = django_extras.LockingManager()
-    
-    region = models.ForeignKey('ResourceRegion')
-    resource = models.ForeignKey('Resource')
-    units_reserved = models.PositiveIntegerField()
-    # cleaner than referencing task, which must be done indirectly b/c Tasks are abstract
-    task_resource_relationship = models.ForeignKey('TaskResourceRelationship')
-    date_reserved = models.DateTimeField(default=datetime.datetime.utcnow)
-    
-    @staticmethod
-    def reserve(region, trr):
-        """
-        Return True if this trr reservation had enough resources to make this rsvp in this region,
-        and it was made, False otherwise
-        """
-        try:
-            # for locking to work, all tables queried must be locked.
-            # so, mine static data to allow query the ResourceReservation table in isolation
-            # (replicates "if resource.get_units_available(region) < trr.get_units_demanded():")
-            region_id = region.id
-            resource_id = trr.resource.id
-            rrr = RegionResourceRelationship.get(region, trr.resource)
-            units_in_existence = 0
-            if not rrr == None:
-                units_in_existence = rrr.get_units_in_existence()
-            units_demanded = trr.get_units_demanded()
-            if units_in_existence < units_demanded:
-                # There's no hope of reserving this.
-                return False
-            #
-            ResourceReservation.objects.lock()
-            cursor = connection.cursor()
-            cursor.execute("""SELECT sum(`units_reserved`) as units_reserved
-                                 FROM `%s` 
-                                WHERE `region_id` = %s
-                                  AND `resource_id` = %s
-                            """ % (settings.DB_TABLE_PREFIX + '_resourcereservation', region_id, resource_id))
-            row = cursor.fetchone()
-            units_reserved = row[0]
-            if units_reserved == None:# TODO How do you do this in the SQL?
-                units_reserved = 0
-            units_available = units_in_existence - units_reserved
-            if units_available < units_demanded:
-                # not enough of this resource currently available
-                return False
-            else:
-                (rr, rsvp_made) = ResourceReservation.objects.get_or_create(region=region
-                                            , resource=trr.resource
-                                            , task_resource_relationship=trr
-                                            , defaults={'units_reserved': trr.get_units_demanded()})
-                if not rsvp_made:
-                    # This Task must be running >1 at a time.
-                    rr.units_reserved += trr.get_units_demanded()
-                    rr.save()
-                return True
-        finally:
-            ResourceReservation.objects.unlock()
-    
-    def release(self):
-        if self.get_units_reserved() == self.task_resource_relationship.get_units_demanded():
-            # Only one Task reserving it
-            self.delete()
-        else:
-            # Multiple instances of this Task reserving it
-            self.units_reserved -= self.task_resource_relationship.get_units_demanded()
-            self.save()
-        return True
-    
-    def get_units_reserved(self):
-        return self.units_reserved
-    
-    def __unicode__(self):
-        return "region:'%s': '%s' reserves %s" % (self.region, self.resource, self.get_units_reserved())
-    
-    def __str__(self):
-        return str(self.__unicode__())
-    
-    __repr__ = __str__
-    
-
-class TaskResourceRelationship(models.Model):
-    """Defines how much of a Resource a Task demands in order to run."""
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_taskresourcerelationship'
-        unique_together = (('_task_content_type', '_task_object_id', 'resource'),)
-    
-    _task_content_type = models.ForeignKey(ContentType)
-    _task_object_id = models.PositiveIntegerField()
-    task = generic.GenericForeignKey('_task_content_type', '_task_object_id')
-    resource = models.ForeignKey('Resource')
-    units_demanded = models.PositiveIntegerField()
-    
-    @staticmethod
-    def adjust_or_create(resource, task, units_demanded):
-        if task.get_id() == None:
-            raise Exception("Task '%s' has not been save()d" % (task))
-        existing = TaskResourceRelationship.objects.filter(resource=resource)
-        task_content_type = ContentType.objects.get_for_model(task)
-        existing = existing.filter(_task_content_type=task_content_type.id)
-        existing = existing.filter(_task_object_id=task.id)
-        if existing.count() == 0:
-            trr = TaskResourceRelationship(resource=resource, task=task, units_demanded=units_demanded)
-            trr.save()
-        elif existing.count() == 1:
-            trr = existing.all()[0]
-            new_units_demanded = trr.get_units_demanded() + units_demanded
-            if new_units_demanded <= 0:
-                raise TypeError("Cannot demand (%s) 0 or fewer of a resource" 
-                                % (units_demanded))
-            else:
-                trr.units_demanded = new_units_demanded
-                trr.save()
-        else:
-            raise Exception("More than one (%s) TaskResourceRelationships exists for the same Task ('%s') & Resource ('%s'). Data error!"
-                            % (existing.count(), task, resource))
-        return trr
-    
-    def get_units_demanded(self):
-        return self.units_demanded
-    
-    def can_reserve(self, region):
-        """
-        True if a reservation can CURRENTLY be made.  False otherwise.
-        A fully thread safe check is done at reservation time, which not succeed.
-        This is for convenience.
-        """
-        return self.get_units_demanded() <= self.resource.get_units_available(region)
-    
-    def reserve(self, region):
-        """Return True if this resource has been reserved, False otherwise"""
-        did_reserve = ResourceReservation.reserve(region, self)
-        return did_reserve
-    
-    def release(self, region):
-        rrs = self.resourcereservation_set.filter(region=region)
-        if len(rrs) == 0:
-            return False
-        if len(rrs) == 1:
-            return rrs[0].release()
-        raise Exception("There are %s reservations for resource '%s' in region '%s'.  \
-                        There should be exactly 0 or 1." 
-                        % (len(rss), self.resource, region))
-    
-    def __unicode__(self):
-        return u"Task@%s:%s demands %s '%s'" \
-            % (self._task_content_type.model, self._task_object_id, self.units_demanded, self.resource)
-    
-    def __str__(self):
-        return str(self.__unicode__())
-    
-    __repr__ = __str__
-    
-
-class RegionResourceRelationship(models.Model):
-    """Defines the availability of resources in a given region"""
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_regionresourcerelationship'
-        unique_together = (('region','resource'),)
-    
-    region = models.ForeignKey('ResourceRegion')
-    resource = models.ForeignKey('Resource')
-    units_in_existence = models.PositiveIntegerField()
-    
-    @staticmethod
-    def create(region, resource, units_in_existence):
-        rrr = RegionResourceRelationship(region=region, resource=resource
-            , units_in_existence=units_in_existence)
-        rrr.save()
-    
-    @staticmethod
-    def get(region, resource):
-        try:
-            rrr = RegionResourceRelationship.objects.get(region=region, resource=resource)
-            return rrr
-        except RegionResourceRelationship.DoesNotExist, dne:
-            return None
-    
-    def get_units_in_existence(self):
-        return self.units_in_existence
-    
-    def __unicode__(self):
-        return u"%s provides %s %s" % (self.region, self.get_units_in_existence(), self.resource)
-    
-    def __str__(self):
-        return str(self.__unicode__())
-    
-    __repr__ = __str__
     
 
 class Task(models.Model):
-    """Abstract class representing one task."""
-    
-    STATUS_ACTIVE = 'ACTIVE'
-    # If a task is ephemeral then after it runs it 'expires',
-    # which is effectively the same as deleting it.
-    STATUS_EXPIRED = 'EXPIRED'
-    STATUS_DELETED = 'DELETED'
-    
-    ALL_STATUSES = (STATUS_ACTIVE, STATUS_EXPIRED, STATUS_DELETED)
-    
-    TASK_TYPE_PERSISTENT = 'PERSISTENT'  # Runs exactly once per Iteration.
-    TASK_TYPE_EPHEMERAL = 'EPHEMERAL'    # Runs exactly once.
-    # TASK_TYPE_SCHEDULED is ONLY valid for SchedulableTask subclasses.
-    # However, django doesn't currently allow subclasses to override fields,
-    # so instead of overriding 'task_type', the cleanest alternative is to
-    # define it here, which is sloppy because now Task knows something about a
-    # subclass. To limit irritation, there is an explicit check during
-    # Task.save() that ensures TASK_TYPE_SCHEDULED Tasks are always
-    # ScheduledTask subclasses. see bottom of
-    # http://docs.djangoproject.com/en/dev/topics/db/models/
-    # 
-    #  Note that SchedulableTask's do not have to be of type SCHEDULED.
-    # TASK_TYPE_EPHEMERAL for a ScheduledTask makes it equiv of an '@ job' in
-    # unix. TASK_TYPE_PERSISTENT for a ScheduledTask makes it equiv of an '@
-    # job' in unix, but for each Iteration. Just in case, this code explicitly
-    # handles these three Task types, in case another one is created later which
-    # is not compatible with SchedulableTask
-    TASK_TYPE_SCHEDULED = 'SCHEDULED'    # run as often as the schedule dictates as long as the Iteration is running
-    
-    ALL_TASK_TYPES = (TASK_TYPE_PERSISTENT,
-                      TASK_TYPE_EPHEMERAL,
-                      TASK_TYPE_SCHEDULED)
-    
-    class Meta:
-        abstract = True
-    
-    # Values for these are to be given upon instantiation
-    # by the implementing classes.
-    
-    task_type = models.CharField(max_length=16, default=TASK_TYPE_PERSISTENT,
-                                 choices=zip(ALL_TASK_TYPES, ALL_TASK_TYPES))
-    
-    job = models.ForeignKey('Job')
-    
-    # To find this Task's parents, look where this Task is the child in the dependency table
-    parent_dependencies = GenericRelation('TaskDependency',
-        content_type_field='_child_task_content_type',
-        object_id_field='_child_task_object_id')
-        
-    # To find this Task's children, look where this Task is the parent in the dependency table
-    #child_dependencies = GenericRelation('TaskDependency'
-    #                                        , content_type_field='_parent_task_content_type'
-    #                                        , object_id_field='_parent_task_object_id')
-    run_statuses = GenericRelation('TaskRunStatus',
-        content_type_field='_task_content_type',
-        object_id_field='_task_object_id')
-    
-    resource_relationships = GenericRelation('TaskResourceRelationship',
-        content_type_field='_task_content_type',
-        object_id_field='_task_object_id')
-    #TODO could track when tasks when in and out of live/deleted status
-    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)),
-        max_length=16, default=STATUS_ACTIVE)
-    date_added = models.DateTimeField(default=datetime.datetime.utcnow)
-    
-    def __init__(self, *args, **kwargs):
-        models.Model.__init__(self, *args, **kwargs)
-        self.current_run_status = None
-        self._current_iteration = None
-        self._current_nds = None
-    
-    def get_parent_dependencies(self):
-        matches = self.parent_dependencies.filter(
-            status=TaskDependency.STATUS_ACTIVE)
-        return matches.all()
-    
-    def parents_are_finished(self, iteration):
-        for dep in self.get_parent_dependencies():
-            if not dep.is_satisfied(iteration):
-                # A parent of this Task hasn't successfully completed
-                return False
-            if not dep.get_parent().parents_are_finished(iteration):
-                # An ancestor of this Task's parent hasn't successfully completed
-                return False
-        return True
-    
-    def depends_on(self, task, only_immediate=False):
-        """
-        True if this Task has given Task as parent or ancestor, otherwise False. 
-        Limit to immediate parents if specified.
-        """
-        for dep in self.get_parent_dependencies():
-            if dep.get_parent() == task:
-                return True
-            if not only_immediate and dep.get_parent().depends_on(task):
-                return True
-        return False
-    
-    def add_dependency(self, parent_task, dependency_type):
-        TaskDependency.create(parent_task, self, dependency_type)
-    
-    def add_resource_demand(self, resource_name, units_demanded):
-        """
-        convenience method to add a resource necessary to run a task
-        """
-        r = Resource.get(resource_name)
-        if r == None:
-            raise TypeError("Unknown resource '%s'" % (resource_name))
-        trr = TaskResourceRelationship.adjust_or_create(r, self, units_demanded)
-        return True
-    
-    def __try_reserve_resources(self, region):
-        """
-        Reserve the resources necessary to run this task. 
-        Return True if successful, False if not enough resources available.
-        """
-        reserved = []
-        reserved_all = True
-        for rr in self.resource_relationships.all():
-            if rr.reserve(region):
-                reserved.append(rr)
-            else:
-                # can't reserve one of the resources, rollback
-                reserved_all = False
-                break
-        if not reserved_all:
-            # one of the resources isn't available. rollback those already reserved
-            for rr in reserved:
-                rr.release(region)
-        return reserved_all
-    
-    def __release_resources(self, region):
-        for rr in self.resource_relationships.all():
-            rr.release(region)
-    
-    def save(self, *args, **kwargs):
-        """
-        Add default resource usages that all tasks share.
-        overrides default save().
-        """
-        if not SchedulableTask in self.__class__.__bases__ \
-            and self.get_task_type() == SchedulableTask.TASK_TYPE_SCHEDULED:
-            raise TypeError("TASK_TYPE_SCHEDULED is only available to ScheduledTask subclasses. See code comments.")
-        # TODO is this the best way to check that the object is new?
-        is_new = self.id == None
-        # we must save this task so that the resources can be added
-        result = models.Model.save(self, *args, **kwargs)
-        
-        if is_new:
-            # only add the demand on first save of the task, not every time it's adjusted
-            # all tasks take up 1 connection to the database
-            self.add_resource_demand('DATABASE_CONNECTION', 1)
-        return result
-    
-    def get_task_type(self):
-        return self.task_type
-    
-    def is_ephemeral(self):
-        return self.get_task_type() == Task.TASK_TYPE_EPHEMERAL
-    
-    def resources_available_to_run(self, region):
-        for rr in self.resource_relationships.all():
-            if not rr.can_reserve(region):
-                return False
-        return True
-    
-    def is_due_to_run(self, iteration, asof):
-        """
-        A Task can optionally choose to restrict when it is run by overriding this method.
-        'asof' is in UTC time.
-        By default it always returns True.
-        """
-        return True
-    
-    def is_allowed_to_run(self, iteration, asof=None):
-        """
-        Check that this Task's parents have run and that it's due_to_run()
-        """
-        if asof == None:
-            asof = datetime.datetime.utcnow()
-        
-        status = self.get_current_run_status(iteration)
-        if not status == None and not status.allows_run():
-            # no status means no attempt has been made to run it yet
-            return False
-        return self.is_due_to_run(iteration, asof) and self.parents_are_finished(iteration)
-    
-    def __set_run_status(self, iteration, status, nds=None):
-        assert status in TaskRunStatus.ALL_STATUSES, \
-            "Unknown status '%s'" % status
-        if self.current_run_status == None:
-            self.current_run_status = TaskRunStatus(task=self, iteration=iteration, status=status)
-        else:
-            assert self.current_run_status.get_iteration() == iteration, \
-                "Iteration %s doesn't match current_run_status iteration %s" \
-                % (iteration, self.current_run_status.get_iteration())
-            self.current_run_status.status = status
-        if not status == TaskRunStatus.STATUS_RUNNING:
-            self.current_run_status.date_ended = datetime.datetime.utcnow()
-        if not nds == None:
-            self.current_run_status.controlling_daemon = nds
-        self.current_run_status.save()
-        if self.is_ephemeral():
-            # TODO should it only be marked expired when it succeeds??
-            self.status = Task.STATUS_EXPIRED
-            self.save()
-        if self.alert_on_failure() and status in (TaskRunStatus.STATUS_ERROR, TaskRunStatus.STATUS_TIMEDOUT):
-            alert_msg = 'Norc Task %s:%s ended with %s!' % \
-                (self.get_job().get_name(), self.get_name(), status)
-            #if settings.NORC_EMAIL_ALERTS:
-            #    send_mail(alert_msg, "d'oh!", settings.EMAIL_HOST_USER,
-            #              settings.NORC_EMAIL_ALERT_TO, fail_silently=False)
-            #else:
-            log.info(alert_msg)
-    
-    def set_ended_on_error(self, iteration, region):
-        self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)
-        self.__release_resources(region)
-    
-    def set_ended_on_timeout(self, iteration, region):
-        self.__set_run_status(iteration, TaskRunStatus.STATUS_TIMEDOUT)
-        self.__release_resources(region)
-    
-    def get_status(self):# This is the Task status, not the run status
-        return self.status
-    
-    def is_active(self):
-        return self.get_status() == Task.STATUS_ACTIVE
-    
-    def is_expired(self):
-        return self.get_status() == Task.STATUS_EXPIRED
-    
-    def is_deleted(self):
-        return self.get_status() == Task.STATUS_DELETED
-    
-    def set_status(self, status, save=True):
-        assert status in Task.ALL_STATUSES, "Unknown status '%s'" % (status)
-        self.status = status
-        if save:
-            self.save()
-    
-    def get_current_run_status(self, iteration):
-        # TODO should this take asof param?? is_allowed_to_run() does
-        if not self.current_run_status == None and \
-            self.current_run_status.get_iteration() == iteration:
-            return self.current_run_status
-        self.current_run_status = TaskRunStatus.get_latest(self, iteration)
-        return self.current_run_status
-    
-    def timeout_handler(self, signum, frame):
-        self.set_ended_on_timeout(
-            self.current_iteration, self.current_nds.region)
-    
-    def do_run(self, iteration, nds):
-        """What's actually called by manager. Don't override!"""
-        self.current_iteration = iteration
-        self.current_nds = nds
-        if not self.__try_reserve_resources(nds.region):
-            raise InsufficientResourcesException()
-        self.__set_run_status(iteration, TaskRunStatus.STATUS_RUNNING, nds=nds)
-        if self.has_timeout():
-            signal.signal(signal.SIGALRM, self.timeout_handler)
-            signal.alarm(self.get_timeout())
-        log.info("Running Task '%s'" % (self))
-        try:
-            success = self.run()
-            if self.current_run_status.status == \
-                TaskRunStatus.STATUS_TIMEDOUT:
-                pass
-            elif success:
-                self.__set_run_status(iteration, TaskRunStatus.STATUS_SUCCESS)
-                log.info("Task '%s' succeeded.\n\n" % (self.__unicode__()))
-            else:
-                raise Exception("Task returned failure status. See log for details.")
-        except InsufficientResourcesException, ire:
-            log.info("Task asked to run but did not run b/c of insufficient resources.")
-        #except TaskAlreadyRunningException, tare:
-        #    log.info("Task asked to while already running.")
-        except SystemExit, se:
-            # in python 2.4, SystemExit extends Exception, this is changed
-            # in 2.5 to extend BaseException, specifically so this check 
-            # isn't necessary. But we're using 2.4; upon upgrade, this check
-            # will be unecessary but ignorable.
-            raise se
-        except Exception, e:
-            log.error("Task failed!", e)
-            log.error("\n\n", noalteration=True)
-            self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)
-        except:
-            # if the error thrown doesn't use Exception(...), ie just throws a string
-            log.error("Task failed with poorly thrown exception!")
-            traceback.print_exc()
-            log.error("\n\n", noalteration=True)
-            self.__set_run_status(iteration, TaskRunStatus.STATUS_ERROR)
-        finally:
-            if self.has_timeout():
-                signal.alarm(0)
-            try:
-                self.__release_resources(nds.region)
-            except:
-                pass
-    
-    def alert_on_failure(self):
-        """Whether alert(s) should be issued when this Task fails."""
-        
-        return True
-    
-    def get_library_name(self):
-        """
-        Return the python path for this Task implementation.
-        For example, permalink.tms_impl.EnqueuedArchiveRequest
-        """
-        # TODO I HATE THIS! How can it be derived dynamically??
-        raise NotImplementedError
-    
-    def has_timeout(self):
-        raise NotImplementedError
-    
-    def get_timeout(self):
-        """timeout Task after this many seconds"""
-        raise NotImplementedError
-    
-    def run(self):
-        """
-        Run this task!
-        Norc records success/failure, but any more detail than that is left to the internals of the run() implementation.
-        """
-        raise NotImplementedError
-    
-    def get_id(self):
-        return self.id
-    
-    def get_job(self):
-        return self.job
-    
-    def get_name(self):
-        """A unique name for this Task in Norc; don't override!"""
-        # TODO names should be allowed to be defined by the subclass for clarity
-        # EnqueuedArchiveRequest.144
-        return u"%s.%s" % (self.__class__.__name__, self.get_id())
-    
-    def get_log_file(self):
-        # TODO BIG TODO!! There needs to be an iteration suffix, but can't do that from here! Arg!
-        fp = os.path.join(settings.NORC_LOG_DIR, self.get_job().get_name(), self.get_name())
-        return fp
-    
-    def __eq__(self, o):
-        if not type(o) == Task:
-            return False
-        return self.get_id() == o.get_id()
-    
-    def __ne__(self, o):
-        return not self.__eq__(o)
-    
-    def __unicode__(self):
-        return self.get_name()
-    
-    def __str__(self):
-        try:
-            return str(self.__unicode__())
-        except SystemExit, se:
-            # in python 2.4, SystemExit extends Exception, this is changed in 2.5 to 
-            # extend BaseException, specifically so this check isn't necessary. But
-            # we're using 2.4; upon upgrade, this check will be unecessary but ignorable.
-            raise se
-        except Exception, e:
-            return repr(self.__unicode__())
-    
-    __repr__ = __str__
     
 
 class TaskDependency(models.Model):
@@ -1042,32 +339,7 @@ class TaskRunStatus(models.Model):
     __repr__ = __str__
     
 
-class TaskClassImplementation(models.Model):
-    """List of classes that implement the Task interface and can be instantiated (not including abstract subclasses)"""
-    
-    STATUS_ACTIVE = 'ACTIVE'
-    STATUS_INACTIVE = 'INACTIVE'
-    
-    ALL_STATUSES = (STATUS_ACTIVE, STATUS_INACTIVE)
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_taskclassimplementation'
-    
-    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
-    library_name = models.CharField(max_length=1024)
-    class_name = models.CharField(max_length=1024)
-    
-    @staticmethod
-    def get_all():
-        matches = TaskClassImplementation.objects.filter(status=TaskClassImplementation.STATUS_ACTIVE)
-        return matches.all()
-    
-    def __unicode__(self):
-        return "%s.%s (%s)" % (self.library_name, self.class_name, self.status)
-    def __str__(self):
-        return str(self.__unicode__())
-    __repr__ = __str__
-    
+
 
 class RunCommand(Task):
     """Run an arbitrary command line as a Task."""
@@ -1626,4 +898,3 @@ class NorcInvalidStateException(Exception):
 
 class InsufficientResourcesException(Exception):
     pass
-    
