@@ -41,8 +41,11 @@ class Job(models.Model):
     
 
 class Iteration(models.Model):
-    """One iteration of a Job. A Job can have more than one Iteration simultaniously."""
+    """One iteration of a Job.
     
+    A Job can have more than one Iteration simultaniously.
+    
+    """
     STATUS_RUNNING = 'RUNNING'       # Iteration is running: run Tasks when possible
     STATUS_PAUSED = 'PAUSED'         # Iteration is paused; don't start any Tasks
     STATUS_DONE = 'DONE'             # Iteration is done; no more Tasks will ever be run
@@ -1468,7 +1471,8 @@ class NorcDaemonStatus(models.Model):
     region = models.ForeignKey('ResourceRegion')
     host = models.CharField(max_length=124)
     pid = models.IntegerField()
-    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=64)
+    status = models.CharField(
+        choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=64)
     date_started = models.DateTimeField(default=datetime.datetime.utcnow)
     date_ended = models.DateTimeField(blank=True, null=True)
     
@@ -1477,9 +1481,10 @@ class NorcDaemonStatus(models.Model):
         # a daemon_type database field.
         if 'norc.sqs' in settings.INSTALLED_APPS:
             try:
-                if hasattr(self, 'sqstaskrunstatus_set'):
-                    self.sqstaskrunstatus_set.all()[0]
-                    return 'SQS'
+                from norc.sqs.models import SQSTaskRunStatus
+                SQSTaskRunStatus.objects.filter(controlling_daemon=self)[0]
+                # self.sqstaskrunstatus_set.all()[0]
+                return 'SQS'
             except IndexError:
                 pass
         return 'NORC'

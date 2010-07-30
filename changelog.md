@@ -1,6 +1,19 @@
 
-Norc Release v1.1
+Norc Release v1.1.1
 ===================
+
+## Tweaks:
+  - Improved FileLog in log_new.py to handle echoing to stdout and
+    redirecting of both stdout and stderr.
+
+## Bug Fixes:
+  - Another attempted fix at the weird Perpetually bug involving
+    recognizing daemons as SQS or NORC.
+
+
+
+Norc Release v1.1
+=================
 
 ## Features:
   - (DEV) New function init_test_db creates a suitable test database.
