@@ -48,7 +48,7 @@ def add_sqs_daemon():
     daemon = NorcDaemonStatus(region=region, host=host, pid=pid,
         status=status, date_started=started, date_ended=ended)
     daemon.save()
-    for _ in range(random.randint(100, 100000)):
+    for _ in range(random.randint(100, 10000)):
         add_sqs_trs(daemon)
     
 
