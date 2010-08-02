@@ -1157,21 +1157,21 @@ class SchedulableTask(Task):
     day_of_week = models.CharField(max_length=1024)# 0-6 (Monday - Sunday)
     
     # stored actual ranges; parsed out from above char fields
-    __minute_r__=None; __hour_r__=None; __day_of_month_r__=None; __month_r__=None; __day_of_week_r__=None
+    __minute_r=None; __hour_r=None; __day_of_month_r=None; __month_r=None; __day_of_week_r=None
     
     def __init__(self, *args, **kwargs):
         Task.__init__(self, *args, **kwargs)
         self._parse_schedule()
     
     def _parse_schedule(self):
-        self.__minute_r__ = SchedulableTask.__str2range__(self.minute, 0, 60)
-        self.__hour_r__ = SchedulableTask.__str2range__(self.hour, 0, 24)
-        self.__day_of_month_r__ = SchedulableTask.__str2range__(self.day_of_month, 1, 32)
-        self.__month_r__ = SchedulableTask.__str2range__(self.month, 1, 13)
-        self.__day_of_week_r__ = SchedulableTask.__str2range__(self.day_of_week, 0, 7)
+        self.__minute_r = SchedulableTask.__str2range(self.minute, 0, 60)
+        self.__hour_r = SchedulableTask.__str2range(self.hour, 0, 24)
+        self.__day_of_month_r = SchedulableTask.__str2range(self.day_of_month, 1, 32)
+        self.__month_r = SchedulableTask.__str2range(self.month, 1, 13)
+        self.__day_of_week_r = SchedulableTask.__str2range(self.day_of_week, 0, 7)
     
     @staticmethod
-    def __prettify_rangestr__(r):
+    def __prettify_rangestr(r):
         if len(r) <= 5:
             s = u",".join(map(str, r))
         else:
@@ -1179,7 +1179,7 @@ class SchedulableTask(Task):
         return s
     
     @staticmethod
-    def __range2str__(r, min_value, max_value):
+    def __range2str(r, min_value, max_value):
         if type(r) == str and r == '*':
             r = range(min_value, max_value)
         elif type(r) == int:
@@ -1191,7 +1191,7 @@ class SchedulableTask(Task):
         return ",".join(map(str, r))
     
     @staticmethod
-    def __str2range__(s, min_value, max_value):
+    def __str2range(s, min_value, max_value):
         if s in (None, '', '*'):
             return range(min_value, max_value)
         return map(int, s.split(","))
@@ -1228,47 +1228,47 @@ class SchedulableTask(Task):
         
         schedule_name = None
         
-        if self.__minute_r__ == [0,30] \
-            and self.__hour_r__ == hour \
-            and self.__day_of_month_r__ == day_of_month \
-            and self.__month_r__ == month \
-            and self.__day_of_week_r__ == day_of_week:
+        if self.__minute_r == [0,30] \
+            and self.__hour_r == hour \
+            and self.__day_of_month_r == day_of_month \
+            and self.__month_r == month \
+            and self.__day_of_week_r == day_of_week:
             if pretty_names:
                 schedule_name = 'every half hour'
             else:
                 schedule_name = 'HALFHOURLY'
-        elif self.__minute_r__ == [0] \
-            and self.__hour_r__ == hour \
-            and self.__day_of_month_r__ == day_of_month \
-            and self.__month_r__ == month \
-            and self.__day_of_week_r__ == day_of_week:
+        elif self.__minute_r == [0] \
+            and self.__hour_r == hour \
+            and self.__day_of_month_r == day_of_month \
+            and self.__month_r == month \
+            and self.__day_of_week_r == day_of_week:
             if pretty_names:
                 schedule_name = 'every hour'
             else:
                 schedule_name = 'HOURLY'
-        elif self.__minute_r__ == [0] \
-            and self.__hour_r__ == [0] \
-            and self.__day_of_month_r__ == day_of_month \
-            and self.__month_r__ == month \
-            and self.__day_of_week_r__ == day_of_week:
+        elif self.__minute_r == [0] \
+            and self.__hour_r == [0] \
+            and self.__day_of_month_r == day_of_month \
+            and self.__month_r == month \
+            and self.__day_of_week_r == day_of_week:
             if pretty_names:
                 schedule_name = 'once a day'
             else:
                 schedule_name = 'DAILY'
-        elif self.__minute_r__ == [0] \
-            and self.__hour_r__ == [0] \
-            and self.__day_of_month_r__ == day_of_month \
-            and self.__month_r__ == month \
-            and len(self.__day_of_week_r__) == 1:
+        elif self.__minute_r == [0] \
+            and self.__hour_r == [0] \
+            and self.__day_of_month_r == day_of_month \
+            and self.__month_r == month \
+            and len(self.__day_of_week_r) == 1:
             if pretty_names:
                 schedule_name = 'once a week'
             else:
                 schedule_name = 'WEEKLY'
-        elif self.__minute_r__ == [0] \
-            and self.__hour_r__ == [0] \
-            and len(self.__day_of_month_r__) == 1 \
-            and self.__month_r__ == month \
-            and self.__day_of_week_r__ == day_of_week:
+        elif self.__minute_r == [0] \
+            and self.__hour_r == [0] \
+            and len(self.__day_of_month_r) == 1 \
+            and self.__month_r == month \
+            and self.__day_of_week_r == day_of_week:
             if pretty_names:
                 schedule_name = 'once a month'
             else:
@@ -1284,15 +1284,15 @@ class SchedulableTask(Task):
         EG minute=[1,2,3,4,5] => minute_r="1,2,3,4,5"
         hour='*' => hour_r="0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23"
         """
-        minute_r = SchedulableTask.__range2str__(minute, 0, 60)
-        hour_r = SchedulableTask.__range2str__(hour, 0, 24)
-        day_of_month_r = SchedulableTask.__range2str__(day_of_month, 1, 32)# not all months have 31 days, but doesn't matter
-        month_r = SchedulableTask.__range2str__(month, 1, 13)
-        day_of_week_r = SchedulableTask.__range2str__(day_of_week, 0, 7)
+        minute_r = SchedulableTask.__range2str(minute, 0, 60)
+        hour_r = SchedulableTask.__range2str(hour, 0, 24)
+        day_of_month_r = SchedulableTask.__range2str(day_of_month, 1, 32)# not all months have 31 days, but doesn't matter
+        month_r = SchedulableTask.__range2str(month, 1, 13)
+        day_of_week_r = SchedulableTask.__range2str(day_of_week, 0, 7)
         
         return (minute_r, hour_r, day_of_month_r, month_r, day_of_week_r)
     
-    def __closest_prev__(self, i, list, list_is_sorted=True):
+    def __closest_prev(self, i, list, list_is_sorted=True):
         # TODO there's a binary search here that can be done more efficiently than this
         if not list_is_sorted:
             list = sorted(list)
@@ -1302,36 +1302,36 @@ class SchedulableTask(Task):
         return None
     
     def is_due_to_run_at(self, t):
-        if not t.minute in self.__minute_r__:
+        if not t.minute in self.__minute_r:
             # 0 = 0
             return False
-        if not t.hour in self.__hour_r__:
+        if not t.hour in self.__hour_r:
             # 0 = 0
             return False
-        if not t.day in self.__day_of_month_r__:
+        if not t.day in self.__day_of_month_r:
             # 1st of Month = 1
             return False
-        if not t.month in self.__month_r__:
+        if not t.month in self.__month_r:
             # January = 0
             return False
-        if not t.weekday() in self.__day_of_week_r__:
+        if not t.weekday() in self.__day_of_week_r:
             # Monday = 0
             return False
         return True
     def get_prev_due_to_run(self, until):
         """Return the last time this Task is due to run before 'until' datetime"""
         prev_time = until.replace(second=0, microsecond=0)
-        minute = self.__closest_prev__(prev_time.minute, self.__minute_r__)
+        minute = self.__closest_prev(prev_time.minute, self.__minute_r)
         if minute == None:
             # last run-minute has passed for this hour, roll to last in prev hour
-            prev_time = prev_time.replace(minute=self.__minute_r__[-1])
+            prev_time = prev_time.replace(minute=self.__minute_r[-1])
             prev_time -= datetime.timedelta(hours=1)
         else:
             prev_time = prev_time.replace(minute=minute)
-        hour = self.__closest_prev__(prev_time.hour, self.__hour_r__)
+        hour = self.__closest_prev(prev_time.hour, self.__hour_r)
         if hour == None:
             # last run-hour has passed for this day, roll to last hour & minute on prev day
-            prev_time = prev_time.replace(hour=self.__hour_r__[-1], minute=self.__minute_r__[-1])
+            prev_time = prev_time.replace(hour=self.__hour_r[-1], minute=self.__minute_r[-1])
             prev_time -= datetime.timedelta(days=1)
         else:
             prev_time = prev_time.replace(hour=hour)
@@ -1395,11 +1395,11 @@ class SchedulableTask(Task):
     
     def get_pretty_schedule(self):
         return u"minute:%s hour:%s day:%s day of month:%s day of week:%s" % (
-            SchedulableTask.__prettify_rangestr__(self.__minute_r__),
-            SchedulableTask.__prettify_rangestr__(self.__hour_r__),
-            SchedulableTask.__prettify_rangestr__(self.__day_of_month_r__),
-            SchedulableTask.__prettify_rangestr__(self.__month_r__),
-            SchedulableTask.__prettify_rangestr__(self.__day_of_week_r__))
+            SchedulableTask.__prettify_rangestr(self.__minute_r),
+            SchedulableTask.__prettify_rangestr(self.__hour_r),
+            SchedulableTask.__prettify_rangestr(self.__day_of_month_r),
+            SchedulableTask.__prettify_rangestr(self.__month_r),
+            SchedulableTask.__prettify_rangestr(self.__day_of_week_r))
     def __unicode__(self):
         return self.get_pretty_schedule()
     
