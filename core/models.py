@@ -6,9 +6,7 @@ import subprocess
 import signal
 from datetime import datetime, timedelta
 
-from django.db.models import Model, \
-    BooleanField, CharField, DateTimeField, \
-    IntegerField, PositiveIntegerField, SmallPositiveIntegerField, TextField
+from django.db import models
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import (GenericRelation,
@@ -32,6 +30,10 @@ class AbstractTask(models.Model):
         """Called by a daemon to execute the task.  Do not overwrite."""
         pass
     
+    def run(self):
+        raise NotImplementedError
+    
+
 class Task(AbstractTask):
     
     STATUSES = {
@@ -41,8 +43,9 @@ class Task(AbstractTask):
     
     name = models.CharField(max_length=128, unique=True)
     description = models.CharField(max_length=512, blank=True, default='')
-    schedule = models.DateTimeField()
-    repetitions = models.Posit
+    next_execution = models.DateTimeField()
+    repetitions = models.PositiveIntegerField()
+    delay = models.PositiveIntegerField()
     
     def __init__(self, target=None, repeat=1, delay=None):
         if repeat != 1 and delay == None:
@@ -64,34 +67,37 @@ class SubTask(AbstractTask):
         content_type_field='_child_task_content_type',
         object_id_field='_child_task_object_id')
 
-class Iteration(Model):
+class Iteration(models.Model):
     
     STATUSES = {
         1: 'RUNNING',
+        2: 'SUCCESS',
+        3: 'ERROR',
+        4: 'TIMEDOUT',
+        # 5: 'RETRY',
+        # 6: 'CONTINUE',
+        # 7: 'SKIPPED',
     }
     
-    task = GenericForeignKey(...)
+    task = models.GenericForeignKey(...)
     status = models.SmallPositiveIntegerField(default=1,
         choices=[(k, v.title()) for k, v in Iteration.STATUSES.iteritems()])
     date_started = models.DateTimeField(default=datetime.datetime.utcnow)
     date_ended = models.DateTimeField(null=True)
-    
+    daemon = models.ForeignKey()
     # status = property...
 
-
-class Iteration(models.Model):
-    def set_status(self, status):
-        assert status in Iteration.ALL_STATUSES
-        self.status = status
-        if status == Iteration.STATUS_DONE:
-            log.info("Ending Iteration %s" % self)
-            self.date_ended = datetime.datetime.utcnow()
-        self.save()
+class Daemon(models.Model):
     
-
-class Task(models.Model):
+# class Iteration(models.Model):
+#     def set_status(self, status):
+#         assert status in Iteration.ALL_STATUSES
+#         self.status = status
+#         if status == Iteration.STATUS_DONE:
+#             log.info("Ending Iteration %s" % self)
+#             self.date_ended = datetime.datetime.utcnow()
+#         self.save()
     
-
 class TaskDependency(models.Model):
     """A dependency of one Task on another.
     
@@ -221,26 +227,6 @@ class TaskDependency(models.Model):
 class TaskRunStatus(models.Model):
     """The status of a Task that has ran or is running"""
     
-    STATUS_SKIPPED = 'SKIPPED'     # Task has been skipped; it ran and failed or did not run before being skipped
-    STATUS_RUNNING = 'RUNNING'     # Task is running now.. OMG exciting!
-    STATUS_ERROR = 'ERROR'         # Task ran but ended in error
-    STATUS_TIMEDOUT = 'TIMEDOUT'   # Task timed out while running
-    STATUS_CONTINUE = 'CONTINUE'   # Task ran, failed, but children are allowed to run as though it succeeded or children were flow dependencies
-    STATUS_RETRY = 'RETRY'         # Task has been asked to be retried
-    STATUS_SUCCESS = 'SUCCESS'     # Task ran successfully. Yay!
-    
-    ALL_STATUSES = (STATUS_SKIPPED, STATUS_RUNNING, STATUS_ERROR,
-        STATUS_CONTINUE, STATUS_TIMEDOUT, STATUS_RETRY, STATUS_SUCCESS)
-    
-    STATUS_CATEGORIES = {}
-    STATUS_CATEGORIES['running'] = [STATUS_RUNNING]
-    STATUS_CATEGORIES['active'] = [STATUS_RUNNING]
-    STATUS_CATEGORIES['errored'] = [STATUS_ERROR, STATUS_TIMEDOUT]
-    STATUS_CATEGORIES['success'] = [STATUS_SUCCESS, STATUS_CONTINUE]
-    STATUS_CATEGORIES['interesting'] = STATUS_CATEGORIES['active'] + \
-                                       STATUS_CATEGORIES['errored']
-    STATUS_CATEGORIES['all'] = ALL_STATUSES
-    
     class Meta:
         db_table = settings.DB_TABLE_PREFIX + '_taskrunstatus'
     
@@ -256,90 +242,6 @@ class TaskRunStatus(models.Model):
     date_ended = models.DateTimeField(blank=True, null=True)
     # rename to nds
     controlling_daemon = models.ForeignKey('NorcDaemonStatus', blank=True, null=True)
-    
-    @staticmethod
-    def get_all_statuses(task, iteration):
-        """
-        Return all run statuses as list for this Task/Iteration pair or None if it hasn't been run
-        """
-        try:
-            # why can't django's GenericForeignKey handle this mapping for me??
-            task_content_type = ContentType.objects.get_for_model(task)
-            matches = TaskRunStatus.objects.filter(_task_content_type=task_content_type.id)
-            matches = matches.filter(_task_object_id=task.id)
-            matches = matches.filter(iteration=iteration)
-            return matches.all()
-        except TaskRunStatus.DoesNotExist, dne:
-            return None
-    
-    @staticmethod
-    def get_latest(task, iteration):
-        """
-        Return the latest (ie most recent by date_started) run status 
-        for this Task/Iteration pair or None if it hasn't been run
-        """
-        try:
-            trs = TaskRunStatus.get_all_statuses(task, iteration)
-            if trs == None:
-                return None
-            latest = trs.latest('date_started')
-            return latest
-        except TaskRunStatus.DoesNotExist, dne:
-            return None
-    
-    def save(self):
-        """Save this TaskRunStatus. Ensure that only one of these is running at a time."""
-        models.Model.save(self)
-        
-        # need to ensure that Tasks don't get run by multiple daemons at once
-        # so this is a race condition check that's cheaper than locking the table but
-        # will occasionally (and temporarily) result in the Task not getting run at all
-        # when it should be run by 1.
-        # TODO This can't be here and was removed 20090513.
-        #      Daemon collisions need to be managed elsewhere, like in manage.py 
-        #if self.get_status() == TaskRunStatus.STATUS_RUNNING:
-        #    task_content_type = ContentType.objects.get_for_model(self.get_task())
-        #    matches = TaskRunStatus.objects.filter(_task_content_type=task_content_type.id)
-        #    matches = matches.filter(_task_object_id=self.get_task().get_id())
-        #    matches = matches.filter(status=TaskRunStatus.STATUS_RUNNING)
-        #    matches = matches.filter(iteration=self.get_iteration())
-        #    if matches.count() > 1:
-        #        self.delete()
-        #        raise TaskAlreadyRunningException("Task already running. Stopped.")
-    
-    def get_id(self):
-        return self.id
-    def get_task(self):
-        return self.task
-    def get_iteration(self):
-        return self.iteration
-    def get_status(self):
-        return self.status
-    def get_controlling_daemon(self):
-        return self.controlling_daemon
-    def allows_run(self):
-        return self.get_status() in (TaskRunStatus.STATUS_RETRY)
-    def was_successful(self):
-        return self.get_status() == TaskRunStatus.STATUS_SUCCESS
-    def is_finished(self):
-        return self.get_status() in (TaskRunStatus.STATUS_SKIPPED,
-                                     TaskRunStatus.STATUS_CONTINUE,
-                                     TaskRunStatus.STATUS_SUCCESS)
-    def get_date_started(self):
-        return self.date_started
-    def get_date_ended(self):
-        return self.date_ended
-    
-    def __unicode__(self):
-        return u"%s: %s.%s %s-%s" % (self.status, self._task_content_type.model
-            , self._task_object_id
-            , self.date_started, self.date_ended)
-    def __str__(self):
-        return str(self.__unicode__())
-    __repr__ = __str__
-    
-
-
 
 class RunCommand(Task):
     """Run an arbitrary command line as a Task."""
@@ -429,21 +331,21 @@ class SchedulableTask(Task):
     day_of_week = models.CharField(max_length=1024)# 0-6 (Monday - Sunday)
     
     # stored actual ranges; parsed out from above char fields
-    __minute_r__=None; __hour_r__=None; __day_of_month_r__=None; __month_r__=None; __day_of_week_r__=None
+    __minute_r=None; __hour_r=None; __day_of_month_r=None; __month_r=None; __day_of_week_r=None
     
     def __init__(self, *args, **kwargs):
         Task.__init__(self, *args, **kwargs)
         self._parse_schedule()
     
     def _parse_schedule(self):
-        self.__minute_r__ = SchedulableTask.__str2range__(self.minute, 0, 60)
-        self.__hour_r__ = SchedulableTask.__str2range__(self.hour, 0, 24)
-        self.__day_of_month_r__ = SchedulableTask.__str2range__(self.day_of_month, 1, 32)
-        self.__month_r__ = SchedulableTask.__str2range__(self.month, 1, 13)
-        self.__day_of_week_r__ = SchedulableTask.__str2range__(self.day_of_week, 0, 7)
+        self.__minute_r = SchedulableTask.__str2range(self.minute, 0, 60)
+        self.__hour_r = SchedulableTask.__str2range(self.hour, 0, 24)
+        self.__day_of_month_r = SchedulableTask.__str2range(self.day_of_month, 1, 32)
+        self.__month_r = SchedulableTask.__str2range(self.month, 1, 13)
+        self.__day_of_week_r = SchedulableTask.__str2range(self.day_of_week, 0, 7)
     
     @staticmethod
-    def __prettify_rangestr__(r):
+    def __prettify_rangestr(r):
         if len(r) <= 5:
             s = u",".join(map(str, r))
         else:
@@ -451,7 +353,7 @@ class SchedulableTask(Task):
         return s
     
     @staticmethod
-    def __range2str__(r, min_value, max_value):
+    def __range2str(r, min_value, max_value):
         if type(r) == str and r == '*':
             r = range(min_value, max_value)
         elif type(r) == int:
@@ -463,7 +365,7 @@ class SchedulableTask(Task):
         return ",".join(map(str, r))
     
     @staticmethod
-    def __str2range__(s, min_value, max_value):
+    def __str2range(s, min_value, max_value):
         if s in (None, '', '*'):
             return range(min_value, max_value)
         return map(int, s.split(","))
@@ -500,47 +402,47 @@ class SchedulableTask(Task):
         
         schedule_name = None
         
-        if self.__minute_r__ == [0,30] \
-            and self.__hour_r__ == hour \
-            and self.__day_of_month_r__ == day_of_month \
-            and self.__month_r__ == month \
-            and self.__day_of_week_r__ == day_of_week:
+        if self.__minute_r == [0,30] \
+            and self.__hour_r == hour \
+            and self.__day_of_month_r == day_of_month \
+            and self.__month_r == month \
+            and self.__day_of_week_r == day_of_week:
             if pretty_names:
                 schedule_name = 'every half hour'
             else:
                 schedule_name = 'HALFHOURLY'
-        elif self.__minute_r__ == [0] \
-            and self.__hour_r__ == hour \
-            and self.__day_of_month_r__ == day_of_month \
-            and self.__month_r__ == month \
-            and self.__day_of_week_r__ == day_of_week:
+        elif self.__minute_r == [0] \
+            and self.__hour_r == hour \
+            and self.__day_of_month_r == day_of_month \
+            and self.__month_r == month \
+            and self.__day_of_week_r == day_of_week:
             if pretty_names:
                 schedule_name = 'every hour'
             else:
                 schedule_name = 'HOURLY'
-        elif self.__minute_r__ == [0] \
-            and self.__hour_r__ == [0] \
-            and self.__day_of_month_r__ == day_of_month \
-            and self.__month_r__ == month \
-            and self.__day_of_week_r__ == day_of_week:
+        elif self.__minute_r == [0] \
+            and self.__hour_r == [0] \
+            and self.__day_of_month_r == day_of_month \
+            and self.__month_r == month \
+            and self.__day_of_week_r == day_of_week:
             if pretty_names:
                 schedule_name = 'once a day'
             else:
                 schedule_name = 'DAILY'
-        elif self.__minute_r__ == [0] \
-            and self.__hour_r__ == [0] \
-            and self.__day_of_month_r__ == day_of_month \
-            and self.__month_r__ == month \
-            and len(self.__day_of_week_r__) == 1:
+        elif self.__minute_r == [0] \
+            and self.__hour_r == [0] \
+            and self.__day_of_month_r == day_of_month \
+            and self.__month_r == month \
+            and len(self.__day_of_week_r) == 1:
             if pretty_names:
                 schedule_name = 'once a week'
             else:
                 schedule_name = 'WEEKLY'
-        elif self.__minute_r__ == [0] \
-            and self.__hour_r__ == [0] \
-            and len(self.__day_of_month_r__) == 1 \
-            and self.__month_r__ == month \
-            and self.__day_of_week_r__ == day_of_week:
+        elif self.__minute_r == [0] \
+            and self.__hour_r == [0] \
+            and len(self.__day_of_month_r) == 1 \
+            and self.__month_r == month \
+            and self.__day_of_week_r == day_of_week:
             if pretty_names:
                 schedule_name = 'once a month'
             else:
@@ -556,15 +458,15 @@ class SchedulableTask(Task):
         EG minute=[1,2,3,4,5] => minute_r="1,2,3,4,5"
         hour='*' => hour_r="0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23"
         """
-        minute_r = SchedulableTask.__range2str__(minute, 0, 60)
-        hour_r = SchedulableTask.__range2str__(hour, 0, 24)
-        day_of_month_r = SchedulableTask.__range2str__(day_of_month, 1, 32)# not all months have 31 days, but doesn't matter
-        month_r = SchedulableTask.__range2str__(month, 1, 13)
-        day_of_week_r = SchedulableTask.__range2str__(day_of_week, 0, 7)
+        minute_r = SchedulableTask.__range2str(minute, 0, 60)
+        hour_r = SchedulableTask.__range2str(hour, 0, 24)
+        day_of_month_r = SchedulableTask.__range2str(day_of_month, 1, 32)# not all months have 31 days, but doesn't matter
+        month_r = SchedulableTask.__range2str(month, 1, 13)
+        day_of_week_r = SchedulableTask.__range2str(day_of_week, 0, 7)
         
         return (minute_r, hour_r, day_of_month_r, month_r, day_of_week_r)
     
-    def __closest_prev__(self, i, list, list_is_sorted=True):
+    def __closest_prev(self, i, list, list_is_sorted=True):
         # TODO there's a binary search here that can be done more efficiently than this
         if not list_is_sorted:
             list = sorted(list)
@@ -574,36 +476,36 @@ class SchedulableTask(Task):
         return None
     
     def is_due_to_run_at(self, t):
-        if not t.minute in self.__minute_r__:
+        if not t.minute in self.__minute_r:
             # 0 = 0
             return False
-        if not t.hour in self.__hour_r__:
+        if not t.hour in self.__hour_r:
             # 0 = 0
             return False
-        if not t.day in self.__day_of_month_r__:
+        if not t.day in self.__day_of_month_r:
             # 1st of Month = 1
             return False
-        if not t.month in self.__month_r__:
+        if not t.month in self.__month_r:
             # January = 0
             return False
-        if not t.weekday() in self.__day_of_week_r__:
+        if not t.weekday() in self.__day_of_week_r:
             # Monday = 0
             return False
         return True
     def get_prev_due_to_run(self, until):
         """Return the last time this Task is due to run before 'until' datetime"""
         prev_time = until.replace(second=0, microsecond=0)
-        minute = self.__closest_prev__(prev_time.minute, self.__minute_r__)
+        minute = self.__closest_prev(prev_time.minute, self.__minute_r)
         if minute == None:
             # last run-minute has passed for this hour, roll to last in prev hour
-            prev_time = prev_time.replace(minute=self.__minute_r__[-1])
+            prev_time = prev_time.replace(minute=self.__minute_r[-1])
             prev_time -= datetime.timedelta(hours=1)
         else:
             prev_time = prev_time.replace(minute=minute)
-        hour = self.__closest_prev__(prev_time.hour, self.__hour_r__)
+        hour = self.__closest_prev(prev_time.hour, self.__hour_r)
         if hour == None:
             # last run-hour has passed for this day, roll to last hour & minute on prev day
-            prev_time = prev_time.replace(hour=self.__hour_r__[-1], minute=self.__minute_r__[-1])
+            prev_time = prev_time.replace(hour=self.__hour_r[-1], minute=self.__minute_r[-1])
             prev_time -= datetime.timedelta(days=1)
         else:
             prev_time = prev_time.replace(hour=hour)
@@ -667,11 +569,11 @@ class SchedulableTask(Task):
     
     def get_pretty_schedule(self):
         return u"minute:%s hour:%s day:%s day of month:%s day of week:%s" % (
-            SchedulableTask.__prettify_rangestr__(self.__minute_r__),
-            SchedulableTask.__prettify_rangestr__(self.__hour_r__),
-            SchedulableTask.__prettify_rangestr__(self.__day_of_month_r__),
-            SchedulableTask.__prettify_rangestr__(self.__month_r__),
-            SchedulableTask.__prettify_rangestr__(self.__day_of_week_r__))
+            SchedulableTask.__prettify_rangestr(self.__minute_r),
+            SchedulableTask.__prettify_rangestr(self.__hour_r),
+            SchedulableTask.__prettify_rangestr(self.__day_of_month_r),
+            SchedulableTask.__prettify_rangestr(self.__month_r),
+            SchedulableTask.__prettify_rangestr(self.__day_of_week_r))
     def __unicode__(self):
         return self.get_pretty_schedule()
     
@@ -813,49 +715,7 @@ class NorcDaemonStatus(models.Model):
         if not status == TaskRunStatus.STATUS_RUNNING:
             self.date_ended = datetime.datetime.utcnow()
         self.save()
-    
-    def get_status(self):
-        return self.status
-    
-    def is_pause_requested(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_PAUSEREQUESTED
-    
-    def is_stop_requested(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_STOPREQUESTED
-    
-    def is_kill_requested(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_KILLREQUESTED
-    
-    def is_paused(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_PAUSED
-    
-    def is_being_stopped(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_STOPINPROGRESS
-    
-    def is_being_killed(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_KILLINPROGRESS
-    
-    def is_starting(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_STARTING
-    
-    def is_shutting_down(self):
-        return self.is_stop_requested() or self.is_kill_requested()
-    
-    def is_running(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_RUNNING
-    
-    def is_done(self):
-        return self.get_status() in (NorcDaemonStatus.STATUS_ENDEDGRACEFULLY
-                                    , NorcDaemonStatus.STATUS_KILLED
-                                    , NorcDaemonStatus.STATUS_ERROR
-                                    , NorcDaemonStatus.STATUS_DELETED)
-    
-    def is_done_with_error(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_ERROR
-    
-    def is_deleted(self):
-        return self.get_status() == NorcDaemonStatus.STATUS_DELETED
-    
+
     def get_task_statuses(self, status_filter='all', since_date=None):
         """
         return the statuses (not the tasks) for all tasks run(ning) by this daemon
@@ -891,10 +751,3 @@ class NorcDaemonStatus(models.Model):
     
     __repr__ = __str__
     
-
-class NorcInvalidStateException(Exception):
-    pass
-    
-
-class InsufficientResourcesException(Exception):
-    pass
