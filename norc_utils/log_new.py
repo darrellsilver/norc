@@ -66,12 +66,6 @@ class FileLog(Log):
         self.echo = self.debug and out
     
     def __del__(self):
-        if self.out != sys.stdout:
-            self.out.close()
-        if self.err != sys.stderr:
-        self.echo = echo and out
-    
-    def __del__(self):
         """Destructor to make sure log files are closed."""
         if self.out.name != '<stdout>':
             self.out.close()
