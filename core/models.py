@@ -6,48 +6,38 @@ import subprocess
 import signal
 from datetime import datetime, timedelta
 
-from django.db import models
-from django.contrib.contenttypes import generic
+from django.db.models import (Model,
+    CharField,
+    DateTimeField,
+    IntegerField,
+    PositiveIntegerField,
+    SmallPositiveIntegerField)
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
-
 from django.conf import settings
+
 from norc.norc_utils.log import make_log
 
-class AbstractTask(models.Model):
+class Task(Model):
     
     class Meta:
-        abstract = True
-    
-    date_added = models.DateTimeField(auto_now_add=True)
-    timeout = models.IntegerField(null=True)
-    
-    def __init__(self):
-        Model.__init__(self)
-    
-    def start(self):
-        """Called by a daemon to execute the task.  Do not overwrite."""
-        pass
-    
-    def run(self):
-        raise NotImplementedError
-    
-
-class Task(AbstractTask):
+        app_label = 'core'
     
     STATUSES = {
         1: 'ACTIVE',
         2: 'COMPLETE',
     }
     
-    name = models.CharField(max_length=128, unique=True)
-    description = models.CharField(max_length=512, blank=True, default='')
-    next_execution = models.DateTimeField()
-    repetitions = models.PositiveIntegerField()
-    delay = models.PositiveIntegerField()
+    name = CharField(max_length=128, unique=True)
+    description = CharField(max_length=512, blank=True, default='')
+    date_added = DateTimeField(auto_now_add=True)
+    timeout = IntegerField(default=0)
+    next = DateTimeField(null=True)
+    repetitions = PositiveIntegerField()
+    delay = PositiveIntegerField()
     
-    def __init__(self, target=None, repeat=1, delay=None):
+    def __init__(self, , repeat=1, delay=0):
         if repeat != 1 and delay == None:
             raise TypeError("Must have a delay to have a repeat.")
         if type(target) != datetime:
@@ -67,7 +57,7 @@ class SubTask(AbstractTask):
         content_type_field='_child_task_content_type',
         object_id_field='_child_task_object_id')
 
-class Iteration(models.Model):
+class Iteration(Model):
     
     STATUSES = {
         1: 'RUNNING',
@@ -79,156 +69,19 @@ class Iteration(models.Model):
         # 7: 'SKIPPED',
     }
     
-    task = models.GenericForeignKey(...)
-    status = models.SmallPositiveIntegerField(default=1,
+    task = GenericForeignKey(...)
+    status = SmallPositiveIntegerField(default=1,
         choices=[(k, v.title()) for k, v in Iteration.STATUSES.iteritems()])
-    date_started = models.DateTimeField(default=datetime.datetime.utcnow)
-    date_ended = models.DateTimeField(null=True)
-    daemon = models.ForeignKey()
+    date_started = DateTimeField(default=datetime.datetime.utcnow)
+    date_ended = DateTimeField(null=True)
+    daemon = ForeignKey()
     # status = property...
 
-class Daemon(models.Model):
-    
-# class Iteration(models.Model):
-#     def set_status(self, status):
-#         assert status in Iteration.ALL_STATUSES
-#         self.status = status
-#         if status == Iteration.STATUS_DONE:
-#             log.info("Ending Iteration %s" % self)
-#             self.date_ended = datetime.datetime.utcnow()
-#         self.save()
-    
-class TaskDependency(models.Model):
-    """A dependency of one Task on another.
-    
-    For clarity and Freudian significance, dependencies are defined as
-    the 'child' Task depends on the 'parent' Task, 
-    meaning before the child can run, the parent must have run.
-    
-    """
-    
-    STATUS_ACTIVE = 'ACTIVE'
-    STATUS_DELETED = 'DELETED'
-    
-    ALL_STATUSES = (STATUS_ACTIVE, STATUS_DELETED)
-    
-    DEP_TYPE_STRICT = 'STRICT' # parent must have been successful or skipped before child can run
-    DEP_TYPE_FLOW = 'FLOW'     # parent must have been run or skipped, but doesn't have to have been successful before child can run
-    
-    ALL_DEP_TYPES = (DEP_TYPE_STRICT, DEP_TYPE_FLOW)
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_taskdependency'
-        unique_together = (('_parent_task_content_type', '_parent_task_object_id'
-                            , '_child_task_content_type', '_child_task_object_id'),)
-    
-    # I want to use a ManyToManyField for this in the Task superclass
-    # but the relation is generic, so gotta use a seperate TaskDependency class.
-    # @see http://www.djangoproject.com/documentation/models/generic_relations/ and
-    # @see http://docs.djangoproject.com/en/dev/topics/db/models/#intermediary-manytomany
-    _parent_task_content_type = models.ForeignKey(ContentType, related_name="_parent_task_content_type_set")
-    _parent_task_object_id = models.PositiveIntegerField()
-    parent_task = GenericForeignKey('_parent_task_content_type', '_parent_task_object_id')
-    
-    _child_task_content_type = models.ForeignKey(ContentType, related_name="_child_task_content_type_set")
-    _child_task_object_id = models.PositiveIntegerField()
-    child_task = GenericForeignKey('_child_task_content_type', '_child_task_object_id')
-    
-    status = models.CharField(choices=(zip(ALL_STATUSES, ALL_STATUSES)), max_length=16)
-    dependency_type = models.CharField(choices=(zip(ALL_DEP_TYPES, ALL_DEP_TYPES)), max_length=16)
-    date_added = models.DateTimeField(default=datetime.datetime.utcnow)
-    
-    @staticmethod
-    def create(parent_task, child_task, dependency_type):
-        assert parent_task.get_job() == child_task.get_job(), "parent's Job (%s) doesn't match child's Job (%s)" \
-                % (parent_task.get_job(), child_task.get_job())
-        assert dependency_type in TaskDependency.ALL_DEP_TYPES, "unknown dependency_type '%s'" % (dependency_type)
-        assert parent_task.is_active(), "parent Task must be active"
-        assert child_task.is_active(), "child Task must be active"
-        assert not child_task.depends_on(parent_task, only_immediate=True) \
-                , "Dependency parent:'%s' -> child:'%s' already exists" % (parent_task, child_task)
-        assert not parent_task.depends_on(child_task), "Attempting to creat circular dependency. \
-                Given parent:'%s' already depends on child:'%s'" % (parent_task, child_task)
-        
-        td = TaskDependency(parent_task=parent_task, child_task=child_task
-                            , status=TaskDependency.STATUS_ACTIVE
-                            , dependency_type=dependency_type)
-        td.save()
-        return td
-    
-    def get_parent(self):
-        return self.parent_task
-    def get_child(self):
-        return self.child_task
-    def get_status(self):
-        return self.status
-    def is_active(self):
-        return self.get_status() == TaskDependency.STATUS_ACTIVE
-    def is_deleted(self):
-        return self.get_status() == TaskDependency.STATUS_DELETED
-    def get_dependency_type(self):
-        return self.dependency_type
-    
-    def is_satisfied(self, iteration):
-        """
-        For the given iteration, has the parent Task 
-        completed in a way that allows the child to run
-        """
-        if self.get_parent().is_expired():
-            # Don't bother with expensive status lookup; it's expired!
-            return True
-        if self.get_parent().is_deleted():
-            # This dependency links a task which cannot be satisfied b/c the parent is deleted
-            raise NorcInvalidStateException("Parent %s of %s is deleted. Tree for Job '%s' is broken!" \
-                % (self.get_child(), self.get_parent(), self.get_child().get_job()))
-        # This check is valuable, but prevents us from checking if task is expired before 
-        # performing EXPENSIVE task status lookup
-        #if task_status == None and self.get_parent().is_expired():
-        #    # Task isn't allowed to expire w/o running.
-        #    raise NorcInvalidStateException("Parent '%s' of '%s' is expired w/ no status. Tree for Job '%s' broken!" \
-        #        % (self.get_child().get_name(), self.get_parent().get_name(), self.get_child().get_job()))
-        
-        task_status = self.get_parent().get_current_run_status(iteration)
-        if task_status == None:
-            # Parent hasn't run yet
-            return False
-        if self.get_dependency_type() == TaskDependency.DEP_TYPE_STRICT \
-            and task_status.get_status() in (TaskRunStatus.STATUS_SKIPPED
-                                            , TaskRunStatus.STATUS_CONTINUE
-                                            , TaskRunStatus.STATUS_SUCCESS):
-            # Parent has succesfully completed
-            return True
-        if self.get_dependency_type() == TaskDependency.DEP_TYPE_FLOW \
-            and task_status.get_status() in (TaskRunStatus.STATUS_SKIPPED
-                                            , TaskRunStatus.STATUS_CONTINUE
-                                            , TaskRunStatus.STATUS_SUCCESS
-                                            , TaskRunStatus.STATUS_TIMEDOUT
-                                            , TaskRunStatus.STATUS_ERROR):
-            # Parent has finished, regardless of status
-            return True
-        return False
-    
-    def __unicode__(self):
-        try:
-            return u"'%s' -> '%s'" % (self.get_child(), self.get_parent())
-        except SystemExit, se:
-            # in python 2.4, SystemExit extends Exception, this is changed in 2.5 to 
-            # extend BaseException, specifically so this check isn't necessary. But
-            # we're using 2.4; upon upgrade, this check will be unecessary but ignorable.
-            raise se
-        except Exception, e:
-            return u"%s.%s -> %s.%s" % (self._child_task_content_type.model, self._child_task_object_id
-                , self._parent_task_content_type.model, self._parent_task_object_id)
-    def __str__(self):
-        return str(self.__unicode__())
-    __repr__ = __str__
+class Daemon(Model):
     
 
 class TaskRunStatus(models.Model):
     """The status of a Task that has ran or is running"""
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_taskrunstatus'
     
     # @see http://docs.djangoproject.com/en/dev/ref/contrib/contenttypes/
     # or the lesser @see http://www.djangoproject.com/documentation/models/generic_relations/
@@ -576,35 +429,6 @@ class SchedulableTask(Task):
             SchedulableTask.__prettify_rangestr(self.__day_of_week_r))
     def __unicode__(self):
         return self.get_pretty_schedule()
-    
-
-class StartIteration(SchedulableTask):
-    """Schedule on which new Norc Iterations are started"""
-    
-    class Meta:
-        db_table = settings.DB_TABLE_PREFIX + '_startiteration'
-    
-    target_job = models.ForeignKey(Job, related_name="_ignore_target_job_set")
-    target_iteration_type = models.CharField(
-        choices=(zip(Iteration.ALL_ITER_TYPES, Iteration.ALL_ITER_TYPES)),
-        max_length=16)
-    allow_simultanious = models.BooleanField()
-    
-    def get_library_name(self):
-        return 'norc.core.models.StartIteration'
-    def has_timeout(self):
-        return True
-    def get_timeout(self):
-        return 60
-    def run(self):
-        if not self.allow_simultanious:
-            running = Iteration.get_running_iterations(job=self.target_job)
-            if len(running) > 0:
-                raise Exception("Cannot start iteration for job '%s' because %s already running!" % (self.target_job, running))
-        new_iter = Iteration.create(job=self.target_job, iteration_type=self.target_iteration_type)
-        new_iter.set_running()
-        return True
-    
 
 class NorcDaemonStatus(models.Model):
     """Track the statuses of Norc daemons."""
