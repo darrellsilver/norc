@@ -119,7 +119,9 @@ def trss(nds, status_filter='all', since_date=None):
     if nds.get_daemon_type() == 'NORC':
         task_statuses = nds.taskrunstatus_set.all()
     else:
-        task_statuses = nds.sqstaskrunstatus_set.all()
+        from norc.sqs.models import SQSTaskRunStatus
+        task_statuses = SQSTaskRunStatus.objects.filter(
+            controlling_daemon=nds)
     status_filter = status_filter.lower()
     TRS_CATS = TaskRunStatus.STATUS_CATEGORIES
     if not since_date == None:
