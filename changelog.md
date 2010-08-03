@@ -9,6 +9,8 @@ Norc Release v1.1.1
 ## Bug Fixes:
   - Another attempted fix at the weird Perpetually bug involving
     recognizing daemons as SQS or NORC.
+  - Half fixed the weird expanding cell bug when using the daemon control
+    slideout.  Now there may be a 1px shift.
 
 
 
