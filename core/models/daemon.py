@@ -27,4 +27,7 @@ class Daemon(Model):
     date_started = models.DateTimeField(default=datetime.datetime.utcnow)
     date_ended = models.DateTimeField(null=True)
     
-    def __init__()
+    def __init__(self, host, **kws):
+        defaults = dict(host=host, pid=os.getpid()) #
+        Model.__init__(self, **defaults.update(kws))
+    

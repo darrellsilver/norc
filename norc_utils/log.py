@@ -10,7 +10,12 @@ from norc.settings import LOGGING_DEBUG, NORC_LOG_DIR
 
 def make_log(norc_path, debug=None):
     """Make a log object with a subpath of the norc log directory."""
-    return FileLog(os.path.join(NORC_LOG_DIR, norc_path), debug=debug)
+    path = os.path.join(NORC_LOG_DIR, norc_path)
+    try:
+        os.makedirs(os.path.dirname(path))
+    except (IOError, OSError):
+        pass
+    return FileLog(path, debug=debug)
 
 def timestamp():
     """Returns a string timestamp of the current time."""
@@ -35,7 +40,7 @@ class Log(object):
         LOGGING_DEBUG setting of Norc.
         
         """
-        self.debug = debug if debug != None else LOGGING_DEBUG
+        self.debug_on = debug if debug != None else LOGGING_DEBUG
     
     def info(self, msg):
         """Log some informational message."""
@@ -61,7 +66,7 @@ class FileLog(Log):
         err     Path to the file that error output should go in.  Defaults
                 to out if out is given and sys.stderr if it isn't.
         debug   Boolean; whether debug output should be logged.
-        echo    Echoes all output to stdout if True.
+        echo    Echoes all logging to stdout if True.
         
         """
         Log.__init__(self, debug)
@@ -73,23 +78,25 @@ class FileLog(Log):
         # Don't echo if already outputting to stdout.
         self.echo = echo and out
     
-    def write(self, stream, msg):
+    def _write(self, stream, msg, format_prefix):
+        if format_prefix:
+            msg = Log.format(msg, format_prefix)
         stream.write(msg)
         stream.flush()
         if self.echo:
             print >>sys.__stdout__, msg
     
-    def info(self, msg):
-        self.write(self.out, Log.format(msg, Log.INFO))
+    def info(self, msg, format=True):
+        self._write(self.out, msg, Log.INFO if format else False)
     
-    def error(self, msg, trace=False):
-        self.write(self.err, Log.format(msg, Log.ERROR))
+    def error(self, msg, trace=False, format=True):
+        self._write(self.err, msg, Log.ERROR if format else False)
         if trace:
-            self.write(self.err, traceback.format_exc())
+            self._write(self.err, traceback.format_exc(), False)
     
-    def debug(self, msg):
-        if self.debug:
-            self.write(self.out, Log.format(msg, Log.DEBUG))
+    def debug(self, msg, format=True):
+        if self.debug_on:
+            self._write(self.out, msg, Log.DEBUG if format else False)
     
     def start_redirect(self):
         """Redirect all stdout and stderr to this log's files."""
@@ -106,11 +113,6 @@ class FileLog(Log):
             self.out.close()
         if self.err.name != '<stderr>' and self.err.name != '<stdout>':
             self.err.close()
-    
-    def __del__(self):
-        """Destructor to make sure log files are closed."""
-        self.close()
-    
 
 class S3Log(FileLog):
     """Outputs logs to S3 in addition to a local file."""
@@ -123,3 +125,4 @@ class S3Log(FileLog):
             FileLog.close(self)
             pass
             self.closed = True
+        
