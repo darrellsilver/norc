@@ -43,7 +43,7 @@ class Iteration(Model):
         choices=[(k, v.title()) for k, v in Iteration.STATUSES.iteritems()])
     date_started = DateTimeField(default=datetime.datetime.utcnow)
     date_ended = DateTimeField(null=True)
-    daemon = ForeignKey()
+    daemon = ForeignKey('DaemonStatus')
     # status = property...
     
 
