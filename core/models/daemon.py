@@ -1,5 +1,5 @@
 
-class DaemonStatus(Model):
+class DaemonData(Model):
     
     STATUSES = {
         1: 'RUNNING',
@@ -20,10 +20,10 @@ class DaemonStatus(Model):
     class Meta:
         app_label = 'core'
     
-    host = CharField(default=lambda: os.uname()[1], max_length=124)
+    host = CharField(default=lambda: os.uname()[1], max_length=128)
     pid = IntegerField(default=os.getpid)
     status = SmallPositiveIntegerField(
         choices=[(k, v) for k, v in DaemonStatus.STATUSES.iteritems()])
     date_started = DateTimeField(default=datetime.datetime.utcnow)
     date_ended = DateTimeField(null=True)
-    
+    queues = CharField(max_length=1024)

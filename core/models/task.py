@@ -60,7 +60,7 @@ class Iteration(Model):
         choices=[(k, v.title()) for k, v in Iteration.STATUSES.iteritems()])
     date_started = DateTimeField(default=datetime.datetime.utcnow)
     date_ended = DateTimeField(null=True)
-    daemon = ForeignKey('DaemonStatus', related_name='iterations')
+    daemon = ForeignKey('DaemonData', related_name='iterations')
     queue = ForeignKey('Queue', related_name='iterations')
     
 class Schedule(Model):
@@ -79,7 +79,7 @@ class Schedule(Model):
     queue = ForeignKey('Queue')
     next = DateTimeField(null=True)
     repetitions = PositiveIntegerField()
-    reps_left = 
+    reps_left = PositiveIntegerField()
     delay = PositiveIntegerField()
     
     def __init__(self, task, queue, start=0, reps=1, delay=0):
