@@ -19,10 +19,12 @@ class Daemon(Model):
     ]
     
     REQUEST_PAUSE = 1
-    REQUEST_STOP = 2
-    REQUEST_KILL = 3
+    REQUEST_UNPAUSE = 2
+    REQUEST_STOP = 5
+    REQUEST_KILL = 6
     REQUESTS = {
         Daemon.REQUEST_PAUSE: 'PAUSE',
+        Daemon.REQUEST_UNPAUSE: 'UNPAUSE'
         Daemon.REQUEST_STOP: 'STOP',
         Daemon.REQUEST_KILL: 'KILL',
     }
@@ -32,19 +34,25 @@ class Daemon(Model):
     
     # The host this daemon ran on.
     host = CharField(default=lambda: os.uname()[1], max_length=128)
+    
     # The process ID of the main daemon process.
     pid = IntegerField(default=os.getpid)
+    
     # The status of this daemon.
     status = SmallPositiveIntegerField(default=Status.RUNNING,
         choices=[(s, Status.NAMES[s]) for s in
             Daemon.VALID_STATUSES.iteritems()])
+    
     # A state-change request.
     request = SmallPositiveIntegerField(null=True,
         choices=[(k, v) for k, v in DaemonStatus.STATUSES.iteritems()])
+    
     # The date and time that the daemon was started.
     started = DateTimeField(default=datetime.datetime.utcnow)
+    
     # The date and time that the daemon was started.
     ended = DateTimeField(null=True)
+    
     # The queue this daemon draws task iterations from.
     queue_type = ForeignKey(ContentType)
     queue_id = PositiveIntegerField()
@@ -71,6 +79,7 @@ class Daemon(Model):
         except Exception:
             self.status = Status.ERROR
             self.log.error('Daemon suffered an internal error!', trace=True)
+        self.save()
     
     def run(self):
         """Core Daemon function.  Returns the exit status of the Daemon."""
@@ -85,6 +94,6 @@ class Daemon(Model):
         while run:
             # Check requests here.
             runnable = queue.pop()
-            self.log.debug("")
+            self.log.debug("Running: %s" % runnable)
             Process(target=runnable.start).start()
     

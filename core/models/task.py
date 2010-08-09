@@ -1,18 +1,20 @@
 
 """All basic task related models."""
 
-from datetime import datetime, timedelta
+import datetime
 
 from django.db.models import (Model,
     CharField,
     DateTimeField,
     IntegerField,
     PositiveIntegerField,
-    SmallPositiveIntegerField)
+    SmallPositiveIntegerField,
+    ForeignKey)
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
+from norc.core.constants import Status
 from norc.norc_utils.log import make_log
 
 class Task(Model):
@@ -28,10 +30,6 @@ class Task(Model):
     timeout = PositiveIntegerField(default=0)
     iterations = GenericRelation(Iteration)
     
-    def start(self, iteration):
-        """Initialize and run this Task."""
-        pass
-    
     def run(self):
         """The actual work of the Task."""
         raise NotImplementedError
@@ -43,51 +41,44 @@ class Iteration(Model):
     class Meta:
         app_label = 'core'
     
-    STATUSES = {
-        1: 'RUNNING',
-        2: 'COMPLETED',
-        3: 'ERROR',
-        4: 'TIMEDOUT',
-        # 5: 'RETRY',
-        # 6: 'CONTINUE',
-        # 7: 'SKIPPED',
-    }
+    VALID_STATUSES = [
+        Status.RUNNING,
+        Status.COMPLETED,
+        Status.ERROR,
+        Status.TIMEDOUT,
+    ]
     
-    task_ct = ForeignKey(ContentType)
-    task_id = PositiveIntegerField()
-    task = GenericForeignKey('task_ct', 'task_id', related_name='iterations')
-    schedule = ForeignKey(Schedule, null=True, related_name='iterations')
-    status = SmallPositiveIntegerField(default=1,
-        choices=[(k, v.title()) for k, v in Iteration.STATUSES.iteritems()])
+    # The object that spawned this iteration.
+    spawner_type = ForeignKey(ContentType)
+    spawner_id = PositiveIntegerField()
+    spawner = GenericForeignKey('spawner_type', 'spawner_id')
+    
+    # The status of the execution.
+    status = SmallPositiveIntegerField(default=Status.RUNNING,
+        choices=[(s, Status.NAMES[s]) for s in
+            Iteration.VALID_STATUSES.iteritems()])
+    
+    # The date the iteration started.
     date_started = DateTimeField(default=datetime.datetime.utcnow)
+    
+    # The date the iteration ended.
     date_ended = DateTimeField(null=True)
+    
+    # The daemon executing this iteration.
     daemon = ForeignKey('Daemon', related_name='iterations')
     
-    def run(self):
-        self.task.start()
-
-class Schedule(Model):
+    # The schedule from whence this spawned.
+    schedule = ForeignKey(Schedule, null=True, related_name='iterations')
     
-    class Meta:
-        app_label = 'core'
+    # Flag for when this iteration is claimed by a Scheduler.
+    claimed = BooleanField(default=False)
     
-    STATUSES = {
-        1: 'ACTIVE',
-        2: 'COMPLETE',
-    }
+    def save(self):
+        Model.save(self)
+        self.log = make_log()
     
-    task_type = ForeignKey(ContentType)
-    task_id = PositiveIntegerField()
-    task = GenericForeignKey('task_type', 'task_id')
-    queue = ForeignKey('Queue')
-    next = DateTimeField(null=True)
-    repetitions = PositiveIntegerField()
-    reps_left = PositiveIntegerField()
-    delay = PositiveIntegerField()
-    
-    def __init__(self, task, queue, start=0, reps=1, delay=0):
-        if not type(start) == datetime:
-            start = datetime.utcnow() + timedelta(seconds=start)
-        Model.__init__(self, task=task, queue=queue, next=start,
-            repetitions=reps, reps_left=reps, delay=delay)
+    def start(self):
+        """Starts this iteration."""
+        if Status.is_final(self.status):
+            
     
