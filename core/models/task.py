@@ -35,6 +35,7 @@ class Task(Model):
     def run(self):
         """The actual work of the Task."""
         raise NotImplementedError
+    
 
 class Iteration(Model):
     """One iteration (run) of a Task."""
@@ -60,9 +61,11 @@ class Iteration(Model):
         choices=[(k, v.title()) for k, v in Iteration.STATUSES.iteritems()])
     date_started = DateTimeField(default=datetime.datetime.utcnow)
     date_ended = DateTimeField(null=True)
-    daemon = ForeignKey('DaemonData', related_name='iterations')
-    queue = ForeignKey('Queue', related_name='iterations')
+    daemon = ForeignKey('Daemon', related_name='iterations')
     
+    def run(self):
+        self.task.start()
+
 class Schedule(Model):
     
     class Meta:

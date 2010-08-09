@@ -1,8 +1,11 @@
 class Scheduler(object):
     
+    class Meta:
+        app_label = 'core'
+    
     def __init__(self):
-        """docstring for __init"""
-        pass
         
+        pass
+    
     def start(self):
         pass
