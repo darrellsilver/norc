@@ -48,8 +48,7 @@ from optparse import OptionParser
 
 from norc.core import report
 from norc.core.models import NorcDaemonStatus, TaskRunStatus
-from norc.norc_utils import formatting, parsing, log
-log = log.Log()
+from norc.norc_utils import formatting, parsing
 
 def report_daemon_statuses(status_filter=None, since_date=None):
     tabular = [["ID", "Type", "Region", "Host", "PID", "Running",
@@ -65,9 +64,9 @@ def report_daemon_statuses(status_filter=None, since_date=None):
             nds.region.get_name(),
             nds.host,
             nds.pid,
-            len(nds.get_task_statuses('running', since_date)),
-            len(nds.get_task_statuses('success', since_date)),
-            len(nds.get_task_statuses('errored', since_date)),
+            nds.get_task_statuses('running', since_date).count(),
+            nds.get_task_statuses('success', since_date).count(),
+            nds.get_task_statuses('errored', since_date).count(),
             nds.get_status(),
             nds.date_started,
             nds.date_ended if nds.is_done() else '-']
@@ -207,9 +206,6 @@ def main():
         help="Turns on debugging.")
     (options, args) = parser.parse_args()
     
-    if options.debug:
-        log.set_logging_debug(options.debug)
-    
     #if not options.status and not options.details \
     #    and not options.pause and not options.stop and not options.kill \
     #    and not options.salvage and not options.delete:
@@ -250,22 +246,22 @@ def main():
         if options.delete:
             if not options.force and not nds.is_done_with_error():
                 raise Exception("norcd %s cannot be deleted because it has status %s. Use --force to override." % (nds.id, nds.get_status()))
-            log.info("Deleting norcd %s" % (nds))
+            print "Deleting norcd %s" % (nds)
             nds.set_status(NorcDaemonStatus.STATUS_DELETED)
         elif options.salvage:
-            log.info("Salvaging norcd %s" % (nds))
+            print "Salvaging norcd %s" % (nds)
             nds.set_status(NorcDaemonStatus.STATUS_RUNNING)
         elif options.pause or options.stop or options.kill:
             if nds.is_done():
-                raise Exception("norcd %s is not running.  It cannot be shutdown or paused." % (nds.id))
+                raise Exception("norcd %s is not running.  It cannot be shutdown or paused." % nds.id
             if options.pause:
-                log.info("Sending pause request to norcd %s" % (nds))
+                print "Sending pause request to norcd %s" % nds
                 nds.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED)
             elif options.stop:
-                log.info("Sending stop request to norcd %s" % (nds))
+                print "Sending stop request to norcd %s" % nds
                 nds.set_status(NorcDaemonStatus.STATUS_STOPREQUESTED)
             elif options.kill:
-                log.info("Sending kill request to norcd %s" % (nds))
+                print "Sending kill request to norcd %s" % nds
                 nds.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED)
             if options.wait:
                 seconds_waited = 0
@@ -276,16 +272,16 @@ def main():
                         break
                     nds = report.nds(nds_id)
                     if nds.is_shutting_down():
-                        log.info("Waiting for shutdown of norcd %s.  It's been %s seconds." % (nds.id, seconds_waited), indent_chars=4)
+                        print "Waiting for shutdown of norcd %s.  It's been %s seconds." % (nds.id, seconds_waited)
                     elif nds.is_done():
-                        log.info("norcd %s is done with status '%s'" % (nds.id, nds.get_status()))
+                        print "norcd %s is done with status '%s'" % (nds.id, nds.get_status())
                         break
                     else:
-                        raise Exception("norcd %s shutdown was requested but not honored or was overwritten in DB. This is bad, but try \"kill <pid>\" directly." % (tms.id))
+                        raise Exception("norcd %s shutdown was requested but not honored or was overwritten in DB. This is bad, but try \"kill <pid>\" directly." % (tms.id)
                     time.sleep(WAIT_POLL_SECONDS)
                     seconds_waited += WAIT_POLL_SECONDS
                 if timeout:
-                    log.info("Timeout reached waiting for norcd %s to finish.  Check process id %s on host '%s'" % (nds.id, nds.pid, nds.host))
+                    print "Timeout reached waiting for norcd %s to finish.  Check process id %s on host '%s'" % (nds.id, nds.pid, nds.host)
                     sys.exit(1)    
     
     #if options.status or len(selected_flags) == 0:

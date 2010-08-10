@@ -70,11 +70,11 @@ DataDefinition(
         'region': lambda nds, _: nds.region.name,
         'host': lambda nds, _: nds.host,
         'pid': lambda nds, _: nds.pid,
-        'running': lambda nds, _: len(report.trss(nds, 'running')),
-        'success': lambda nds, GET: len(report.trss(nds, 'success',
-                                        parse_since(GET.get('since')))),
-        'errored': lambda nds, GET: len(report.trss(nds, 'errored',
-                                        parse_since(GET.get('since')))),
+        'running': lambda nds, _: report.trss(nds, 'running').count(),
+        'success': lambda nds, GET: report.trss(nds, 'success', parse_since(
+                                                GET.get('since'))).count(),
+        'errored': lambda nds, GET: report.trss(nds, 'errored', parse_since(
+                                                GET.get('since'))).count(),
         'status': lambda nds, _: nds.status,
         'started': lambda nds, _: nds.date_started,
         'ended': date_ended_getter,
