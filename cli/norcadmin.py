@@ -64,9 +64,9 @@ def report_daemon_statuses(status_filter=None, since_date=None):
             nds.region.get_name(),
             nds.host,
             nds.pid,
-            nds.get_task_statuses('running', since_date).count(),
-            nds.get_task_statuses('success', since_date).count(),
-            nds.get_task_statuses('errored', since_date).count(),
+            report.trss(nds, 'running', since_date).count(),
+            report.trss(nds, 'success', since_date).count(),
+            report.trss(nds, 'errored', since_date).count(),
             nds.get_status(),
             nds.date_started,
             nds.date_ended if nds.is_done() else '-']
@@ -253,7 +253,7 @@ def main():
             nds.set_status(NorcDaemonStatus.STATUS_RUNNING)
         elif options.pause or options.stop or options.kill:
             if nds.is_done():
-                raise Exception("norcd %s is not running.  It cannot be shutdown or paused." % nds.id
+                raise Exception("norcd %s is not running.  It cannot be shutdown or paused." % nds.id)
             if options.pause:
                 print "Sending pause request to norcd %s" % nds
                 nds.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED)
@@ -277,7 +277,7 @@ def main():
                         print "norcd %s is done with status '%s'" % (nds.id, nds.get_status())
                         break
                     else:
-                        raise Exception("norcd %s shutdown was requested but not honored or was overwritten in DB. This is bad, but try \"kill <pid>\" directly." % (tms.id)
+                        raise Exception("norcd %s shutdown was requested but not honored or was overwritten in DB. This is bad, but try \"kill <pid>\" directly." % (tms.id))
                     time.sleep(WAIT_POLL_SECONDS)
                     seconds_waited += WAIT_POLL_SECONDS
                 if timeout:
@@ -289,14 +289,14 @@ def main():
     #
     # report on status
     #
-    
-    report_daemon_statuses(options.filter, since_date=options.started_since)
+    since = parsing.parse_since(options.started_since)
+    report_daemon_statuses(options.filter, since_date=since)
     if options.details:
         nds_id = options.details
         nds = report.nds(nds_id)
         #daemon_type = nds.get_daemon_type()
         #if daemon_type == NorcDaemonStatus.DAEMON_TYPE_NORC:
-        report_norcd_details(nds, options.filter, options.started_since)
+        report_norcd_details(nds, options.filter, since)
         #elif daemon_type == NorcDaemonStatus.DAEMON_TYPE_SQS:
         #    report_sqsd_details(options.filter, nds, options.started_since)
         #else:

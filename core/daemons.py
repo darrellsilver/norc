@@ -322,7 +322,7 @@ class ThreadedTaskLogger(object):
     def _get_daemon_log_file_name(self):
         assert not self.daemon_id_for_log == None, \
             "daemon_id_for_log is None! BUG!"
-        fp = "%s/_norcd/norcd%s" % (self.__log_dir, self.daemon_id_for_log)
+        fp = "%s_norcd/norcd%s" % (self.__log_dir, self.daemon_id_for_log)
         return fp
     
     def _get_log_file(self, fp):

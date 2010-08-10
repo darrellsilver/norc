@@ -1,4 +1,18 @@
 
+
+
+Norc Release v1.1.2
+===================
+
+## Tweaks:
+  - Fixed (or at least greatly improved) the horrible slowness of the
+    daemons table in the frontend by switching from len(queryset) to
+    queryset.count().
+
+## Bug Fixes:
+  - Fixed the norc utility's displaying of SQS task counts.
+
+
 Norc Release v1.1.1
 ===================
 
@@ -11,7 +25,6 @@ Norc Release v1.1.1
     recognizing daemons as SQS or NORC.
   - Half fixed the weird expanding cell bug when using the daemon control
     slideout.  Now there may be a 1px shift.
-
 
 
 Norc Release v1.1
