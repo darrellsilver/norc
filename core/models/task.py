@@ -15,6 +15,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc.core.constants import Status
+from norc.core.exceptions import StateException
 from norc.norc_utils.log import make_log
 
 class Task(Model):
@@ -35,50 +36,76 @@ class Task(Model):
         raise NotImplementedError
     
 
-class Iteration(Model):
+class AbstractIteration(Model):
     """One iteration (run) of a Task."""
     
     class Meta:
         app_label = 'core'
+        abstract = True
     
     VALID_STATUSES = [
+        Status.CREATED
         Status.RUNNING,
-        Status.COMPLETED,
+        Status.SUCCESS,
+        Stauts.FAILURE,
         Status.ERROR,
         Status.TIMEDOUT,
     ]
     
     # The object that spawned this iteration.
-    spawner_type = ForeignKey(ContentType)
-    spawner_id = PositiveIntegerField()
-    spawner = GenericForeignKey('spawner_type', 'spawner_id')
+    source_type = ForeignKey(ContentType)
+    source_id = PositiveIntegerField()
+    source = GenericForeignKey('source_type', 'source_id')
     
     # The status of the execution.
-    status = SmallPositiveIntegerField(default=Status.RUNNING,
+    status = SmallPositiveIntegerField(default=Status.CREATED,
         choices=[(s, Status.NAMES[s]) for s in
             Iteration.VALID_STATUSES.iteritems()])
     
-    # The date the iteration started.
-    date_started = DateTimeField(default=datetime.datetime.utcnow)
+    # The date the iteration started/is to start.
+    start_date = DateTimeField(default=datetime.datetime.utcnow)
     
     # The date the iteration ended.
-    date_ended = DateTimeField(null=True)
+    end_date = DateTimeField(null=True)
     
-    # The daemon executing this iteration.
-    daemon = ForeignKey('Daemon', related_name='iterations')
+    # The daemon that executed/is executing this iteration.
+    daemon = ForeignKey('Daemon', related_name='iterations', null=True)
+    
+    def save(self):
+        Model.save(self)
+        # self.log = make_log(...)
+    
+    def start(self):
+        """Starts this iteration."""
+        if Status.is_final(self.status):
+            raise StateException("Can't start an iteration that is " +
+                "already in a final state.")
+        log = make_log(self.log_path)
+        log.start_redirect()
+        try:
+            success = self.source.run()
+            if success == None or success:
+                self.status = Status.SUCCESS
+            else:
+                self.status = Status.FAILURE
+        except Exception:
+            log.error("Task failed with an exception!", trace=True)
+            self.status = Status.ERROR
+        except:
+            log.error("Task failed with a poorly thrown exception!",
+                trace=True)
+            self.status = Status.ERROR
+        finally:
+            log.stop_redirect()
+            self.save()
+            
+    
+
+class Iteration(AbstractIteration):
     
     # The schedule from whence this spawned.
     schedule = ForeignKey(Schedule, null=True, related_name='iterations')
     
     # Flag for when this iteration is claimed by a Scheduler.
     claimed = BooleanField(default=False)
-    
-    def save(self):
-        Model.save(self)
-        self.log = make_log()
-    
-    def start(self):
-        """Starts this iteration."""
-        if Status.is_final(self.status):
-            
     

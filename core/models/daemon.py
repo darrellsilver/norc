@@ -1,6 +1,7 @@
 
 from multiprocessing import Process, Pool, TimeoutError
 
+from norc.core.models.queue import Queue
 from norc.core.constants import Status
 from norc.norc_utils.log import make_log
 
@@ -59,6 +60,8 @@ class Daemon(Model):
     queue = GenericForeignKey(queue_type, queue_id)
     
     def __init__(self, queue, **kwargs):
+        if type(queue) == str:
+            queue = Queue.get(queue)
         Model.__init__(self, queue=queue, **kwargs)
         self.save()
         self.log = make_log('daemons/daemon-%s' % self.id)

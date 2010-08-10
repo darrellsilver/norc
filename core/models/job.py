@@ -12,40 +12,42 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 
 from norc.core.constants import Status
 from norc.core.models.task import Task, Iteration
-
-def queryset_exists(q):
-    try:
-        q[0]
-        return True
-    except IndexError:
-        return False
+from norc.norc_utils.django_extras import queryset_exists
 
 class Job(Task):
+    """A Task composed of running several other Tasks."""
     
     def _get_start_nodes(self):
         start_nodes = []
         for n in self.nodes:
             if queryset_exists(Dependency.objects.filter(child=n)):
-                start_nodes.push(n)
+                start_nodes.append(n)
         return start_nodes
     start_nodes = property(_get_start_nodes)
     
     def run(self, iteration):
-        """Enqueue all nodes that don't have dependencies."""
+        """Enqueue iterations for all nodes that don't have dependencies."""
         for n in self.start_nodes:
-            node_iter = NodeIteration(job_iter=iteration, spawner=n,
+            node_iter = NodeIteration(job_iter=iteration, source=n,
                 daemon=iteration.daemon, schedule=iteration.schedule)
+            node_iter.save()
             iteration.schedule.queue.push(node_iter)
     
 
 class JobIteration(Iteration):
     
-    def finished_check(self):
-        pass
+    class Meta(Iteration.Meta):
+        proxy = True
     
-    def finished(self):
+    def completion_check(self):
+        if self.source.nodes.count() == self.node_iters.filter(
+                                            status=Status.SUCCESS).count():
+            self.complete()
+    
+    def complete(self):
         """Called when all of this Job's TaskNodes have run."""
         pass
+    
 
 class TaskNode(Model):
     
@@ -64,12 +66,10 @@ class TaskNode(Model):
     
 
 class NodeIteration(Iteration):
+    """Node iterations need to be attached to their JobIteration."""
     
-    job_iter = ForeignKey(Iteration, related_name='nodes')
+    job_iter = ForeignKey(JobIteration, related_name='node_iters')
     
-    def start(self):
-        Iteration.start(self)
-        
 
 class Dependency(Model):
     """One task Node's dependency on another.
@@ -77,7 +77,6 @@ class Dependency(Model):
     Represents an edge in the job's dependency digraph.
     
     """
-    
     class Meta:
         app_label = 'core'
     

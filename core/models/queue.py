@@ -4,8 +4,8 @@
 import datetime, time
 
 from norc.core import TimedoutException
-from norc.core.constants import QUEUES
 
+# Note: I don't know if this is actually going to be needed at all.
 class QueueName(Model):
     """Name of a queue and a link to its implementation.
     
@@ -25,6 +25,7 @@ class QueueName(Model):
 class Queue(Model):
     """Abstract concept of a queue."""
     
+    # Note: I don't know if this is actually going to be needed at all.
     @staticmethod
     def get(name):
         try:
