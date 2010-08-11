@@ -36,7 +36,7 @@ def get_data(request, content_type, content_id=None):
     else:
         data_key = ddef.detail_key
         # Turrible temporary hackage to get SQS stuff on the frontend.
-        if data_key == 'tasks':
+        if content_type == 'daemons' and data_key == 'tasks':
             d = report.nds(content_id)
             if d.get_daemon_type() == 'SQS':
                 data_key = 'sqstasks'
