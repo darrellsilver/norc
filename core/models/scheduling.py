@@ -2,27 +2,25 @@
 from datetime import datetime, timedelta
 
 from django.db.models import (Model, Manager,
-    CharField,
+    BooleanField,
     DateTimeField,
-    IntegerField,
     PositiveIntegerField,
-    SmallPositiveIntegerField,
     ForeignKey)
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc.core.constants import Status, SCHEDULER_FREQUENCY, SCHEDULER_LIMIT
-from norc.norc_utils.threading import MultiTimer
+from norc.norc_utils.parallel import MultiTimer
+
+class ScheduleManager(Manager):
+    def unclaimed(self):
+        return self.filter(scheduler__isnull=True)
 
 class Schedule(Model):
     """A schedule of executions for a specific task."""
     
-    class Manager(Manager):
-        def unclaimed(self):
-            return self.filter(scheduler__isnull=True)
-
-    objects = Schedule.Manager()
+    objects = ScheduleManager()
     
     class Meta:
         app_label = 'core'
@@ -30,10 +28,10 @@ class Schedule(Model):
     # The Task this is a schedule for.
     task_type = ForeignKey(ContentType)
     task_id = PositiveIntegerField()
-    task = GenericForeignKey('task_type', 'task_id')
+    task = GenericForeignKey(task_type, task_id)
     
     # The Queue to execute the Task through.
-    queue_type = ForeignKey(ContentType)
+    queue_type = ForeignKey(ContentType, related_name='schedule_set2')
     queue_id = PositiveIntegerField()
     queue = GenericForeignKey(queue_type, queue_id)
     
@@ -50,7 +48,7 @@ class Schedule(Model):
     next = DateTimeField(null=True)
     
     # The Scheduler that has scheduled the next execution.
-    scheduler = ForeignKey(Scheduler, null=True, related_name='schedules')
+    scheduler = ForeignKey('Scheduler', null=True, related_name='schedules')
     
     def __init__(self, task, queue, start=0, reps=1, delay=0):
         if not type(start) == datetime:
@@ -59,6 +57,7 @@ class Schedule(Model):
             repetitions=reps, remaining=reps, delay=delay)
     
     def enqueued(self):
+        """Called when the next iteration has been enqueued."""
         if self.repetitions > 0:
             self.remaining -= 1
         if not self.finished():
@@ -69,7 +68,8 @@ class Schedule(Model):
         # self.save()
     
     def finished(self):
-        return  self.remaining == 0 and self.repetitions > 0
+        """Checks whether all runs of the Schedule have been completed."""
+        return self.remaining == 0 and self.repetitions > 0
 
 # TODO: Should Scheduler have a log?  Probably.
 class Scheduler(Model):
@@ -98,7 +98,7 @@ class Scheduler(Model):
         for some N > 1 (preferably with a decent amount of margin). 
         
         """
-        return self.active and self.heartbeat >
+        return self.active and self.heartbeat > \
             datetime.utcnow() - timedelta(seconds=(SCHEDULER_FREQUENCY * 1.5))
     
     def start(self):

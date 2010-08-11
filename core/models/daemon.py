@@ -1,8 +1,21 @@
 
-from multiprocessing import Process, Pool, TimeoutError
+import os
+from datetime import datetime
+from multiprocessing import Process, Event, TimeoutError
+
+from django.db.models import (Model, Manager,
+    CharField,
+    DateTimeField,
+    IntegerField,
+    PositiveIntegerField,
+    PositiveSmallIntegerField,
+    ForeignKey)
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.generic import (GenericRelation,
+                                                 GenericForeignKey)
 
 from norc.core.models.queue import Queue
-from norc.core.constants import Status
+from norc.core.constants import Status, CONCURRENCY_LIMIT
 from norc.norc_utils.log import make_log
 
 
@@ -24,10 +37,10 @@ class Daemon(Model):
     REQUEST_STOP = 5
     REQUEST_KILL = 6
     REQUESTS = {
-        Daemon.REQUEST_PAUSE: 'PAUSE',
-        Daemon.REQUEST_UNPAUSE: 'UNPAUSE'
-        Daemon.REQUEST_STOP: 'STOP',
-        Daemon.REQUEST_KILL: 'KILL',
+        REQUEST_PAUSE: 'PAUSE',
+        REQUEST_UNPAUSE: 'UNPAUSE',
+        REQUEST_STOP: 'STOP',
+        REQUEST_KILL: 'KILL',
     }
     
     class Meta:
@@ -40,16 +53,15 @@ class Daemon(Model):
     pid = IntegerField(default=os.getpid)
     
     # The status of this daemon.
-    status = SmallPositiveIntegerField(default=Status.RUNNING,
-        choices=[(s, Status.NAMES[s]) for s in
-            Daemon.VALID_STATUSES.iteritems()])
+    status = PositiveSmallIntegerField(default=Status.RUNNING,
+        choices=[(s, Status.NAMES[s]) for s in VALID_STATUSES])
     
     # A state-change request.
-    request = SmallPositiveIntegerField(null=True,
-        choices=[(k, v) for k, v in DaemonStatus.STATUSES.iteritems()])
+    request = PositiveSmallIntegerField(null=True,
+        choices=[(k, v) for k, v in REQUESTS.iteritems()])
     
     # The date and time that the daemon was started.
-    started = DateTimeField(default=datetime.datetime.utcnow)
+    started = DateTimeField(default=datetime.utcnow)
     
     # The date and time that the daemon was started.
     ended = DateTimeField(null=True)
@@ -65,6 +77,9 @@ class Daemon(Model):
         Model.__init__(self, queue=queue, **kwargs)
         self.save()
         self.log = make_log('daemons/daemon-%s' % self.id)
+        self.flag = Event()
+        self.processes = set()
+        self.accepting = True
     
     def update_request(self):
         """Updates the request field from the database.
@@ -76,7 +91,7 @@ class Daemon(Model):
         self.request = Daemon.objects.get(id=self.id).request
     
     def start(self):
-        """Starts the daemon."""
+        """Starts the daemon.  Mostly just a wrapper for run()."""
         try:
             self.status = self.run()
         except Exception:
@@ -86,17 +101,63 @@ class Daemon(Model):
     
     def run(self):
         """Core Daemon function.  Returns the exit status of the Daemon."""
-        if not hasattr(self, 'log'):
-            self.log.error('You must save the Daemon before starting it.')
+        # Preconditions:
+        if not hasattr(self, 'id'):
+            print "You must save the Daemon before starting it."
             return Status.ERROR
         if settings.DEBUG:
             self.log.info("WARNING, DEBUG is True, which means Django " +
                 "will gobble memory as it stores all database queries.")
-        # Check status not final here.
-        run = True
-        while run:
-            # Check requests here.
-            runnable = queue.pop()
-            self.log.debug("Running: %s" % runnable)
-            Process(target=runnable.start).start()
+        if self.status != Status.CREATED:
+            self.log.error("Can't start a Daemon that's already been run.")
+            return Status.ERROR
+        # Main loop.
+        self.run = True
+        while self.run:
+            self.update_request()
+            if self.request:
+                self.handle_request()
+            elif self.accepting and len(self.processes) < CONCURRENCY_LIMIT:
+                runnable = self.queue.pop(timeout=5)
+                if runnable:
+                    self.log.debug("Running: %s" % runnable)
+                    p = Process(target=runnable.run)
+                    p.start()
+                    self.processes.add(p)
+            else:
+                self.flag.clear()
+                self.flag.wait(5)
+            # Cleanup before iterating.
+            for p in self.processes:
+                if not p.is_alive():
+                    self.processes.remove(p)
     
+    def handle_request(self):
+        self.log.info("Request received: %s" %
+                      Daemon.REQUESTS[self.request])
+        if self.request == Daemon.REQUEST_PAUSE:
+            self.status = Status.PAUSED
+            self.request = None
+            self.accepting = False
+        elif self.request == Daemon.REQUEST_UNPAUSE:
+            if self.status != Status.PAUSED:
+                self.log.info(
+                    "Must be paused to unpause; clearing request.")
+                self.request = None
+            else:
+                self.status = Status.RUNNING
+                self.request = None
+                self.accepting = True
+        elif self.request == Daemon.REQUEST_STOP:
+            self.accepting = False
+            if len(self.processes) == 0:
+                self.status = Status.ENDED
+                self.request = None
+                self.run = False
+        elif self.request == Daemon.REQUEST_KILL:
+            self.accept = False
+            for p in self.processes:
+                p.terminate()
+            self.status = Status.KILLED
+            self.run = False
+        self.save()

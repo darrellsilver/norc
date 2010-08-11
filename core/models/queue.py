@@ -3,7 +3,17 @@
 
 import datetime, time
 
+from django.db.models import (Model, Manager,
+    CharField,
+    DateTimeField,
+    PositiveIntegerField,
+    ForeignKey)
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.generic import (GenericRelation,
+                                                 GenericForeignKey)
+
 from norc.core import TimedoutException
+from norc.norc_utils.django_extras import queryset_exists
 
 # Note: I don't know if this is actually going to be needed at all.
 class QueueName(Model):
@@ -16,7 +26,7 @@ class QueueName(Model):
     class Meta:
         app_label = 'core'
     
-    name = CharField(unique=true)
+    name = CharField(unique=True, max_length=64)
     impl_type = ForeignKey(ContentType)
     impl_id = PositiveIntegerField()
     impl = GenericForeignKey('impl_type', 'impl_id')
@@ -29,7 +39,7 @@ class Queue(Model):
     @staticmethod
     def get(name):
         try:
-            return QueueName.objects.get(name=name)
+            return QueueName.objects.get(name=name).impl
         except QueueName.DoesNotExist:
             return None
     
@@ -37,22 +47,26 @@ class Queue(Model):
         app_label = 'core'
         abstract = True
     
-    name = CharField(unique=true)
+    name = CharField(unique=True, max_length=64)
     
-    def __init__(self, name):
-        Model.__init__(name=name)
-        QueueName(name=name, impl=self).save()
-        self.save()
+    # def __init__(self, name, *args, **kwargs):
+    #     Model.__init__(self, name=name)
+    #     QueueName.objects.get_or_create(name=name, impl=self)
     
     def peek(self):
         raise NotImplementedError
     
-    def pop(self):
+    def pop(self, timeout=None):
         raise NotImplementedError
     
     def push(self, item):
         raise NotImplementedError
     
+    def __unicode__(self):
+        return u"%s: %s" % (self.__class__.__name__, self.name)
+    
+    __repr__ = __unicode__
+
 
 class DBQueue(Queue):
     """A distributed queue implementation that uses the Norc database.
@@ -61,8 +75,6 @@ class DBQueue(Queue):
     indepedent distributed queueing system, like Amazon's SQS.
     
     """
-    class Meta:
-        app_label = 'core'
     
     # How frequently the database should be checked when waiting for an item.
     FREQUENCY = 1
@@ -93,7 +105,7 @@ class DBQueue(Queue):
                 time.sleep(DBQueue.FREQUENCY)
                 waited += DBQueue.FREQUENCY
                 if timeout and waited > timeout:
-                    raise TimeoutException()
+                    return None
         next.delete()
         return next.item
     
@@ -101,7 +113,6 @@ class DBQueue(Queue):
         """Adds an item to the queue."""
         DBQueueItem(dbqueue=self, item=item).save()
     
-
 class DBQueueItem(Model):
     """An item in a DBQueue."""
     
@@ -111,10 +122,12 @@ class DBQueueItem(Model):
     
     # The queue this item is a part of.
     dbqueue = ForeignKey(DBQueue, related_name='items')
+    
     # The item being enqueued.
     item_type = ForeignKey(ContentType)
     item_id = PositiveIntegerField()
     item = GenericForeignKey('item_type', 'item_id')
+    
     # The datetime at which this item was enqueued.
     enqueued = DateTimeField(default=datetime.datetime.utcnow)
     
