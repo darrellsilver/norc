@@ -33,33 +33,53 @@ class Task(Model):
     
     def start(self, iteration):
         """Starts the given iteration.."""
+        self.log = make_log(iteration.log_path)
         if iteration.status != Status.CREATED:
-            raise StateException("Can't start an iteration more than once.")
-        log = make_log(iteration.log_path)
-        log.start_redirect()
+            self.log.error("Can't start an iteration more than once.")
+            return
+        for signum in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
+            signal.signal(signum, lambda n, f: self.kill_handler(iteration))
+        if self.timeout > 0:
+            signal.signal(signal.SIGALRM,
+                lambda n, f: self.timeout_handler(iteration))
+            signal.alarm(self.timeout)
+        self.log.start_redirect()
         try:
             success = self.run()
         except Exception:
-            log.error("Task failed with an exception!", trace=True)
-            iteration.status = Status.ERROR
-        except:
-            log.error("Task failed with a poorly thrown exception!",
-                trace=True)
+            self.log.error("Task failed with an exception!", trace=True)
             iteration.status = Status.ERROR
         else:
-            if success == None or success:
-                iteration.status = Status.SUCCESS
-            else:
+            if success == False:
                 iteration.status = Status.FAILURE
+            else:
+                iteration.status = Status.SUCCESS
         finally:
-            log.info("Task ended with status %s." %
+            self.log.info("Task ended with status %s." %
                 Status.NAMES[iteration.status])
-            log.stop_redirect()
+            self.log.stop_redirect()
             iteration.save()
     
     def run(self):
         """The actual work of the Task."""
         raise NotImplementedError
+    
+    def kill_handler(self, iteration):
+        self.log.error("Kill signal received!  Setting status to INTERRUPTED.")
+        iteration.status = Status.INTERRUPTED
+        iteration.save()
+        sys.exit(1)
+    
+    def timeout_handler(self, iteration):
+        self.log.info("Task timed out!  Ceasing execution.")
+        iteration.status = Status.TIMEDOUT
+        iteration.save()
+        sys.exit(0)
+    
+    def __unicode__(self):
+        return u"%s '%s'" % (self.__class__.__name__, self.name)
+    
+    __repr__ = __unicode__
     
 
 class BaseIteration(Model):
@@ -74,9 +94,10 @@ class BaseIteration(Model):
         Status.RUNNING,
         Status.SUCCESS,
         Status.FAILURE,
-        Status.ERROR,
-        Status.TIMEOUT,
         Status.HANDLED,
+        Status.ERROR,
+        Status.TIMEDOUT,
+        Status.INTERRUPTED,
     ]
     
     # The object that spawned this iteration.
@@ -99,6 +120,12 @@ class BaseIteration(Model):
     
     def run(self):
         self.source.start(self)
+    
+    def __unicode__(self):
+        return u"Iteration of %s, #%s" % (self.source, self.id)
+    
+    __repr__ = __unicode__
+    
 
 class Iteration(BaseIteration):
     

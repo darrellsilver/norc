@@ -15,43 +15,37 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 from norc.core import TimedoutException
 from norc.norc_utils.django_extras import queryset_exists
 
-# Note: I don't know if this is actually going to be needed at all.
-class QueueName(Model):
-    """Name of a queue and a link to its implementation.
+from django.db.models.base import ModelBase
+
+class MetaQueue(ModelBase):
     
-    Used to enforce all queues having unique names; should never
-    need to be known about from outside this file.
+    IMPLEMENTATIONS = []
     
-    """
-    class Meta:
-        app_label = 'core'
-    
-    name = CharField(unique=True, max_length=64)
-    impl_type = ForeignKey(ContentType)
-    impl_id = PositiveIntegerField()
-    impl = GenericForeignKey('impl_type', 'impl_id')
+    def __init__(self, name, bases, attrs):
+        ModelBase.__init__(self, name, bases, attrs)
+        if name != 'Queue':
+            MetaQueue.IMPLEMENTATIONS.append(self)
     
 
 class Queue(Model):
     """Abstract concept of a queue."""
     
+    __metaclass__ = MetaQueue
+    
     # Note: I don't know if this is actually going to be needed at all.
     @staticmethod
     def get(name):
-        try:
-            return QueueName.objects.get(name=name).impl
-        except QueueName.DoesNotExist:
-            return None
+        for QueueClass in MetaQueue.IMPLEMENTATIONS:
+            try:
+                return QueueClass.objects.get(name=name)
+            except QueueClass.DoesNotExist:
+                pass
     
     class Meta:
         app_label = 'core'
         abstract = True
     
     name = CharField(unique=True, max_length=64)
-    
-    # def __init__(self, name, *args, **kwargs):
-    #     Model.__init__(self, name=name)
-    #     QueueName.objects.get_or_create(name=name, impl=self)
     
     def peek(self):
         raise NotImplementedError
@@ -63,7 +57,7 @@ class Queue(Model):
         raise NotImplementedError
     
     def __unicode__(self):
-        return u"%s: %s" % (self.__class__.__name__, self.name)
+        return u"%s '%s'" % (self.__class__.__name__, self.name)
     
     __repr__ = __unicode__
 
@@ -86,7 +80,7 @@ class DBQueue(Queue):
         
         """
         try:
-            return self.items[0].item
+            return self.items.all()[0].item
         except IndexError:
             return None
     
@@ -100,7 +94,7 @@ class DBQueue(Queue):
         waited = 0
         while next == None:
             try:
-                next = self.items[0]
+                next = self.items.all()[0]
             except IndexError:
                 time.sleep(DBQueue.FREQUENCY)
                 waited += DBQueue.FREQUENCY

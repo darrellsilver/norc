@@ -1,6 +1,8 @@
 
 import os
-from datetime import datetime
+import sys
+import signal
+from datetime import datetime, timedelta
 from multiprocessing import Process, Event, TimeoutError
 
 from django.db.models import (Model, Manager,
@@ -17,19 +19,21 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 from norc.core.models.queue import Queue
 from norc.core.constants import Status, CONCURRENCY_LIMIT
 from norc.norc_utils.log import make_log
+from norc import settings
 
-
+HANDLED_SIGNALS = [signal.SIGINT, signal.SIGTERM]
 
 class Daemon(Model):
     """Daemons are responsible for the running of Tasks."""
     
     VALID_STATUSES = [
+        Status.CREATED,
         Status.RUNNING,
         Status.PAUSED,
+        Status.STOPPING,
         Status.ENDED,
         Status.ERROR,
         Status.KILLED,
-        Status.DELETED,
     ]
     
     REQUEST_PAUSE = 1
@@ -53,7 +57,7 @@ class Daemon(Model):
     pid = IntegerField(default=os.getpid)
     
     # The status of this daemon.
-    status = PositiveSmallIntegerField(default=Status.RUNNING,
+    status = PositiveSmallIntegerField(default=Status.CREATED,
         choices=[(s, Status.NAMES[s]) for s in VALID_STATUSES])
     
     # A state-change request.
@@ -69,17 +73,12 @@ class Daemon(Model):
     # The queue this daemon draws task iterations from.
     queue_type = ForeignKey(ContentType)
     queue_id = PositiveIntegerField()
-    queue = GenericForeignKey(queue_type, queue_id)
+    queue = GenericForeignKey('queue_type', 'queue_id')
     
-    def __init__(self, queue, **kwargs):
-        if type(queue) == str:
-            queue = Queue.get(queue)
-        Model.__init__(self, queue=queue, **kwargs)
-        self.save()
-        self.log = make_log('daemons/daemon-%s' % self.id)
+    def __init__(self, *args, **kwargs):
+        Model.__init__(self, *args, **kwargs)
         self.flag = Event()
-        self.processes = set()
-        self.accepting = True
+        self.processes = {}
     
     def update_request(self):
         """Updates the request field from the database.
@@ -89,75 +88,128 @@ class Daemon(Model):
         
         """
         self.request = Daemon.objects.get(id=self.id).request
+        return self.request
     
     def start(self):
         """Starts the daemon.  Mostly just a wrapper for run()."""
+        if not hasattr(self, 'id'):
+            self.save()
+        if not hasattr(self, 'log'):
+            self.log = make_log(self.log_path)
+        self.log.debug("Starting %s..." % self)
         try:
-            self.status = self.run()
+            self.run()
         except Exception:
             self.status = Status.ERROR
             self.log.error('Daemon suffered an internal error!', trace=True)
-        self.save()
+            self.save()
+        self.log.info("%s has ended gracefully." % self)
     
     def run(self):
         """Core Daemon function.  Returns the exit status of the Daemon."""
-        # Preconditions:
-        if not hasattr(self, 'id'):
-            print "You must save the Daemon before starting it."
-            return Status.ERROR
+        # Prechecks:
         if settings.DEBUG:
             self.log.info("WARNING, DEBUG is True, which means Django " +
                 "will gobble memory as it stores all database queries.")
         if self.status != Status.CREATED:
             self.log.error("Can't start a Daemon that's already been run.")
             return Status.ERROR
+        for signum in HANDLED_SIGNALS:
+            signal.signal(signum, self.signal_handler)
+        self.status = Status.RUNNING
+        self.save()
+        self.log.info("%s is now running on host %s." % (self, self.host))
         # Main loop.
-        self.run = True
-        while self.run:
-            self.update_request()
+        self.update_request()
+        last_request_update = datetime.utcnow()
+        minimum_delay = timedelta(seconds=1)
+        while not Status.is_final(self.status):
+            if datetime.utcnow() - last_request_update > minimum_delay:
+                self.update_request()
+                last_request_update = datetime.utcnow()
             if self.request:
                 self.handle_request()
-            elif self.accepting and len(self.processes) < CONCURRENCY_LIMIT:
-                runnable = self.queue.pop(timeout=5)
-                if runnable:
-                    self.log.debug("Running: %s" % runnable)
-                    p = Process(target=runnable.run)
-                    p.start()
-                    self.processes.add(p)
-            else:
-                self.flag.clear()
-                self.flag.wait(5)
+            elif self.status == Status.RUNNING:
+                if len(self.processes) < CONCURRENCY_LIMIT:
+                    iteration = self.queue.pop(timeout=5)
+                    if iteration:
+                        self.start_iteration(iteration)
+                else:
+                    self.flag.clear()
+                    self.flag.wait(5)
+            elif self.status == Status.STOPPING and len(self.processes) == 0:
+                self.set_status(Status.ENDED)
+                self.save()
             # Cleanup before iterating.
-            for p in self.processes:
+            for pid, p in self.processes.iteritems():
                 if not p.is_alive():
-                    self.processes.remove(p)
+                    self.log.info("Iteration '%s' ended with status %s." %
+                        (p.iteration, Status.decipher(p.iteration.status)))
+                    del self.processes[pid]
+    
+    def start_iteration(self, iteration):
+        self.log.info("Starting iteration '%s'..." % iteration)
+        p = Process(target=self.execute, args=[iteration.run])
+        p.start()
+        p.iteration = iteration
+        self.processes[p.pid] = p
+    
+    def execute(self, func):
+        try:
+            func()
+        finally:
+            # del self.processes[os.getpid()]
+            self.flag.set()
     
     def handle_request(self):
-        self.log.info("Request received: %s" %
-                      Daemon.REQUESTS[self.request])
+        self.log.info("Request received: %s" % Daemon.REQUESTS[self.request])
+        
         if self.request == Daemon.REQUEST_PAUSE:
-            self.status = Status.PAUSED
-            self.request = None
-            self.accepting = False
+            self.set_status(Status.PAUSED)
+        
         elif self.request == Daemon.REQUEST_UNPAUSE:
             if self.status != Status.PAUSED:
-                self.log.info(
-                    "Must be paused to unpause; clearing request.")
-                self.request = None
+                self.log.info("Must be paused to unpause; clearing request.")
             else:
-                self.status = Status.RUNNING
-                self.request = None
-                self.accepting = True
+                self.set_status(Status.RUNNING)
+        
         elif self.request == Daemon.REQUEST_STOP:
-            self.accepting = False
-            if len(self.processes) == 0:
-                self.status = Status.ENDED
-                self.request = None
-                self.run = False
+            self.set_status(Status.STOPPING)
+        
         elif self.request == Daemon.REQUEST_KILL:
-            self.accept = False
-            for p in self.processes:
+            for p in self.processes.values():
                 p.terminate()
-            self.status = Status.KILLED
-            self.run = False
+            self.set_status(Status.KILLED)
+        
+        self.request = None
         self.save()
+    
+    def signal_handler(self, signum, frame):
+        sig_name = None
+        # A reverse lookup to find the signal name.
+        for attr in dir(signal):
+            if attr.startswith('SIG') and getattr(signal, attr) == signum:
+                sig_name = attr
+                break
+        self.log.info("Signal '%s' received!" % sig_name)
+        if signum == signal.SIGINT:
+            self.request = Daemon.REQUEST_STOP
+        else:
+            self.request = Daemon.REQUEST_KILL
+        self.flag.set()
+        self.save()
+    
+    def set_status(self, status):
+        self.log.info("Changing state from %s to %s." %
+            tuple(Status.decipher(self.status, status)))
+        self.status = status
+    
+    def _get_log_path(self):
+        return 'daemons/daemon-%s' % self.id
+    log_path = property(_get_log_path)
+    
+    def __unicode__(self):
+        return u"Daemon #%s" % self.id
+    
+    __repr__ = __unicode__
+    

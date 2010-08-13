@@ -28,12 +28,12 @@ class Schedule(Model):
     # The Task this is a schedule for.
     task_type = ForeignKey(ContentType)
     task_id = PositiveIntegerField()
-    task = GenericForeignKey(task_type, task_id)
+    task = GenericForeignKey('task_type', 'task_id')
     
     # The Queue to execute the Task through.
     queue_type = ForeignKey(ContentType, related_name='schedule_set2')
     queue_id = PositiveIntegerField()
-    queue = GenericForeignKey(queue_type, queue_id)
+    queue = GenericForeignKey('queue_type', 'queue_id')
     
     # The total number of repetitions of the Task.  0 for infinite.
     repetitions = PositiveIntegerField()
@@ -50,10 +50,11 @@ class Schedule(Model):
     # The Scheduler that has scheduled the next execution.
     scheduler = ForeignKey('Scheduler', null=True, related_name='schedules')
     
-    def __init__(self, task, queue, start=0, reps=1, delay=0):
+    @staticmethod
+    def create(task, queue, start=0, reps=1, delay=0):
         if not type(start) == datetime:
             start = datetime.utcnow() + timedelta(seconds=start)
-        Model.__init__(self, task=task, queue=queue, next=start,
+        Model.objects.create(task=task, queue=queue, next=start,
             repetitions=reps, remaining=reps, delay=delay)
     
     def enqueued(self):
@@ -138,9 +139,8 @@ class Scheduler(Model):
         are scheduled close together.
         
         """
-        iteration = Iteration(source=schedule.task,
+        iteration = Iteration.objects.create(source=schedule.task,
             start_date=schedule.next, schedule=schedule)
-        iteration.save()
         schedule.queue.push(iteration)
         schedule.enqueued()
         if not schedule.finished():

@@ -8,14 +8,14 @@ import traceback
 
 from norc.settings import LOGGING_DEBUG, NORC_LOG_DIR
 
-def make_log(norc_path, debug=None):
+def make_log(norc_path, **kwargs):
     """Make a log object with a subpath of the norc log directory."""
     path = os.path.join(NORC_LOG_DIR, norc_path)
     try:
         os.makedirs(os.path.dirname(path))
     except (IOError, OSError):
         pass
-    return FileLog(path, debug=debug)
+    return FileLog(path, **kwargs)
 
 def timestamp():
     """Returns a string timestamp of the current time."""
@@ -84,7 +84,7 @@ class FileLog(Log):
         stream.write(msg)
         stream.flush()
         if self.echo:
-            print >>sys.__stdout__, msg
+            print >>sys.__stdout__, msg,
     
     def info(self, msg, format=True):
         self._write(self.out, msg, Log.INFO if format else False)

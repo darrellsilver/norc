@@ -56,7 +56,7 @@ class Node(Model):
     
     task_type = ForeignKey(ContentType)
     task_id = PositiveIntegerField()
-    task = GenericForeignKey(task_type, task_id)
+    task = GenericForeignKey('task_type', 'task_id')
     job = ForeignKey(Job, related_name='nodes')
     optional = BooleanField(default=False)
     

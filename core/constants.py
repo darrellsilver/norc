@@ -6,6 +6,7 @@ should be defined here if possible.
 
 """
 
+# The maximum number of Iterations a Daemon is allowed to run at once.
 CONCURRENCY_LIMIT = 4
 
 # How often a scheduler can poll the database for new schedules.
@@ -35,31 +36,39 @@ class Status(object):
     The MetaStatus class automatically generates a NAMES attribute which
     contains the reverse dict for retrieving a status name from its value.
     
+    The numbers should probably be moved further apart, but SUCCESS being
+    7 and FAILURE being 13 just seems so fitting...
+    
     """
     __metaclass__ = MetaStatus
     
-    CREATED = 1
-    RUNNING = 2
-    PAUSED = 3
+    # Transitive states.
+    CREATED = 1         # Created but nothing else.
+    RUNNING = 2         # Is currently running.
+    PAUSED = 3          # Currently paused.
+    STOPPING = 4        # In the process of stopping; should become ENDED.
     
     # Final states.
-    SUCCESS = 7
-    ENDED = 8
-    KILLED = 9
-    DELETED = 10
+    SUCCESS = 7         # Succeeded.
+    ENDED = 8           # Ended gracefully.
+    KILLED = 9          # Forcefully killed.
+    HANDLED = 12        # Was ERROR, but the problem's been handled.
     
     # Failure states.
-    FAILURE = 13
-    ERROR = 14
-    TIMEOUT = 15
-    HANDLED = 16
+    FAILURE = 13        # User defined failure (Task returned False).
+    ERROR = 14          # There was an error during execution.
+    TIMEDOUT = 15       # The execution timed out.
+    INTERRUPTED = 16    # Execution was interrupted before completion.
     
+    @staticmethod
     def is_final(status):
         return status >= 7
     
+    @staticmethod
     def is_failure(status):
         return status >= 13
     
-    # FINAL_STATES = [s for s in Status.ALL, s >= 7]
-    # FAILURE_STATES = filter(lambda s: s >= 13, Status.ALL)
-    
+    @staticmethod
+    def decipher(*args):
+        # print args
+        return map(lambda s: Status.NAMES[s], args)
