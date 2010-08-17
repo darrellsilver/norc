@@ -38,8 +38,9 @@ class Queue(Model):
         for QueueClass in MetaQueue.IMPLEMENTATIONS:
             try:
                 return QueueClass.objects.get(name=name)
-            except QueueClass.DoesNotExist:
+            except Exception:
                 pass
+            
     
     class Meta:
         app_label = 'core'

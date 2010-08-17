@@ -29,7 +29,7 @@ class TestTasks(TestCase):
         init_norc()
         self.daemon = start_test_daemon()
         self.job = Job.objects.all()[0]
-        self.iter = Iteration.objects.all()[0]
+        self.iter = Instance.objects.all()[0]
         self.task = None
         self.get_nds = lambda: \
             report.nds(self.daemon.get_daemon_status().id)

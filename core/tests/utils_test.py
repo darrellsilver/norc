@@ -3,7 +3,7 @@
 
 from django.test import TestCase
 
-from norc.core.models import Job, Iteration, Resource, ResourceRegion
+from norc.core.models import Job, Instance, Resource, ResourceRegion
 from norc.norc_utils import init_db
 from norc.norc_utils.db import init_norc
 
@@ -32,7 +32,7 @@ class TestInitDB(TestCase):
         self.assertEqual(len(rr), 1)
         self.assertEqual(rr[0].name, 'DEMO_REGION')
     
-    def test_iteration(self):
-        """Tests that there is exactly one iteration."""
-        self.assertEqual(len(Iteration.objects.all()), 1)
+    def test_instance(self):
+        """Tests that there is exactly one instance."""
+        self.assertEqual(len(Instance.objects.all()), 1)
     

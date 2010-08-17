@@ -2,7 +2,9 @@
 import os
 import sys
 import signal
+import time
 from datetime import datetime, timedelta
+from threading import Thread
 from multiprocessing import Process, Event, TimeoutError
 
 from django.db.models import (Model, Manager,
@@ -64,13 +66,16 @@ class Daemon(Model):
     request = PositiveSmallIntegerField(null=True,
         choices=[(k, v) for k, v in REQUESTS.iteritems()])
     
-    # The date and time that the daemon was started.
+    # The last heartbeat of the daemon.
+    heartbeat = DateTimeField(default=datetime.utcnow)
+    
+    # When the daemon was started.
     started = DateTimeField(default=datetime.utcnow)
     
-    # The date and time that the daemon was started.
+    # When the daemon was ended.
     ended = DateTimeField(null=True)
     
-    # The queue this daemon draws task iterations from.
+    # The queue this daemon draws task instances from.
     queue_type = ForeignKey(ContentType)
     queue_id = PositiveIntegerField()
     queue = GenericForeignKey('queue_type', 'queue_id')
@@ -90,6 +95,12 @@ class Daemon(Model):
         self.request = Daemon.objects.get(id=self.id).request
         return self.request
     
+    def heart(self):
+        while True:
+            self.heartbeat = datetime.utcnow()
+            self.save()
+            time.sleep(5)
+    
     def start(self):
         """Starts the daemon.  Mostly just a wrapper for run()."""
         if not hasattr(self, 'id'):
@@ -97,6 +108,9 @@ class Daemon(Model):
         if not hasattr(self, 'log'):
             self.log = make_log(self.log_path)
         self.log.debug("Starting %s..." % self)
+        heart = Thread(target=self.heart)
+        heart.daemon = True
+        heart.start()
         try:
             self.run()
         except Exception:
@@ -131,9 +145,9 @@ class Daemon(Model):
                 self.handle_request()
             elif self.status == Status.RUNNING:
                 if len(self.processes) < CONCURRENCY_LIMIT:
-                    iteration = self.queue.pop(timeout=5)
-                    if iteration:
-                        self.start_iteration(iteration)
+                    instance = self.queue.pop(timeout=5)
+                    if instance:
+                        self.start_instance(instance)
                 else:
                     self.flag.clear()
                     self.flag.wait(5)
@@ -143,18 +157,21 @@ class Daemon(Model):
             # Cleanup before iterating.
             for pid, p in self.processes.iteritems():
                 if not p.is_alive():
-                    self.log.info("Iteration '%s' ended with status %s." %
-                        (p.iteration, Status.decipher(p.iteration.status)))
+                    self.log.info("Instance '%s' ended with status %s." %
+                        (p.instance, Status.decipher(p.instance.status)))
                     del self.processes[pid]
     
-    def start_iteration(self, iteration):
-        self.log.info("Starting iteration '%s'..." % iteration)
-        p = Process(target=self.execute, args=[iteration.run])
+    def start_instance(self, instance):
+        """Starts a given instance in a new process."""
+        instance.daemon = self
+        self.log.info("Starting instance '%s'..." % instance)
+        p = Process(target=self.execute, args=[instance.run])
         p.start()
-        p.iteration = iteration
+        p.instance = instance
         self.processes[p.pid] = p
     
     def execute(self, func):
+        """Calls a function, then sets the flag after its execution."""
         try:
             func()
         finally:

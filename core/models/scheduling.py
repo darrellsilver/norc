@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from django.db.models import (Model, Manager,
     BooleanField,
+    CharField,
     DateTimeField,
     PositiveIntegerField,
     ForeignKey)
@@ -44,7 +45,7 @@ class Schedule(Model):
     # The delay between repetitions.
     delay = PositiveIntegerField()
     
-    # When the next iteration should start.
+    # When the next instance should start.
     next = DateTimeField(null=True)
     
     # The Scheduler that has scheduled the next execution.
@@ -54,11 +55,18 @@ class Schedule(Model):
     def create(task, queue, start=0, reps=1, delay=0):
         if not type(start) == datetime:
             start = datetime.utcnow() + timedelta(seconds=start)
-        Model.objects.create(task=task, queue=queue, next=start,
+        return Model.objects.create(task=task, queue=queue, next=start,
             repetitions=reps, remaining=reps, delay=delay)
     
+    @staticmethod
+    def create_cron(task, queue, cron):
+        # Take in cron schedules like "weekly", etc..
+        pass
+    
     def enqueued(self):
-        """Called when the next iteration has been enqueued."""
+        """Called when the next instance has been enqueued."""
+        # Sanity check: this method should never be called before self.next.
+        assert self.next < datetime.utcnow(), "Enqueued too early!"
         if self.repetitions > 0:
             self.remaining -= 1
         if not self.finished():
@@ -71,16 +79,31 @@ class Schedule(Model):
     def finished(self):
         """Checks whether all runs of the Schedule have been completed."""
         return self.remaining == 0 and self.repetitions > 0
+    
 
-# TODO: Should Scheduler have a log?  Probably.
+class SchedulerManager(Manager):
+    def undead(self):
+        """Schedulers that are active but no recent heartbeat."""
+        cutoff = datetime.utcnow() - \
+            timedelta(seconds=(SCHEDULER_FREQUENCY * 1.5))
+        return self.filter(active=True).filter(heartbeat__lt=cutoff)
+
+
+# TODO: Should Scheduler have a log and/or status?  Probably.
 class Scheduler(Model):
     """Scheduling process for handling Schedules.
     
     Takes unclaimed Schedules from the database and adds their next
-    iteration to a timer.  At the appropriate time, the iteration is
+    instance to a timer.  At the appropriate time, the instance is
     added to its queue and the Schedule is updated.
     
+    Idea: Split this up into two threads, one which continuously handles
+    already claimed schedules, the other which periodically polls the DB
+    for new schedules.
+    
     """
+    objects = SchedulerManager()
+    
     class Meta:
         app_label = 'core'
     
@@ -90,6 +113,9 @@ class Scheduler(Model):
     # The datetime of the Scheduler's last heartbeat.  Used in conjunction
     # with the active flag to determine whether a Scheduler is still alive.
     heartbeat = DateTimeField(null=True)
+    
+    # The host this scheduler ran on.
+    host = CharField(default=lambda: os.uname()[1], max_length=128)
     
     def is_alive(self):
         """Whether the Scheduler is still running.
@@ -106,12 +132,17 @@ class Scheduler(Model):
         """Starts the Scheduler."""
         if self.heartbeat != None:
             raise StateException("Cannot restart a scheduler.")
-        # Use signals to catch kill commands.
+        # TODO: Use signals to catch kill commands.
         self.timer = MultiTimer()
         self.active = True
         self.save()
         while self.active:
-            # TODO: Check for dead but active schedulers.
+            # Check for dead but active schedulers.
+            undead = Scheduler.objects.undead()
+            undead.update(active=False)
+            orphaned = Schedule.objects.filter(scheduler__in=undead)
+            orphaned.update(scheduler=None)
+            # Beat heart.
             self.heartbeat = datetime.utcnow()
             self.save()
             unclaimed = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
@@ -119,8 +150,9 @@ class Scheduler(Model):
             unclaimed.update(scheduler=self)
             for schedule in unclaimed:
                 self.add(schedule)
-            time.sleep(SCHEDULER_FREQUENCY)
+            time.sleep(SCHEDULER_FREQUENCY) # TODO: Switch to a flag?
             self.active = Scheduler.objects.get(pk=self).active
+        self.timer.join()
     
     def stop(self):
         """Stops the Scheduler (passively)."""
@@ -128,24 +160,30 @@ class Scheduler(Model):
         self.save()
     
     def add(self, schedule):
-        """Adds the next iteration for the schedule to the timer."""
-        self.timer.add_task(schedule.next, self.enqueue, [schedule])
+        """Adds the next instance for the schedule to the timer."""
+        i = Instance.objects.create(source=schedule.task,
+            start_date=schedule.next, schedule=schedule)
+        self.timer.add_task(schedule.next, self.enqueue, [schedule, i])
     
-    def enqueue(self, schedule):
-        """Called by the timer to add an iteration to the queue.
+    def enqueue(self, schedule, instance):
+        """Called by the timer to add an instance to the queue.
         
         Try to make this method run AS QUICKLY AS POSSIBLE,
         otherwise tasks might start getting delayed if they
         are scheduled close together.
         
         """
-        iteration = Iteration.objects.create(source=schedule.task,
-            start_date=schedule.next, schedule=schedule)
-        schedule.queue.push(iteration)
+        schedule.queue.push(instance)
         schedule.enqueued()
         if not schedule.finished():
+            # self.flag.set()
             self.add(schedule)
         else:
             schedule.scheduler = None
         schedule.save()
+    
+    def __unicode__(self):
+        return u"Scheduler #%s on host %s" % (self.id, self.host)
+    
+    __repr__ = __unicode__
     

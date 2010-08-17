@@ -9,7 +9,7 @@ from norc.core.models import Daemon, Queue
 from norc.norc_utils.log import make_log
 
 def main():
-    usage = "%prog queue [-e] [-d]"
+    usage = "norcd <queue_name> [-e] [-d]"
     
     def bad_args(message):
         print message
@@ -25,7 +25,7 @@ def main():
     (options, args) = parser.parse_args()
 
     if len(args) != 1:
-        bad_args("A queue name is required.")
+        bad_args("A single queue name is required.")
     
     queue = Queue.get(args[0])
     if not queue:

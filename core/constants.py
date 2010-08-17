@@ -6,7 +6,7 @@ should be defined here if possible.
 
 """
 
-# The maximum number of Iterations a Daemon is allowed to run at once.
+# The maximum number of tasks a Daemon is allowed to run at once.
 CONCURRENCY_LIMIT = 4
 
 # How often a scheduler can poll the database for new schedules.

@@ -7,6 +7,7 @@ from django.db.models import (Model,
     BooleanField,
     CharField,
     DateTimeField,
+    IntegerField,
     PositiveIntegerField,
     PositiveSmallIntegerField,
     ForeignKey)
@@ -27,53 +28,53 @@ class Task(Model):
     
     name = CharField(max_length=128, unique=True)
     description = CharField(max_length=512, blank=True, default='')
-    date_added = DateTimeField(auto_now_add=True)
+    date_added = DateTimeField(default=datetime.datetime.utcnow)
     timeout = PositiveIntegerField(default=0)
-    iterations = GenericRelation('Iteration')
+    instances = GenericRelation('Instance')
     
-    def start(self, iteration):
-        """Starts the given iteration.."""
-        self.log = make_log(iteration.log_path)
-        if iteration.status != Status.CREATED:
-            self.log.error("Can't start an iteration more than once.")
+    def start(self, instance):
+        """Starts the given instance.."""
+        self.log = make_log(instance.log_path)
+        if instance.status != Status.CREATED:
+            self.log.error("Can't start an instance more than once.")
             return
         for signum in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
-            signal.signal(signum, lambda n, f: self.kill_handler(iteration))
+            signal.signal(signum, lambda n, f: self.kill_handler(instance))
         if self.timeout > 0:
             signal.signal(signal.SIGALRM,
-                lambda n, f: self.timeout_handler(iteration))
+                lambda n, f: self.timeout_handler(instance))
             signal.alarm(self.timeout)
         self.log.start_redirect()
         try:
             success = self.run()
         except Exception:
             self.log.error("Task failed with an exception!", trace=True)
-            iteration.status = Status.ERROR
+            instance.status = Status.ERROR
         else:
             if success == False:
-                iteration.status = Status.FAILURE
+                instance.status = Status.FAILURE
             else:
-                iteration.status = Status.SUCCESS
+                instance.status = Status.SUCCESS
         finally:
             self.log.info("Task ended with status %s." %
-                Status.NAMES[iteration.status])
+                Status.NAMES[instance.status])
             self.log.stop_redirect()
-            iteration.save()
+            instance.save()
     
     def run(self):
         """The actual work of the Task."""
         raise NotImplementedError
     
-    def kill_handler(self, iteration):
-        self.log.error("Kill signal received!  Setting status to INTERRUPTED.")
-        iteration.status = Status.INTERRUPTED
-        iteration.save()
+    def kill_handler(self, instance):
+        self.log.error("Kill signal received! Setting status to INTERRUPTED.")
+        instance.status = Status.INTERRUPTED
+        instance.save()
         sys.exit(1)
     
-    def timeout_handler(self, iteration):
+    def timeout_handler(self, instance):
         self.log.info("Task timed out!  Ceasing execution.")
-        iteration.status = Status.TIMEDOUT
-        iteration.save()
+        instance.status = Status.TIMEDOUT
+        instance.save()
         sys.exit(0)
     
     def __unicode__(self):
@@ -82,8 +83,8 @@ class Task(Model):
     __repr__ = __unicode__
     
 
-class BaseIteration(Model):
-    """One iteration (run) of a Task."""
+class BaseInstance(Model):
+    """One instance (run) of a Task."""
     
     class Meta:
         app_label = 'core'
@@ -100,38 +101,64 @@ class BaseIteration(Model):
         Status.INTERRUPTED,
     ]
     
-    # The object that spawned this iteration.
-    source_type = ForeignKey(ContentType)
-    source_id = PositiveIntegerField()
-    source = GenericForeignKey('source_type', 'source_id')
-    
     # The status of the execution.
     status = PositiveSmallIntegerField(default=Status.CREATED,
         choices=[(s, Status.NAMES[s]) for s in VALID_STATUSES])
     
-    # The date the iteration started/is to start.
-    start_date = DateTimeField(default=datetime.datetime.utcnow)
+    # When the instance was added to a queue.
+    enqueued_date = DateTimeField(default=datetime.datetime.utcnow)
     
-    # The date the iteration ended.
+    # When the instance started.
+    start_date = DateTimeField()
+    
+    # When the instance ended.
     end_date = DateTimeField(null=True)
     
-    # The daemon that executed/is executing this iteration.
+    # The daemon that executed/is executing this instance.
     daemon = ForeignKey('Daemon', null=True)
     
+    def start(self):
+        self.start_date = datetime.datetime.utcnow()
+        self.run()
+        self.end_date = datetime.datetime.utcnow()
+        self.save()
+    
     def run(self):
-        self.source.start(self)
+        raise NotImplementedError
     
     def __unicode__(self):
-        return u"Iteration of %s, #%s" % (self.source, self.id)
+        return u"Instance of %s, #%s" % (self.source, self.id)
     
     __repr__ = __unicode__
     
 
-class Iteration(BaseIteration):
+class Instance(BaseInstance):
+    """Normal Instance implementation for Tasks."""
+    
+    # The object that spawned this instance.
+    # source_type = ForeignKey(ContentType)
+    # source_id = PositiveIntegerField()
+    # source = GenericForeignKey('source_type', 'source_id')
+    
+    task = ForeignKey('Task')
     
     # The schedule from whence this spawned.
-    schedule = ForeignKey('Schedule', null=True, related_name='iterations')
+    schedule = ForeignKey('Schedule', null=True, related_name='instances')
     
-    # Flag for when this iteration is claimed by a Scheduler.
+    # Flag for when this instance is claimed by a Scheduler.
     claimed = BooleanField(default=False)
+    
+    def run(self):
+        self.task.start(self)
+        
+    
+
+class CommandTask(Task):
+    """Task which runs an arbitrary shell command."""
+    
+    command = CharField(max_length=1024)
+    nice = IntegerField(default=0)
+    
+    def run(self):
+        print "%s ran!" % self
     
