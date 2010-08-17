@@ -96,6 +96,7 @@ class SubInstance(BaseInstance):
     def run(self):
         if self.node:
             self.node.start()
+    
 
 class Dependency(Model):
     """One task Node's dependency on another.
