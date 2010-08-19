@@ -15,13 +15,13 @@ def make_log(norc_path, **kwargs):
         os.makedirs(os.path.dirname(path))
     except (IOError, OSError):
         pass
-    return FileLog(path, **kwargs)
+    return Log(path, **kwargs)
 
 def timestamp():
     """Returns a string timestamp of the current time."""
-    return datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S.%f')
+    return datetime.datetime.utcnow().strftime('%Y/%m/%d %H:%M:%S.%f')
 
-class Log(object):
+class AbstractLog(object):
     """Abstract class for creating a text log."""
     
     INFO = 'INFO'
@@ -55,7 +55,7 @@ class Log(object):
         raise NotImplementedError
     
 
-class FileLog(Log):
+class Log(AbstractLog):
     """Implementation of Log that sends logs to a file."""
     
     def __init__(self, out=None, err=None, debug=None, echo=False):
@@ -69,7 +69,7 @@ class FileLog(Log):
         echo    Echoes all logging to stdout if True.
         
         """
-        Log.__init__(self, debug)
+        AbstractLog.__init__(self, debug)
         self.out = open(out, 'a') if out else sys.stdout
         if not err and out:
             self.err = self.out
@@ -114,7 +114,7 @@ class FileLog(Log):
         if self.err.name != '<stderr>' and self.err.name != '<stdout>':
             self.err.close()
 
-class S3Log(FileLog):
+class S3Log(Log):
     """Outputs logs to S3 in addition to a local file."""
     
     # def __init__(self, *args, **kwargs):

@@ -1,5 +1,6 @@
 
 from datetime import datetime, timedelta
+import re
 
 from django.db.models import (Model, Manager,
     BooleanField,
@@ -42,26 +43,42 @@ class Schedule(Model):
     # The number of repetitions remaining.
     remaining = PositiveIntegerField()
     
-    # The delay between repetitions.
-    delay = PositiveIntegerField()
-    
-    # When the next instance should start.
-    next = DateTimeField(null=True)
-    
     # The Scheduler that has scheduled the next execution.
     scheduler = ForeignKey('Scheduler', null=True, related_name='schedules')
     
+    # When the last instance was started.
+    last = DateTimeField(null=True)
+    
+    
+    schedukey = CharField(max_length=1024)
+    
+    MONTHS = set(xrange(1,13))
+    DAYS = set(xrange(1,32))
+    WEEKDAYS = set(xrange(7))
+    HOURS = set(xrange(24))
+    MINUTES = set(xrange(60))
+    SECONDS = set(xrange(60))
+    
     @staticmethod
     def create(task, queue, start=0, reps=1, delay=0):
-        if not type(start) == datetime:
-            start = datetime.utcnow() + timedelta(seconds=start)
+        if type(start) == int:
+            start = timedelta(seconds=start)
+        if type(start) == timedelta:
+            start = datetime.utcnow() + start
         return Model.objects.create(task=task, queue=queue, next=start,
-            repetitions=reps, remaining=reps, delay=delay)
+            repetitions=reps, remaining=reps, key=str(delay))
+    
     
     @staticmethod
     def create_cron(task, queue, cron):
         # Take in cron schedules like "weekly", etc..
         pass
+    
+    @staticmethod
+    def parse(cron):
+        
+        groups = re.findall(r'([a-zA-Z])+(\d(?:,\d+)*)', cron)
+        
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
@@ -89,7 +106,7 @@ class SchedulerManager(Manager):
         return self.filter(active=True).filter(heartbeat__lt=cutoff)
 
 
-# TODO: Should Scheduler have a log and/or status?  Probably.
+# TODO: Should Scheduler have a log and/or status?  Probably maybe.
 class Scheduler(Model):
     """Scheduling process for handling Schedules.
     
@@ -132,7 +149,7 @@ class Scheduler(Model):
         """Starts the Scheduler."""
         if self.heartbeat != None:
             raise StateException("Cannot restart a scheduler.")
-        # TODO: Use signals to catch kill commands.
+        # TODO: Use signals to catch SIGINT and SIGTERM...
         self.timer = MultiTimer()
         self.active = True
         self.save()

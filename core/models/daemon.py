@@ -23,8 +23,6 @@ from norc.core.constants import Status, CONCURRENCY_LIMIT
 from norc.norc_utils.log import make_log
 from norc import settings
 
-HANDLED_SIGNALS = [signal.SIGINT, signal.SIGTERM]
-
 class Daemon(Model):
     """Daemons are responsible for the running of Tasks."""
     
@@ -84,22 +82,24 @@ class Daemon(Model):
         Model.__init__(self, *args, **kwargs)
         self.flag = Event()
         self.processes = {}
+        self.heart = Thread(target=self.heart_run)
+        self.heart.daemon = True
     
-    def update_request(self):
-        """Updates the request field from the database.
-        
-        There doesn't appear to be an easy way to have Django refresh an
-        object from the database, so this method just updates the status.
-        
-        """
-        self.request = Daemon.objects.get(id=self.id).request
-        return self.request
-    
-    def heart(self):
-        while True:
+    def heart_run(self):
+        """Method to be called by the heart thread."""
+        while not Status.is_final(self.status):
             self.heartbeat = datetime.utcnow()
             self.save()
             time.sleep(5)
+    
+    def wait(self):
+        try:
+            self.flag.clear()
+            self.flag.wait(3)
+        except KeyboardInterrupt:
+            self.make_request(Daemon.REQUEST_STOP)
+        except SystemExit:
+            self.make_request(Daemon.REQUEST_KILL)
     
     def start(self):
         """Starts the daemon.  Mostly just a wrapper for run()."""
@@ -108,13 +108,11 @@ class Daemon(Model):
         if not hasattr(self, 'log'):
             self.log = make_log(self.log_path)
         self.log.debug("Starting %s..." % self)
-        heart = Thread(target=self.heart)
-        heart.daemon = True
-        heart.start()
+        self.heart.start()
         try:
             self.run()
         except Exception:
-            self.status = Status.ERROR
+            self.set_status(Status.ERROR)
             self.log.error('Daemon suffered an internal error!', trace=True)
             self.save()
         self.log.info("%s has ended gracefully." % self)
@@ -128,29 +126,29 @@ class Daemon(Model):
         if self.status != Status.CREATED:
             self.log.error("Can't start a Daemon that's already been run.")
             return Status.ERROR
-        for signum in HANDLED_SIGNALS:
-            signal.signal(signum, self.signal_handler)
+        if __name__ == '__main__':
+            for signum in [signal.SIGINT, signal.SIGTERM]:
+                signal.signal(signum, self.signal_handler)
         self.status = Status.RUNNING
-        self.save()
+        self.save(update_request=False)
         self.log.info("%s is now running on host %s." % (self, self.host))
         # Main loop.
         self.update_request()
-        last_request_update = datetime.utcnow()
         minimum_delay = timedelta(seconds=1)
         while not Status.is_final(self.status):
-            if datetime.utcnow() - last_request_update > minimum_delay:
+            if datetime.utcnow() > self.last_request_update + minimum_delay:
                 self.update_request()
-                last_request_update = datetime.utcnow()
             if self.request:
                 self.handle_request()
             elif self.status == Status.RUNNING:
                 if len(self.processes) < CONCURRENCY_LIMIT:
-                    instance = self.queue.pop(timeout=5)
+                    instance = self.queue.pop()
                     if instance:
                         self.start_instance(instance)
+                    else:
+                        self.wait()
                 else:
-                    self.flag.clear()
-                    self.flag.wait(5)
+                    self.wait()
             elif self.status == Status.STOPPING and len(self.processes) == 0:
                 self.set_status(Status.ENDED)
                 self.save()
@@ -175,10 +173,10 @@ class Daemon(Model):
         try:
             func()
         finally:
-            # del self.processes[os.getpid()]
             self.flag.set()
     
     def handle_request(self):
+        """Called when a request is found."""
         self.log.info("Request received: %s" % Daemon.REQUESTS[self.request])
         
         if self.request == Daemon.REQUEST_PAUSE:
@@ -199,9 +197,10 @@ class Daemon(Model):
             self.set_status(Status.KILLED)
         
         self.request = None
-        self.save()
+        self.save(update_request=False)
     
     def signal_handler(self, signum, frame):
+        """Handles signal interruption."""
         sig_name = None
         # A reverse lookup to find the signal name.
         for attr in dir(signal):
@@ -210,11 +209,36 @@ class Daemon(Model):
                 break
         self.log.info("Signal '%s' received!" % sig_name)
         if signum == signal.SIGINT:
-            self.request = Daemon.REQUEST_STOP
+            self.make_request(Daemon.REQUEST_STOP)
         else:
-            self.request = Daemon.REQUEST_KILL
+            self.make_request(Daemon.REQUEST_KILL)
+    
+    def save(self, *args, **kwargs):
+        # Have to be very careful to never overwrite a request.
+        if kwargs.pop('update_request', True):
+            try:
+                self.update_request()
+            except Exception:
+                pass
+        Model.save(self, *args, **kwargs)
+    
+    def update_request(self):
+        """Updates the request field from the database.
+        
+        There doesn't appear to be an easy way to have Django refresh an
+        object from the database, so this method just updates the status.
+        
+        """
+        if hasattr(self, 'id'):
+            self.request = Daemon.objects.get(id=self.id).request
+            self.last_request_update = datetime.utcnow()
+            return self.request
+    
+    def make_request(self, req):
+        assert req in Daemon.REQUESTS, "Invalid request!"
+        self.request = req
+        self.save(update_request=False)
         self.flag.set()
-        self.save()
     
     def set_status(self, status):
         self.log.info("Changing state from %s to %s." %

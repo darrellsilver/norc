@@ -2,64 +2,62 @@
 """Module for testing anything related to daemons."""
 
 import os
-import threading
+from threading import Thread
 
 from django.test import TestCase
 
-from django.conf import settings
-from norc.core import report
-from norc.core.daemons import ForkingNorcDaemon, ThreadingNorcDaemon
-from norc.core.models import NorcDaemonStatus
-from norc.norc_utils import wait_until
-from norc.norc_utils.db import init_norc
-
-class DaemonThread(threading.Thread):
-    """Thread that will run a daemon."""
-    
-    def __init__(self, daemon):
-        # self.threading = threading
-        threading.Thread.__init__(self)
-        self.daemon = daemon
-    
-    def run(self):
-        self.daemon.run()
-    
-def start_test_daemon():
-    daemon = ThreadingNorcDaemon(report.region('DEMO_REGION'),
-        3, settings.NORC_LOG_DIR, False)
-    DaemonThread(daemon).start()
-    return daemon
+from norc.core.models import Daemon, DBQueue
+from norc.core.constants import Status
+from norc.norc_utils import wait_until, log
 
 class DaemonTest(TestCase):
-    """Tests for Norc daemons.
+    """Tests for a Norc daemon."""
     
-    Creates a ForkingNorcDaemon in a new thread because if you use the
-    command line utility (norcd) it does not use the Django test database.
-    
-    """
+    def _get_daemon(self):
+        return Daemon.objects.get(pk=self._daemon.pk)
+    daemon = property(_get_daemon)
     
     def setUp(self):
-        """Initialize the DB and start the daemon in a thread."""
-        init_norc()
-        self.daemon = start_test_daemon()
-        # Use a lambda so that the status gets retreived each time
-        # it's needed, instead of pulled from a cache.
-        self.get_nds = lambda: \
-            report.get_object(NorcDaemonStatus, pid=os.getpid())
+        """Create the daemon and thread objects."""
+        test_queue = DBQueue.objects.create(name='test')
+        self._daemon = Daemon.objects.create(queue=test_queue)
+        # Uncomment the following line for verbose daemons.
+        # self._daemon.log = log.make_log(self._daemon.log_path, echo=True)
+        self.thread = Thread(target=self._daemon.start)
     
-    def test_daemon_started(self):
-        """Nice and simple test that the daemon is starting and then running.
+    def test_daemon_startstop(self):    
+        self.assertEqual(self.daemon.status, Status.CREATED)
+        self.thread.start()
+        wait_until(lambda: self.daemon.status == Status.RUNNING, 3)
+        self.assertEqual(self.daemon.status, Status.RUNNING)
+        self.daemon.make_request(Daemon.REQUEST_STOP)
+        wait_until(lambda: self.daemon.status == Status.ENDED, 5)
+        self.assertEqual(self.daemon.status, Status.ENDED)
         
-        Daemon must be in the starting state and then transition to the
-        running state within 3 seconds to pass this test.
-        
-        """
-        # Is it safe to assume this will always pass, or will it
-        # sometimes transition too quickly?
-        self.assert_(self.get_nds().is_starting())
-        wait_until(lambda: self.get_nds().is_running(), 5)\
+    def test_daemon_kill(self):
+        self.thread.start()
+        wait_until(lambda: self.daemon.status == Status.RUNNING, 3)
+        self.assertEqual(self.daemon.status, Status.RUNNING)
+        self.daemon.make_request(Daemon.REQUEST_KILL)
+        wait_until(lambda: self.daemon.status == Status.KILLED, 5)
+        self.assertEqual(self.daemon.status, Status.KILLED)
+    
+    def test_daemon_pause_unpause(self):
+        self.thread.start()
+        wait_until(lambda: self.daemon.status == Status.RUNNING, 3)
+        self.assertEqual(self.daemon.status, Status.RUNNING)
+        self.daemon.make_request(Daemon.REQUEST_PAUSE)
+        wait_until(lambda: self.daemon.status == Status.PAUSED, 5)
+        self.assertEqual(self.daemon.status, Status.PAUSED)
+        self.daemon.make_request(Daemon.REQUEST_UNPAUSE)
+        wait_until(lambda: self.daemon.status == Status.RUNNING, 5)
+        self.assertEqual(self.daemon.status, Status.RUNNING)
+        self.daemon.make_request(Daemon.REQUEST_STOP)
+        wait_until(lambda: self.daemon.status == Status.ENDED, 5)
+        self.assertEqual(self.daemon.status, Status.ENDED)
     
     def tearDown(self):
-        """Request the daemon stops and confirm that it does."""
-        self.daemon.request_stop()
-        wait_until(lambda: self.get_nds().is_done(), 5)
+        self.thread.join(5)
+        self._daemon.heart.join(5)
+        assert not self.thread.is_alive()
+        assert not self._daemon.heart.is_alive()

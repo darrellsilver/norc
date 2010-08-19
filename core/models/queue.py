@@ -72,7 +72,7 @@ class DBQueue(Queue):
     """
     
     # How frequently the database should be checked when waiting for an item.
-    FREQUENCY = 1
+    FREQUENCY = 5
     
     def peek(self):
         """Retrieves the next item but does not remove it from the queue.
@@ -85,22 +85,12 @@ class DBQueue(Queue):
         except IndexError:
             return None
     
-    def pop(self, timeout=None):
-        """Retrieves the next item and removes it from the queue.
-        
-        If the queue is empty, this will block until an item appears.
-        
-        """
-        next = None
-        waited = 0
-        while next == None:
-            try:
-                next = self.items.all()[0]
-            except IndexError:
-                time.sleep(DBQueue.FREQUENCY)
-                waited += DBQueue.FREQUENCY
-                if timeout and waited > timeout:
-                    return None
+    def pop(self):
+        """Retrieves the next item and removes it from the queue."""
+        try:
+            next = self.items.all()[0]
+        except IndexError:
+            return None
         next.delete()
         return next.item
     
@@ -108,6 +98,7 @@ class DBQueue(Queue):
         """Adds an item to the queue."""
         DBQueueItem(dbqueue=self, item=item).save()
     
+
 class DBQueueItem(Model):
     """An item in a DBQueue."""
     
@@ -124,5 +115,5 @@ class DBQueueItem(Model):
     item = GenericForeignKey('item_type', 'item_id')
     
     # The datetime at which this item was enqueued.
-    enqueued = DateTimeField(default=datetime.datetime.utcnow)
+    enqueued = DateTimeField(default=datetime.datetime.utcnow, db_index=True)
     

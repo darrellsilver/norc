@@ -28,6 +28,7 @@ class TestTasks(TestCase):
         """Initialize the DB and setup data."""
         init_norc()
         self.daemon = start_test_daemon()
+        self.daemon.log = make_log(self.daemon.log_path, True)
         self.job = Job.objects.all()[0]
         self.iter = Instance.objects.all()[0]
         self.task = None

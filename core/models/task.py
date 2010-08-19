@@ -1,8 +1,10 @@
 
 """All basic task related models."""
 
+import sys
 from datetime import datetime
 import re
+import subprocess
 
 from django.db.models import (Model,
     BooleanField,
@@ -18,7 +20,6 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 
 from norc import settings
 from norc.core.constants import Status
-from norc.core.exceptions import StateException
 from norc.norc_utils.log import make_log
 
 class Task(Model):
@@ -49,7 +50,7 @@ class Task(Model):
         self.log.info('Starting %s.' % instance)
         self.log.start_redirect()
         try:
-            success = self.run()
+            success = self._run(instance)
         except Exception:
             self.log.error("Task failed with an exception!", trace=True)
             instance.status = Status.ERROR
@@ -63,6 +64,10 @@ class Task(Model):
                 Status.NAMES[instance.status])
             self.log.stop_redirect()
             instance.save()
+    
+    def _run(self, instance):
+        """Provides an easy hook to give run() the instance if needed."""
+        return self.run()
     
     def run(self):
         """The actual work of the Task."""
@@ -109,10 +114,10 @@ class BaseInstance(Model):
         choices=[(s, Status.NAMES[s]) for s in VALID_STATUSES])
     
     # When the instance was added to a queue.
-    enqueued_date = DateTimeField(default=datetime.utcnow)
+    enqueue_date = DateTimeField(default=datetime.utcnow)
     
     # When the instance started.
-    start_date = DateTimeField()
+    start_date = DateTimeField(null=True)
     
     # When the instance ended.
     end_date = DateTimeField(null=True)
@@ -129,6 +134,13 @@ class BaseInstance(Model):
     def run(self):
         raise NotImplementedError
     
+    def _get_queue(self):
+        try:
+            return self.daemon.queue
+        except AttributeError:
+            return None
+    queue = property(_get_queue)
+    
     def __unicode__(self):
         return u"Instance of %s, #%s" % (self.source, self.id)
     
@@ -143,8 +155,8 @@ class Instance(BaseInstance):
     source_id = PositiveIntegerField()
     source = GenericForeignKey('source_type', 'source_id')
     
-    # The schedule from whence this spawned.
-    schedule = ForeignKey('Schedule', null=True, related_name='instances')
+    # The schedule from whence this instance spawned.
+    schedule = ForeignKey('Schedule', related_name='instances')
     
     # Flag for when this instance is claimed by a Scheduler.
     claimed = BooleanField(default=False)
@@ -164,21 +176,30 @@ class CommandTask(Task):
     
     @staticmethod
     def interpret(cmd):
-        def unpack_match(f):
-            return lambda m: f(*m.groups())
-        local = datetime.now()
-        utc = datetime.utcnow()
         for s in CommandTask.INTERPRETED_SETTINGS:
             cmd = cmd.replace('$' + s, getattr(settings, s))
-        cmd = re.sub(r'\$LOCAL\{(.*?)\}', unpack_match(local.strftime), cmd)
-        cmd = re.sub(r'\$UTC\{(.*?)\}', unpack_match(utc.strftime), cmd)
+        def unpack_match(f):
+            return lambda m: f(*m.groups())
+        def datetime_parser(dt):
+            def parser(s):
+                decoder = dict(YYYY='%Y', MM='%m', DD='%d',
+                    hh='%H', mm='%m', ss='%S')
+                for k, v in decoder.items():
+                    s = s.replace(k, dt.strftime(v))
+                return s
+            return unpack_match(parser)
+        local = datetime.now()
+        utc = datetime.utcnow()
+        cmd = re.sub(r'\$LOCAL\{(.*?)\}', datetime_parser(local), cmd)
+        cmd = re.sub(r'\$UTC\{(.*?)\}', datetime_parser(utc), cmd)
         return cmd
     
     def run(self):
         command = CommandTask.interpret(self.command)
         if self.nice:
             command = "nice -n %s %s" % (self.nice, command)
-        print " > %s" % command
+        print "Executing command...\n$ %s" % command
         sys.stdout.flush()
         exit_status = subprocess.call(command, shell=True)
         return exit_status == 0
+    

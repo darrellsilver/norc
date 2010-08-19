@@ -17,37 +17,25 @@ class Job(Task):
     def _get_start_nodes(self):
         start_nodes = []
         for n in self.nodes:
-            if queryset_exists(Dependency.objects.filter(child=n)):
+            if not queryset_exists(Dependency.objects.filter(child=n)):
                 start_nodes.append(n)
         return start_nodes
     start_nodes = property(_get_start_nodes)
     
+    def _run(self, instance):
+        """Modified to give run() the instance object."""
+        return self.run(instance)
+    
     def run(self, instance):
         """Enqueue instances for all nodes that don't have dependencies."""
-        for n in self.start_nodes:
-            node_iter = SubInstance.objects.create(
-                source=n,
-                job_iter=instance,
+        for node in self.start_nodes:
+            node_instance = SubInstance.objects.create(
+                node=node,
+                job_instance=instance,
                 daemon=instance.daemon,
                 schedule=instance.schedule)
-            instance.schedule.queue.push(node_iter)
+            instance.schedule.queue.push(node_instance)
         # wait for all nodes to complete
-    
-
-class JobInstance(Instance):
-    
-    class Meta(Instance.Meta):
-        proxy = True
-    
-    def completion_check(self):
-        if self.source.nodes.count() == self.node_iters.filter(
-                                            status=Status.SUCCESS).count():
-            self.complete()
-    
-    def complete(self):
-        """Called when all of this Job's TaskNodes have run."""
-        # Set status to completed/success.
-        pass
     
 
 class Node(Model):
@@ -68,11 +56,11 @@ class Node(Model):
                 # check for all deps
                 ni, created = NodeInstance.objects.get_or_create(
                     source=node,
-                    job_iter=instance.job_iter,
+                    job_instance=instance.job_instance,
                 )
                 if created:
-                    instance.job_iter.schedule.queue.push(ni)
-        instance.job_iter.completion_check()
+                    instance.job_instance.schedule.queue.push(ni)
+        instance.job_instance.completion_check()
     
     def __unicode__(self):
         return u"Node in Job %s for Task %s" % (self.job, self.task)
@@ -80,22 +68,17 @@ class Node(Model):
     __repr__ = __unicode__
     
 
-class SubInstance(BaseInstance):
-    """An instance of something executed within a job.
+class NodeInstance(BaseInstance):
+    """An instance of a node executed within a job."""
     
-    Called SubInstance instead of NodeInstance to allow for the possibility
-    that the it was dynamically made and therefore not attached to a Node.
+    # The node that spawned this instance.
+    node = ForeignKey('Node')
     
-    """
-    # The node that spawned this instance, or null if it was dynamically made.
-    node = ForeignKey('Node', null=True)
-    
-    # The JobInstance that this SubInstance belongs to.
-    job_instance = ForeignKey(JobInstance, related_name='subinstances')
+    # The JobInstance that this NodeInstance belongs to.
+    job_instance = ForeignKey(Instance, related_name='nodeinstances')
     
     def run(self):
-        if self.node:
-            self.node.start()
+        self.node.start()
     
 
 class Dependency(Model):
@@ -109,6 +92,10 @@ class Dependency(Model):
     
     parent = ForeignKey(Node, related_name='sub_deps')
     child = ForeignKey(Node, related_name='super_deps')
+    
+    def __init__(self, *args, **kwargs):
+        Model.__init__(self, *args, **kwargs)
+        assert self.parent.job == self.child.job
     
     def __unicode__(self):
         return u"Dependency of %s on %s" % (self.child, self.parent)

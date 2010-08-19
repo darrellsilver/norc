@@ -19,27 +19,29 @@ class SQSQueue(Queue):
         self.queue = c.lookup(self.name)
         if not self.queue:
             self.queue = c.create_queue(self.name, 1)
+        self.connection = c
     
-    def get_item(content_type, content_id):
-        model = ContentType.objects.get(id=content_type)
-        return model.objects.get(id=content_id)
+    @staticmethod
+    def get_item(content_type_id, content_id):
+        ct = ContentType.objects.get(id=content_type_id)
+        return ct.get_object_for_this_type(id=content_id)
     
     def peek(self):
-        message = self.queue.read()
+        message = self.queue.read(0)
         if message:
-            return self.get_item(*pickle.loads(message.get_body()))
+            return SQSQueue.get_item(*pickle.loads(message.get_body()))
     
-    def pop(self, timeout=None):
+    def pop(self):
         message = self.queue.read()
         if message:
             self.queue.delete_message(message)
-            return self.get_item(*pickle.loads(m.get_body()))
+            return SQSQueue.get_item(*pickle.loads(message.get_body()))
     
     def push(self, item):
         content_type = ContentType.objects.get(
-            name=item.__class__.__name__)
-        print content_type
-        body = pickle.dumps((content_type, item.id))
-        message = self.queue.new_message(body)
-        # self.queue.write(message)
+            model=item.__class__.__name__.lower(),
+            app_label=item.__class__._meta.app_label)
+        body = (content_type.id, item.id)
+        message = self.queue.new_message(pickle.dumps(body))
+        self.queue.write(message)
     
