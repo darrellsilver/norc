@@ -25,8 +25,8 @@ def main():
     (options, args) = parser.parse_args()
     
     scheduler = Scheduler.objects.create()
-    # daemon.log = make_log(daemon.log_path,
-        # echo=options.echo, debug=options.debug)
+    scheduler.log = make_log(scheduler.log_path,
+        echo=options.echo, debug=options.debug)
     scheduler.start()
     
 if __name__ == '__main__':

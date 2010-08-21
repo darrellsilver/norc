@@ -134,7 +134,7 @@ class BaseInstance(Model):
         self.log.info("Task timed out!  Ceasing execution.")
         self.status = Status.TIMEDOUT
         self.save()
-        sys.exit(0)
+        sys.exit(1)
     
     def _get_queue(self):
         try:
@@ -144,7 +144,7 @@ class BaseInstance(Model):
     queue = property(_get_queue)
     
     def __unicode__(self):
-        return u"Instance of %s, #%s" % (self.source, self.id)
+        return u"%s #%s" % (self.__class__.__name__, self.id)
     
     __repr__ = __unicode__
     

@@ -86,7 +86,7 @@ class NodeInstance(BaseInstance):
     """An instance of a node executed within a job."""
     
     # The node that spawned this instance.
-    node = ForeignKey('Node')
+    node = ForeignKey('Node', related_name='nis') # nis -> NodeInstances
     
     # The JobInstance that this NodeInstance belongs to.
     job_instance = ForeignKey(Instance, related_name='nodis')
@@ -96,7 +96,7 @@ class NodeInstance(BaseInstance):
         ji = self.job_instance
         if not Status.is_failure(self.status):
             for sub_node in self.node.sub_deps.all():
-                ni = sub_node.nodis.objects.get(job_instance=ji)
+                ni = sub_node.nis.get(job_instance=ji)
                 if sub_node.can_run():
                     self.job_instance.schedule.queue.push(ni)
     
@@ -109,16 +109,11 @@ class NodeInstance(BaseInstance):
     
     def can_run(self):
         """Whether dependencies are met for this instance to run."""
-        can_run = True
-        for n in self.node.super_deps:
-            ni = NodeInstance.objects.get(node=n,
-                job_instance=self.job_instance)
-            deps_met = ni.status == Status.SUCCESS
-            can_run = can_run and NodeInstance.objects.get(node=n,
-                job_instance=self.job_instance).status == Status.SUCCESS
-            if not can_run:
-                break
-        return can_run
+        for node in self.node.super_deps:
+            ni = node.nis.get(job_instance=self.job_instance)
+            if ni.status != Status.SUCCESS:
+                return False
+        return True
         
     
 
@@ -139,7 +134,7 @@ class Dependency(Model):
         assert self.parent.job == self.child.job
     
     def __unicode__(self):
-        return u"Dependency of %s on %s" % (self.child, self.parent)
+        return u"Dependency: '%s ->- %s'" % (self.parent, self.child)
     
     __repr__ = __unicode__
     
