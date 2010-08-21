@@ -114,7 +114,6 @@ class NodeInstance(BaseInstance):
             if ni.status != Status.SUCCESS:
                 return False
         return True
-        
     
 
 class Dependency(Model):

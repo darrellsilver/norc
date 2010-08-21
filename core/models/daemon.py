@@ -212,6 +212,7 @@ class Daemon(Model):
         else:
             self.make_request(Daemon.REQUEST_KILL)
     
+    # TODO: Probably should rethink this.
     def save(self, *args, **kwargs):
         # Have to be very careful to never overwrite a request.
         if kwargs.pop('update_request', True):

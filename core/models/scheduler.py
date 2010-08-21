@@ -77,32 +77,37 @@ class Scheduler(Model):
             return
         if __name__ == '__main__':
             for signum in [signal.SIGINT, signal.SIGTERM]:
-                signal.signal(signum, lambda s, f: self.stop)
+                signal.signal(signum, self.signal_handler)
         self.timer = MultiTimer()
         self.active = True
         self.save()
+        self.log.info('Starting %s...' % self)
         try:
             self.run()
         except:
             self.log.error('An unhandled exception occurred within ' +
                 'the run function!', trace=True)
+        self.log.info('%s is shutting down...' % self)
         self.timer.cancel()
         self.timer.join()
-        Schedule.objects.filter(scheduler=self).update(scheduler=None)
+        self.schedules.update(scheduler=None)
+        self.cronschedules.update(scheduler=None)
+        self.log.info('Cleaning up %s instances.' %
+            len(self.timer.tasks))
         for t in self.timer.tasks:
+            # print t
             instance = t[2][1]
-            print t
             instance.claimed = False
             instance.save()
+        self.log.info('%s exited cleanly.' % self)
     
     def run(self):
         while self.active:
             self.flag.clear()
-            # Check for dead but active schedulers.
+            # Clean up orphaned schedules and undead schedulers.
             Schedule.objects.orphaned().update(scheduler=None)
             CronSchedule.objects.orphaned().update(scheduler=None)
-            undead = Scheduler.objects.undead()
-            undead.update(active=False)
+            Scheduler.objects.undead().update(active=False)
             # Beat heart.
             self.heartbeat = datetime.utcnow()
             self.save()
@@ -112,7 +117,7 @@ class Scheduler(Model):
                 schedule.save()
                 self.add(schedule)
             self.wait()
-            self.active = Scheduler.objects.get(pk=self).active
+            self.active = Scheduler.objects.get(pk=self.pk).active
     
     def wait(self):
         try:

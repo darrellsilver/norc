@@ -98,7 +98,24 @@ class Schedule(BaseSchedule):
         else:
             self.next = None
     
-    
+
+ri = random.randint
+
+def _make_halfhourly():
+    m = ri(0, 29)
+    return 'o*d*w*h*m%s,%ss%s' % (m, m + 30, ri(0, 59))
+
+def _make_hourly():
+    return 'o*d*w*h*m%ss%s' % (ri(0, 59), ri(0, 59))
+
+def _make_daily():
+    return 'o*d*w*h%sm%ss%s' % (ri(0, 23), ri(0, 59), ri(0, 59))
+
+def _make_weekly():
+    return 'o*d*w%sh%sm%ss%s' % (ri(0, 6), ri(0, 23), ri(0, 59), ri(0, 59))
+
+def _make_monthly():
+    return 'o*d%sw*h%sm%ss%s' % (ri(1, 28), ri(0, 23), ri(0, 59), ri(0, 59))
 
 class CronSchedule(BaseSchedule):
     
@@ -107,33 +124,55 @@ class CronSchedule(BaseSchedule):
     
     _months = CharField(max_length=64)
     _days = CharField(max_length=124)
-    _weekdays = CharField(max_length=32)
+    _daysofweek = CharField(max_length=32)
     _hours = CharField(max_length=124)
     _minutes = CharField(max_length=256)
     _seconds = CharField(max_length=256)
     
     MONTHS = range(1,13)
     DAYS = range(1,32)
-    WEEKDAYS = range(7)
+    DAYSOFWEEK = range(7)
     HOURS = range(24)
     MINUTES = range(60)
     SECONDS = range(60)
     
+    MAKE_PREDEFINED = {
+        'HALFHOURLY': _make_halfhourly,
+        'HOURLY': _make_hourly,
+        'DAILY': _make_daily,
+        'WEEKLY': _make_weekly,
+        'MONTHLY': _make_monthly,
+    }
+    
     @staticmethod
-    def create(task, queue, encoding):
-        # Take in cron schedules like "weekly", etc..
-        pass
+    def create(task, queue, encoding, reps=0, make_up=False):
+        if encoding.upper() in CronSchedule.MAKE_PREDEFINED:
+            encoding = CronSchedule.MAKE_PREDEFINED[encoding.upper()]()
+        decoded = CronSchedule.decode(encoding)
+        converted = map(lambda ls: ','.join(map(str, ls)), decoded)
+        return CronSchedule._create(task, queue, converted, reps, make_up)
+    
+    @staticmethod
+    def _create(task, queue, tup, reps, make_up):
+        return CronSchedule.objects.create(task=task, queue=queue,
+            repetitions=reps, remaining=reps, make_up=make_up,
+            _months=tup[0],
+            _days=tup[1],
+            _daysofweek=tup[2],
+            _hours=tup[3],
+            _minutes=tup[4],
+            _seconds=tup[5])
     
     @staticmethod
     def parse(string):
         return map(int, string.split(','))
     
     @staticmethod
-    def decode(cron):
-        cron = ''.join(cron.split()) # Strip whitespace.
-        valid_keys = dict(o='months', d='days', w='weekdays',
+    def decode(enc):
+        enc = ''.join(enc.split()) # Strip whitespace.
+        valid_keys = dict(o='months', d='days', w='daysofweek',
             h='hours', m='minutes', s='seconds')
-        groups = re.findall(r'([a-zA-Z])+*(\*|\d(?:,*\d+)*)', cron)
+        groups = re.findall(r'([a-zA-Z])+(\*|\d(?:,*\d+)*)', enc)
         print groups
         p = {}
         for k, s in groups:
@@ -150,13 +189,13 @@ class CronSchedule(BaseSchedule):
     
     def __init__(self, *args, **kwargs):
         BaseSchedule.__init__(self, *args, **kwargs)
-        self._next = self.calculate_next()
         self.months = CronSchedule.parse(self._months)
         self.days = CronSchedule.parse(self._days)
-        self.weekdays = CronSchedule.parse(self._weekdays)
+        self.daysofweek = CronSchedule.parse(self._daysofweek)
         self.hours = CronSchedule.parse(self._hours)
         self.minutes = CronSchedule.parse(self._minutes)
         self.seconds = CronSchedule.parse(self._seconds)
+        self._next = self.calculate_next()
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
@@ -169,7 +208,7 @@ class CronSchedule(BaseSchedule):
             if self.make_up:
                 self.base = self.next
             else:
-                self.base = datetime.utcnow()
+                self.base = now
             self._next = None # Don't calculate now, but clear the old value.
     
     def _get_next(self):
@@ -181,7 +220,7 @@ class CronSchedule(BaseSchedule):
     def calculate_next(self, dt=None):
         if not dt:
             dt = self.base if self.base else datetime.utcnow()
-        dt = dt.replace(seconds=dt.second + 1, microseconds=0)
+        dt = dt.replace(second=dt.second + 1, microsecond=0)
         second = self.find_gte(dt.second, self.seconds)
         if not second:
             second = self.seconds[0]
@@ -197,7 +236,7 @@ class CronSchedule(BaseSchedule):
             hour = self.hours[0]
             dt += timedelta(days=1)
         dt = dt.replace(hour=hour)
-        cond = lambda d: d.day in self.days and d.weekday() in self.weekdays
+        cond = lambda d: d.day in self.days and d.weekday() in self.daysofweek
         one_day = timedelta(days=1)
         while not cond(dt):
             dt += one_day
@@ -205,6 +244,7 @@ class CronSchedule(BaseSchedule):
     
     def find_gte(self, p, ls):
         """Return the first element of ls that is >= p."""
+        # TODO: Binary search.
         for e in ls:
             if e >= p:
                 return e

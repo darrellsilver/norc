@@ -40,11 +40,9 @@ class Queue(Model):
                 return QueueClass.objects.get(name=name)
             except Exception:
                 pass
-            
     
     class Meta:
         app_label = 'core'
-        # abstract = True
     
     name = CharField(unique=True, max_length=64)
     
@@ -60,6 +58,9 @@ class Queue(Model):
         raise NotImplementedError
     
     def push(self, item):
+        raise NotImplementedError
+    
+    def count(self):
         raise NotImplementedError
     
     def __unicode__(self):
@@ -106,6 +107,9 @@ class DBQueue(Queue):
         """Adds an item to the queue."""
         DBQueueItem(dbqueue=self, item=item).save()
     
+    def count(self):
+        return self.items.count()
+
 
 class DBQueueItem(Model):
     """An item in a DBQueue."""

@@ -12,6 +12,7 @@ class SQSQueue(Queue):
     
     class Meta:
         app_label = 'sqs'
+        proxy = False
     
     def __init__(self, *args, **kwargs):
         Queue.__init__(self, *args, **kwargs)
@@ -44,4 +45,7 @@ class SQSQueue(Queue):
         body = (content_type.id, item.id)
         message = self.queue.new_message(pickle.dumps(body))
         self.queue.write(message)
+    
+    def count(self):
+        return self.queue.count()
     
