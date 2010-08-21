@@ -44,9 +44,14 @@ class Queue(Model):
     
     class Meta:
         app_label = 'core'
-        abstract = True
+        # abstract = True
     
     name = CharField(unique=True, max_length=64)
+    
+    def __init__(self, *args, **kwargs):
+        if type(self) == Queue:
+            raise NotImplementedError("Can't instantiate Queue directly!")
+        Model.__init__(self, *args, **kwargs)
     
     def peek(self):
         raise NotImplementedError
@@ -70,6 +75,9 @@ class DBQueue(Queue):
     indepedent distributed queueing system, like Amazon's SQS.
     
     """
+    class Meta:
+        app_label = 'core'
+        proxy = False
     
     # How frequently the database should be checked when waiting for an item.
     FREQUENCY = 5

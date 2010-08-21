@@ -36,54 +36,18 @@ class Task(Model):
     instances = GenericRelation('Instance')
     
     def start(self, instance):
-        """Starts the given instance.."""
-        self.log = make_log(instance.log_path)
-        if instance.status != Status.CREATED:
-            self.log.error("Can't start an instance more than once.")
-            return
-        for signum in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
-            signal.signal(signum, lambda n, f: self.kill_handler(instance))
-        if self.timeout > 0:
-            signal.signal(signal.SIGALRM,
-                lambda n, f: self.timeout_handler(instance))
-            signal.alarm(self.timeout)
-        self.log.info('Starting %s.' % instance)
-        self.log.start_redirect()
-        try:
-            success = self._run(instance)
-        except Exception:
-            self.log.error("Task failed with an exception!", trace=True)
-            instance.status = Status.ERROR
-        else:
-            if success or success == None:
-                instance.status = Status.SUCCESS
-            else:
-                instance.status = Status.FAILURE
-        finally:
-            self.log.info("Task ended with status %s." %
-                Status.NAMES[instance.status])
-            self.log.stop_redirect()
-            instance.save()
-    
-    def _run(self, instance):
-        """Provides an easy hook to give run() the instance if needed."""
+        """A hook function for easily changing the parameters to run().
+        
+        This is useful because some types of task (such as Job) need access
+        to the instance object that is currently running, but we don't want
+        to make run require any parameters for all tasks.
+        
+        """
         return self.run()
     
     def run(self):
-        """The actual work of the Task."""
+        """The actual work of the Task should be done in this function."""
         raise NotImplementedError
-    
-    def kill_handler(self, instance):
-        self.log.error("Kill signal received! Setting status to INTERRUPTED.")
-        instance.status = Status.INTERRUPTED
-        instance.save()
-        sys.exit(1)
-    
-    def timeout_handler(self, instance):
-        self.log.info("Task timed out!  Ceasing execution.")
-        instance.status = Status.TIMEDOUT
-        instance.save()
-        sys.exit(0)
     
     def __unicode__(self):
         return u"%s '%s'" % (self.__class__.__name__, self.name)
@@ -126,13 +90,51 @@ class BaseInstance(Model):
     daemon = ForeignKey('Daemon', null=True)
     
     def start(self):
-        self.start_date = datetime.datetime.utcnow()
-        self.run()
-        self.end_date = datetime.datetime.utcnow()
+        self.log = make_log(self.log_path)
+        if self.status != Status.CREATED:
+            self.log.error("Can't start an instance more than once.")
+            return
+        if __name__ == '__main__':
+            for signum in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
+                signal.signal(signum, lambda n, f: self.kill_handler())
+        if self.timeout > 0:
+            signal.signal(signal.SIGALRM, lambda n, f: self.timeout_handler())
+            signal.alarm(self.timeout)
+        self.log.info('Starting %s.' % self)
+        self.log.start_redirect()
+        self.start_date = datetime.utcnow()
         self.save()
+        try:
+            success = self.run()
+        except Exception:
+            self.log.error("Task failed with an exception!", trace=True)
+            self.status = Status.ERROR
+        else:
+            if success or success == None:
+                self.status = Status.SUCCESS
+            else:
+                self.status = Status.FAILURE
+        finally:
+            self.end_date = datetime.utcnow()
+            self.log.info("Task ended with status %s." %
+                Status.NAMES[self.status])
+            self.log.stop_redirect()
+            self.save()
     
     def run(self):
         raise NotImplementedError
+    
+    def kill_handler(self):
+        self.log.error("Kill signal received! Setting status to INTERRUPTED.")
+        self.status = Status.INTERRUPTED
+        self.save()
+        sys.exit(1)
+    
+    def timeout_handler(self):
+        self.log.info("Task timed out!  Ceasing execution.")
+        self.status = Status.TIMEDOUT
+        self.save()
+        sys.exit(0)
     
     def _get_queue(self):
         try:
@@ -163,6 +165,10 @@ class Instance(BaseInstance):
     
     def run(self):
         self.task.start(self)
+    
+    def _get_timeout(self):
+        return self.source.timeout
+    timeout = property(_get_timeout)
     
 
 class CommandTask(Task):

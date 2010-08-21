@@ -1,7 +1,6 @@
 
 """Module for testing anything related to daemons."""
 
-import os
 from threading import Thread
 
 from django.test import TestCase

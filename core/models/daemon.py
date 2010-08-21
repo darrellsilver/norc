@@ -119,7 +119,6 @@ class Daemon(Model):
     
     def run(self):
         """Core Daemon function.  Returns the exit status of the Daemon."""
-        # Prechecks:
         if settings.DEBUG:
             self.log.info("WARNING, DEBUG is True, which means Django " +
                 "will gobble memory as it stores all database queries.")
@@ -163,7 +162,7 @@ class Daemon(Model):
         """Starts a given instance in a new process."""
         instance.daemon = self
         self.log.info("Starting instance '%s'..." % instance)
-        p = Process(target=self.execute, args=[instance.run])
+        p = Process(target=self.execute, args=[instance.start])
         p.start()
         p.instance = instance
         self.processes[p.pid] = p

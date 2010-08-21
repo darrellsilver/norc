@@ -1,6 +1,9 @@
 
-from datetime import datetime, timedelta
+import os
 import re
+import signal
+import random
+from datetime import datetime, timedelta
 
 from django.db.models import (Model, Manager,
     BooleanField,
@@ -13,27 +16,29 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc.core.constants import Status, SCHEDULER_FREQUENCY, SCHEDULER_LIMIT
+from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 
 class ScheduleManager(Manager):
     def unclaimed(self):
         return self.filter(scheduler__isnull=True)
 
-class Schedule(Model):
+class BaseSchedule(Model):
     """A schedule of executions for a specific task."""
     
     objects = ScheduleManager()
     
     class Meta:
         app_label = 'core'
+        abstract = True
     
     # The Task this is a schedule for.
-    task_type = ForeignKey(ContentType)
+    task_type = ForeignKey(ContentType, related_name='%(class)s_set_a')
     task_id = PositiveIntegerField()
     task = GenericForeignKey('task_type', 'task_id')
     
     # The Queue to execute the Task through.
-    queue_type = ForeignKey(ContentType, related_name='schedule_set2')
+    queue_type = ForeignKey(ContentType, related_name='%(class)s_set_b')
     queue_id = PositiveIntegerField()
     queue = GenericForeignKey('queue_type', 'queue_id')
     
@@ -44,20 +49,27 @@ class Schedule(Model):
     remaining = PositiveIntegerField()
     
     # The Scheduler that has scheduled the next execution.
-    scheduler = ForeignKey('Scheduler', null=True, related_name='schedules')
+    scheduler = ForeignKey('Scheduler', null=True, related_name='%(class)ss')
     
-    # When the last instance was started.
-    last = DateTimeField(null=True)
+    # Whether or not to make up missed executions.
+    make_up = BooleanField(default=False)
     
+    def enqueued(self):
+        """Called when the next instance has been enqueued."""
+        raise NotImplementedError
     
-    schedukey = CharField(max_length=1024)
+    def finished(self):
+        """Checks whether all runs of the Schedule have been completed."""
+        return self.remaining == 0 and self.repetitions > 0
     
-    MONTHS = set(xrange(1,13))
-    DAYS = set(xrange(1,32))
-    WEEKDAYS = set(xrange(7))
-    HOURS = set(xrange(24))
-    MINUTES = set(xrange(60))
-    SECONDS = set(xrange(60))
+
+class Schedule(BaseSchedule):
+    
+    # Next execution.
+    next = DateTimeField(null=True)
+    
+    # The delay in between executions.
+    period = PositiveIntegerField()
     
     @staticmethod
     def create(task, queue, start=0, reps=1, delay=0):
@@ -65,37 +77,146 @@ class Schedule(Model):
             start = timedelta(seconds=start)
         if type(start) == timedelta:
             start = datetime.utcnow() + start
-        return Model.objects.create(task=task, queue=queue, next=start,
-            repetitions=reps, remaining=reps, key=str(delay))
+        return Schedule.objects.create(task=task, queue=queue, next=start,
+            repetitions=reps, remaining=reps, period=str(delay))
     
+    def enqueued(self):
+        """Called when the next instance has been enqueued."""
+        now = datetime.utcnow()
+        # Sanity check: this method should never be called before self.next.
+        assert self.next < now, "Enqueued too early!"
+        if self.repetitions > 0:
+            self.remaining -= 1
+        if not self.finished():
+            period = timedelta(seconds=self.period)
+            self.next += period
+            while not self.make_up and self.next < now:
+                self.next += period
+        else:
+            self.next = None
+    
+    
+
+class CronSchedule(BaseSchedule):
+    
+    # When the last instance was enqueued.
+    last = DateTimeField(null=True)
+    
+    
+    
+    # The cron schedule encoded as a string.
+    encoding = CharField(max_length=1024)
+    
+    def _get_next(self):
+        if not self._next:
+            self._next = self.calculate_next()
+        return self._next
+    
+    def _set_next(self, next):
+        self._next = next
+    
+    next = property(_get_next)#, _set_next)
+    
+    MONTHS = range(1,13)
+    DAYS = range(1,32)
+    WEEKDAYS = range(7)
+    HOURS = range(24)
+    MINUTES = range(60)
+    SECONDS = range(60)
     
     @staticmethod
-    def create_cron(task, queue, cron):
+    def create(task, queue, encoding):
         # Take in cron schedules like "weekly", etc..
         pass
     
     @staticmethod
-    def parse(cron):
-        
-        groups = re.findall(r'([a-zA-Z])+(\d(?:,\d+)*)', cron)
-        
+    def decode(cron):
+        # Defaults for each group...
+        valid_keys = dict(o='months', d='days', w='weekdays',
+            h='hours', m='minutes', s='seconds')
+        groups = re.findall(r'([a-zA-Z])+\s*(\*|\d(?:,\s*\d+)*)', cron)
+        print groups
+        p = {}
+        for k, s in groups:
+            if k in valid_keys:
+                try:
+                    p[k] = map(int, s.split(','))
+                    p[k].sort()
+                except ValueError:
+                    pass
+        for k in valid_keys:
+            if not k in p:
+                p[k] = getattr(CronSchedule, valid_keys[k].upper())
+        return p['o'], p['d'], p['w'], p['h'], p['m'], p['s']
+    
+    def __init__(self, *args, **kwargs):
+        BaseSchedule.__init__(self, *args, **kwargs)
+        self._next = self.calculate_next()
+        o, d, w, h, m, s = CronSchedule.decode(self.encoding)
+        self.months = o
+        self.days = d
+        self.weekdays = w
+        self.hours = h
+        self.minutes = m
+        self.seconds = s
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
+        now = datetime.utcnow()
         # Sanity check: this method should never be called before self.next.
-        assert self.next < datetime.utcnow(), "Enqueued too early!"
+        assert self.next < now, "Enqueued too early!"
         if self.repetitions > 0:
             self.remaining -= 1
         if not self.finished():
-            self.next += timedelta(seconds=self.delay)
+            period = timedelta(seconds=self.period)
+            self.next += period
+            while not self.make_up and self.next < now:
+                self.next += period
         else:
             self.next = None
-        # Let the Scheduler handle saving for efficiency.
-        # self.save()
     
-    def finished(self):
-        """Checks whether all runs of the Schedule have been completed."""
-        return self.remaining == 0 and self.repetitions > 0
+    def calculate_next(self, dt=None):
+        if not dt:
+            dt = self.last if self.last else datetime.utcnow()
+        dt = dt.replace(seconds=dt.second + 1, microseconds=0)
+        second = self.find_gte(dt.second, self.seconds)
+        if not second:
+            second = self.seconds[0]
+            dt += timedelta(minutes=1)
+        dt = dt.replace(second=second)
+        minute = self.find_gte(dt.minute, self.minutes)
+        if not minute:
+            minute = self.minutes[0]
+            dt += timedelta(hours=1)
+        dt = dt.replace(minute=minute)
+        hour = self.find_gte(dt.hour, self.hours)
+        if not hour:
+            hour = self.hours[0]
+            dt += timedelta(days=1)
+        dt = dt.replace(hour=hour)
+        cond = lambda d: d.day in self.days and d.weekday() in self.weekdays
+        one_day = timedelta(days=1)
+        while not cond(dt):
+            dt += one_day
+        return dt
+    
+    def find_gte(self, p, ls):
+        """Return the first element of ls that is >= p."""
+        for e in ls:
+            if e >= p:
+                return e
+    
+    def calc_next(self, dt, key, valid):
+        if key > len(TF.keys()):
+            return dt if valid else None
+        inc, cond = TF[key]
+        if not valid:
+            dt = inc(dt)
+        if cond(dt):
+            if valid:
+                return self.calc_next(dt, key + 1, valid)
+                
+        
     
 
 class SchedulerManager(Manager):
@@ -104,9 +225,8 @@ class SchedulerManager(Manager):
         cutoff = datetime.utcnow() - \
             timedelta(seconds=(SCHEDULER_FREQUENCY * 1.5))
         return self.filter(active=True).filter(heartbeat__lt=cutoff)
+    
 
-
-# TODO: Should Scheduler have a log and/or status?  Probably maybe.
 class Scheduler(Model):
     """Scheduling process for handling Schedules.
     
@@ -147,9 +267,13 @@ class Scheduler(Model):
     
     def start(self):
         """Starts the Scheduler."""
+        if not hasattr(self, 'log'):
+            self.log = make_log(self.log_path)
         if self.heartbeat != None:
             raise StateException("Cannot restart a scheduler.")
-        # TODO: Use signals to catch SIGINT and SIGTERM...
+        if __name__ == '__main__':
+            for signum in [signal.SIGINT, signal.SIGTERM]:
+                signal.signal(signum, lambda s, f: self.stop)
         self.timer = MultiTimer()
         self.active = True
         self.save()
@@ -163,13 +287,20 @@ class Scheduler(Model):
             self.heartbeat = datetime.utcnow()
             self.save()
             unclaimed = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
-            # Here we use update for DB efficiency.
-            unclaimed.update(scheduler=self)
             for schedule in unclaimed:
+                schedule.scheduler = self
+                schedule.save()
                 self.add(schedule)
-            time.sleep(SCHEDULER_FREQUENCY) # TODO: Switch to a flag?
+            time.sleep(SCHEDULER_FREQUENCY)
             self.active = Scheduler.objects.get(pk=self).active
+        self.timer.cancel()
         self.timer.join()
+        Schedule.objects.filter(scheduler=self).update(scheduler=None)
+        for t in self.timer.tasks:
+            instance = t[2][1]
+            print t
+            instance.claimed = False
+            instance.save()
     
     def stop(self):
         """Stops the Scheduler (passively)."""
@@ -179,7 +310,7 @@ class Scheduler(Model):
     def add(self, schedule):
         """Adds the next instance for the schedule to the timer."""
         i = Instance.objects.create(source=schedule.task,
-            start_date=schedule.next, schedule=schedule)
+            start_date=schedule.next, schedule=schedule, claimed=True)
         self.timer.add_task(schedule.next, self.enqueue, [schedule, i])
     
     def enqueue(self, schedule, instance):
@@ -198,6 +329,10 @@ class Scheduler(Model):
         else:
             schedule.scheduler = None
         schedule.save()
+    
+    def _get_log_path(self):
+        return 'scheduler/scheduler-%s' % self.id
+    log_path = property(_get_log_path)
     
     def __unicode__(self):
         return u"Scheduler #%s on host %s" % (self.id, self.host)

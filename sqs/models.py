@@ -10,7 +10,7 @@ from norc.settings import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 
 class SQSQueue(Queue):
     
-    class Meta(Queue.Meta):
+    class Meta:
         app_label = 'sqs'
     
     def __init__(self, *args, **kwargs):

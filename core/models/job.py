@@ -14,28 +14,40 @@ from norc.norc_utils.django_extras import queryset_exists
 class Job(Task):
     """A Task composed of running several other Tasks."""
     
-    def _get_start_nodes(self):
-        start_nodes = []
-        for n in self.nodes:
-            if not queryset_exists(Dependency.objects.filter(child=n)):
-                start_nodes.append(n)
-        return start_nodes
-    start_nodes = property(_get_start_nodes)
+    # def _get_start_nodes(self):
+    #     # return filter(lambda n: not queryset_exists(n.super_deps.all()),
+    #     #     self.nodes.all()
+    #     start_nodes = []
+    #     for n in self.nodes.all():
+    #         if not queryset_exists(n.super_deps.all()):
+    #             start_nodes.append(n)
+    #     return start_nodes
+    # start_nodes = property(_get_start_nodes)
     
-    def _run(self, instance):
+    def start(self, instance):
         """Modified to give run() the instance object."""
         return self.run(instance)
     
     def run(self, instance):
         """Enqueue instances for all nodes that don't have dependencies."""
-        for node in self.start_nodes:
-            node_instance = SubInstance.objects.create(
+        for node in self.nodes:
+            node_instance = NodeInstance.objects.create(
                 node=node,
                 job_instance=instance,
                 daemon=instance.daemon,
                 schedule=instance.schedule)
-            instance.schedule.queue.push(node_instance)
-        # wait for all nodes to complete
+            if node_instance.can_run():
+                instance.schedule.queue.push(node_instance)
+        while True:
+            complete = True
+            for ni in instance.nodis.all():
+                if not Status.is_final(ni.status):
+                    complete = False
+                elif Status.is_failure(ni.status):
+                    return False
+            if complete and instance.nodis.count() == self.nodes.count():
+                return True
+            time.sleep(1)
     
 
 class Node(Model):
@@ -47,23 +59,25 @@ class Node(Model):
     task_id = PositiveIntegerField()
     task = GenericForeignKey('task_type', 'task_id')
     job = ForeignKey(Job, related_name='nodes')
-    optional = BooleanField(default=False)
+    # optional = BooleanField(default=False)
     
-    def start(self, instance):
-        self.task.start(instance)
-        if self.optional or not Status.is_failure(instance.status):
-            for node in self.sub_deps:
-                # check for all deps
-                ni, created = NodeInstance.objects.get_or_create(
-                    source=node,
-                    job_instance=instance.job_instance,
-                )
-                if created:
-                    instance.job_instance.schedule.queue.push(ni)
-        instance.job_instance.completion_check()
+    # def start(self, instance):
+    #     instance.start()
+    #     ji = instance.job_instance
+    #     if not Status.is_failure(instance.status):
+    #         for sub_node in self.sub_deps.all():
+    #             for deps in sub_node.super_deps.all():
+    #                 queryset_exists(NodeInstance.objects.get(node=n, job_instance=instance.job_instance))
+    #             # check for all deps
+    #             ni, created = NodeInstance.objects.get_or_create(
+    #                 source=node,
+    #                 job_instance=instance.job_instance,
+    #             )
+    #             if created:
+    #                 instance.job_instance.schedule.queue.push(ni)
     
     def __unicode__(self):
-        return u"Node in Job %s for Task %s" % (self.job, self.task)
+        return u"Node #%s in %s for %s" % (self.id, self.job, self.task)
     
     __repr__ = __unicode__
     
@@ -75,10 +89,37 @@ class NodeInstance(BaseInstance):
     node = ForeignKey('Node')
     
     # The JobInstance that this NodeInstance belongs to.
-    job_instance = ForeignKey(Instance, related_name='nodeinstances')
+    job_instance = ForeignKey(Instance, related_name='nodis')
+    
+    def start(self):
+        BaseInstance.start(self)
+        ji = self.job_instance
+        if not Status.is_failure(self.status):
+            for sub_node in self.node.sub_deps.all():
+                ni = sub_node.nodis.objects.get(job_instance=ji)
+                if sub_node.can_run():
+                    self.job_instance.schedule.queue.push(ni)
     
     def run(self):
-        self.node.start()
+        self.node.task.run()
+    
+    def _get_timeout(self):
+        return self.node.task.timeout
+    timeout = property(_get_timeout)
+    
+    def can_run(self):
+        """Whether dependencies are met for this instance to run."""
+        can_run = True
+        for n in self.node.super_deps:
+            ni = NodeInstance.objects.get(node=n,
+                job_instance=self.job_instance)
+            deps_met = ni.status == Status.SUCCESS
+            can_run = can_run and NodeInstance.objects.get(node=n,
+                job_instance=self.job_instance).status == Status.SUCCESS
+            if not can_run:
+                break
+        return can_run
+        
     
 
 class Dependency(Model):

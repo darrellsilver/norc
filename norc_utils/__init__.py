@@ -2,7 +2,6 @@
 """Some very generic utility functions."""
 
 import time
-import datetime
 
 def wait_until(cond, timeout=60, freq=0.5):
     """Tests the condition repeatedly until <timeout> seconds have passed."""

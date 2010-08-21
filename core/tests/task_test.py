@@ -8,30 +8,14 @@ from django.conf import settings
 from norc.core import report
 from norc.core.models import *
 from norc.norc_utils import wait_until
-from norc.norc_utils.db import init_norc
-from norc.core.tests.daemon_test import start_test_daemon
 
-class TestTask(RunCommand):
-    """A Task implementation for testing.
-    
-    Extending RunCommand because to function TestTask must utilize a
-    previously defined model table.
-    
-    """
-    class Meta:
-        proxy = True    # Use the RunCommand database table.
-
-class TestTasks(TestCase):
+class TestCommandTask(TestCase):
     """Tests for Norc tasks."""
     
     def setUp(self):
         """Initialize the DB and setup data."""
-        init_norc()
-        self.daemon = start_test_daemon()
-        self.daemon.log = make_log(self.daemon.log_path, True)
-        self.job = Job.objects.all()[0]
-        self.iter = Instance.objects.all()[0]
-        self.task = None
+        self.task = CommandTask.objects.create(
+            name='TestTask', command="echo 'This is a test.'")
         self.get_nds = lambda: \
             report.nds(self.daemon.get_daemon_status().id)
         self.get_trs = lambda: \
