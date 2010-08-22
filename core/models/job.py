@@ -109,8 +109,8 @@ class NodeInstance(BaseInstance):
     
     def can_run(self):
         """Whether dependencies are met for this instance to run."""
-        for node in self.node.super_deps:
-            ni = node.nis.get(job_instance=self.job_instance)
+        for dep in self.node.super_deps.all():
+            ni = dep.parent.nis.get(job_instance=self.job_instance)
             if ni.status != Status.SUCCESS:
                 return False
         return True

@@ -4,8 +4,9 @@ import sys
 import signal
 import time
 from datetime import datetime, timedelta
-from threading import Thread
-from multiprocessing import Process, Event, TimeoutError
+from threading import Thread, Event
+# from multiprocessing import Process
+from subprocess import Popen
 
 from django.db.models import (Model, Manager,
     CharField,
@@ -156,7 +157,7 @@ class Daemon(Model):
                 self.save()
             # Cleanup before iterating.
             for pid, p in self.processes.iteritems():
-                if not p.is_alive():
+                if not p.returncode == None:
                     self.log.info("Instance '%s' ended with status %s." %
                         (p.instance, Status.decipher(p.instance.status)))
                     del self.processes[pid]
@@ -165,17 +166,21 @@ class Daemon(Model):
         """Starts a given instance in a new process."""
         instance.daemon = self
         self.log.info("Starting instance '%s'..." % instance)
-        p = Process(target=self.execute, args=[instance.start])
-        p.start()
+        # p = Process(target=self.execute, args=[instance.start])
+        # p.start()
+        ct = ContentType.objects.get_for_model(instance.__class__)
+        p = Popen('norc_executor --ct_pk %s --target_pk %s' %
+            (ct.pk, instance.pk), shell=True)
         p.instance = instance
         self.processes[p.pid] = p
+        
     
-    def execute(self, func):
-        """Calls a function, then sets the flag after its execution."""
-        try:
-            func()
-        finally:
-            self.flag.set()
+    # def execute(self, func):
+    #     """Calls a function, then sets the flag after its execution."""
+    #     try:
+    #         func()
+    #     finally:
+    #         self.flag.set()
     
     def handle_request(self):
         """Called when a request is found."""
@@ -194,8 +199,10 @@ class Daemon(Model):
             self.set_status(Status.STOPPING)
         
         elif self.request == Daemon.REQUEST_KILL:
-            for p in self.processes.values():
-                p.terminate()
+            # for p in self.processes.values():
+            #     p.terminate()
+            for pid in self.processes:
+                os.kill(pid, signal.SIGTERM)
             self.set_status(Status.KILLED)
         
         self.request = None

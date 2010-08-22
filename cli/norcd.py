@@ -17,7 +17,7 @@ def main():
         sys.exit(2)
     
     parser = OptionParser(usage)
-    parser.add_option("-c", "--concurrent",
+    parser.add_option("-c", "--concurrent", type='int',
         help="How many instances can be run concurrently.")
     parser.add_option("-e", "--echo", action="store_true", default=False,
         help="Echo log messages to stdout.")
