@@ -78,6 +78,7 @@ class Daemon(Model):
     queue_id = PositiveIntegerField()
     queue = GenericForeignKey('queue_type', 'queue_id')
     
+    # The number of things that can be run concurrently.
     concurrent = IntegerField()
     
     def __init__(self, *args, **kwargs):
@@ -142,7 +143,7 @@ class Daemon(Model):
             if self.request:
                 self.handle_request()
             elif self.status == Status.RUNNING:
-                if len(self.processes) < CONCURRENCY_LIMIT:
+                if len(self.processes) < self.concurrent:
                     instance = self.queue.pop()
                     if instance:
                         self.start_instance(instance)

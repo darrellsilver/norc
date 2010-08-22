@@ -33,7 +33,12 @@ class Queue(Model):
     
     __metaclass__ = MetaQueue
     
-    # Note: I don't know if this is actually going to be needed at all.
+    class Meta:
+        app_label = 'core'
+        abstract = True
+    
+    name = CharField(unique=True, max_length=64)
+    
     @staticmethod
     def get(name):
         for QueueClass in MetaQueue.IMPLEMENTATIONS:
@@ -41,12 +46,6 @@ class Queue(Model):
                 return QueueClass.objects.get(name=name)
             except Exception:
                 pass
-    
-    class Meta:
-        app_label = 'core'
-        abstract = True
-    
-    name = CharField(unique=True, max_length=64)
     
     # def __init__(self, *args, **kwargs):
     #     print type(self)

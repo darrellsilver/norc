@@ -122,12 +122,8 @@ class CronSchedule(BaseSchedule):
     # The datetime that the next execution time is based off of.
     base = DateTimeField(null=True)
     
-    _months = CharField(max_length=64)
-    _days = CharField(max_length=124)
-    _daysofweek = CharField(max_length=32)
-    _hours = CharField(max_length=124)
-    _minutes = CharField(max_length=256)
-    _seconds = CharField(max_length=256)
+    # The string encoding of the schedule.
+    encoding = CharField(max_length=864)
     
     MONTHS = range(1,13)
     DAYS = range(1,32)
@@ -152,20 +148,8 @@ class CronSchedule(BaseSchedule):
             pass
         if encoding.upper() in CronSchedule.MAKE_PREDEFINED:
             encoding = CronSchedule.MAKE_PREDEFINED[encoding.upper()]()
-        decoded = CronSchedule.decode(encoding)
-        converted = map(lambda ls: ','.join(map(str, ls)), decoded)
-        return CronSchedule._create(task, queue, converted, reps, make_up)
-    
-    @staticmethod
-    def _create(task, queue, tup, reps, make_up):
-        return CronSchedule.objects.create(task=task, queue=queue,
-            repetitions=reps, remaining=reps, make_up=make_up,
-            _months=tup[0],
-            _days=tup[1],
-            _daysofweek=tup[2],
-            _hours=tup[3],
-            _minutes=tup[4],
-            _seconds=tup[5])
+        return CronSchedule.objects.create(task=task, encoding=encoding,
+            queue=queue, repetitions=reps, remaining=reps, make_up=make_up)
     
     @staticmethod
     def parse(string):
@@ -198,12 +182,8 @@ class CronSchedule(BaseSchedule):
     
     def __init__(self, *args, **kwargs):
         BaseSchedule.__init__(self, *args, **kwargs)
-        self.months = CronSchedule.parse(self._months)
-        self.days = CronSchedule.parse(self._days)
-        self.daysofweek = CronSchedule.parse(self._daysofweek)
-        self.hours = CronSchedule.parse(self._hours)
-        self.minutes = CronSchedule.parse(self._minutes)
-        self.seconds = CronSchedule.parse(self._seconds)
+        self.months, self.days, self.daysofweek, self.hours, \
+            self.minutes, self.seconds = CronSchedule.decode(self.encoding)
         self._next = self.calculate_next()
     
     def enqueued(self):
@@ -260,9 +240,9 @@ class CronSchedule(BaseSchedule):
     
     def encode(self):
         tup = ()
-        for k in CronSchedule.FIELDS:
-            list_ = getattr(self, k)
-            if list_ == getattr(CronSchedule, k.upper()):
+        for field in CronSchedule.FIELDS:
+            list_ = getattr(self, field)
+            if list_ == getattr(CronSchedule, field.upper()):
                 tup += ('*',)
             else:
                 tup += (CronSchedule.unparse(list_),)
