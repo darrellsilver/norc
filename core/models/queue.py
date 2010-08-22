@@ -4,6 +4,7 @@
 import datetime, time
 
 from django.db.models import (Model, Manager,
+    BooleanField,
     CharField,
     DateTimeField,
     PositiveIntegerField,
@@ -43,13 +44,15 @@ class Queue(Model):
     
     class Meta:
         app_label = 'core'
+        abstract = True
     
     name = CharField(unique=True, max_length=64)
     
-    def __init__(self, *args, **kwargs):
-        if type(self) == Queue:
-            raise NotImplementedError("Can't instantiate Queue directly!")
-        Model.__init__(self, *args, **kwargs)
+    # def __init__(self, *args, **kwargs):
+    #     print type(self)
+    #     if type(self) == Queue:
+    #         raise NotImplementedError("Can't instantiate Queue directly!")
+    #     Model.__init__(self, *args, **kwargs)
     
     def peek(self):
         raise NotImplementedError
@@ -78,7 +81,8 @@ class DBQueue(Queue):
     """
     class Meta:
         app_label = 'core'
-        proxy = False
+    
+    # true = BooleanField(default=True)
     
     # How frequently the database should be checked when waiting for an item.
     FREQUENCY = 5
@@ -105,7 +109,7 @@ class DBQueue(Queue):
     
     def push(self, item):
         """Adds an item to the queue."""
-        DBQueueItem(dbqueue=self, item=item).save()
+        DBQueueItem.objects.create(dbqueue=self, item=item)
     
     def count(self):
         return self.items.count()

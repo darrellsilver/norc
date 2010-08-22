@@ -158,7 +158,7 @@ class Instance(BaseInstance):
     source = GenericForeignKey('source_type', 'source_id')
     
     # The schedule from whence this instance spawned.
-    schedule = ForeignKey('Schedule', related_name='instances')
+    schedule = ForeignKey('Schedule', null=True, related_name='instances')
     
     # Flag for when this instance is claimed by a Scheduler.
     claimed = BooleanField(default=False)

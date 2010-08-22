@@ -19,9 +19,9 @@ class DaemonTest(TestCase):
     def setUp(self):
         """Create the daemon and thread objects."""
         test_queue = DBQueue.objects.create(name='test')
-        self._daemon = Daemon.objects.create(queue=test_queue)
+        self._daemon = Daemon.objects.create(queue=test_queue, concurrent=4)
         # Uncomment the following line for verbose daemons.
-        # self._daemon.log = log.make_log(self._daemon.log_path, echo=True)
+        self._daemon.log = log.make_log(self._daemon.log_path, echo=True)
         self.thread = Thread(target=self._daemon.start)
     
     def test_daemon_startstop(self):    

@@ -78,6 +78,8 @@ class Daemon(Model):
     queue_id = PositiveIntegerField()
     queue = GenericForeignKey('queue_type', 'queue_id')
     
+    concurrent = IntegerField()
+    
     def __init__(self, *args, **kwargs):
         Model.__init__(self, *args, **kwargs)
         self.flag = Event()

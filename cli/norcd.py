@@ -9,7 +9,7 @@ from norc.core.models import Daemon, Queue
 from norc.norc_utils.log import make_log
 
 def main():
-    usage = "norcd <queue_name> [-e] [-d]"
+    usage = "norcd <queue_name> -c <n> [-e] [-d]"
     
     def bad_args(message):
         print message
@@ -17,6 +17,8 @@ def main():
         sys.exit(2)
     
     parser = OptionParser(usage)
+    parser.add_option("-c", "--concurrent",
+        help="How many instances can be run concurrently.")
     parser.add_option("-e", "--echo", action="store_true", default=False,
         help="Echo log messages to stdout.")
     parser.add_option("-d", "--debug", action="store_true", default=False,
@@ -31,7 +33,7 @@ def main():
     if not queue:
         bad_args("Invalid queue name '%s'." % args[0])
     
-    daemon = Daemon.objects.create(queue=queue)
+    daemon = Daemon.objects.create(queue=queue, concurrent=options.concurrent)
     daemon.log = make_log(daemon.log_path,
         echo=options.echo, debug=options.debug)
     daemon.start()

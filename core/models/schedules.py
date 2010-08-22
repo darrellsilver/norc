@@ -136,6 +136,8 @@ class CronSchedule(BaseSchedule):
     MINUTES = range(60)
     SECONDS = range(60)
     
+    FIELDS = ['months', 'days', 'daysofweek', 'hours', 'minutes', 'seconds']
+    
     MAKE_PREDEFINED = {
         'HALFHOURLY': _make_halfhourly,
         'HOURLY': _make_hourly,
@@ -146,6 +148,8 @@ class CronSchedule(BaseSchedule):
     
     @staticmethod
     def create(task, queue, encoding, reps=0, make_up=False):
+        if type(encoding) == tuple:
+            pass
         if encoding.upper() in CronSchedule.MAKE_PREDEFINED:
             encoding = CronSchedule.MAKE_PREDEFINED[encoding.upper()]()
         decoded = CronSchedule.decode(encoding)
@@ -168,12 +172,15 @@ class CronSchedule(BaseSchedule):
         return map(int, string.split(','))
     
     @staticmethod
+    def unparse(ls):
+        return ','.join(map(str, ls))
+    
+    @staticmethod
     def decode(enc):
         enc = ''.join(enc.split()) # Strip whitespace.
         valid_keys = dict(o='months', d='days', w='daysofweek',
             h='hours', m='minutes', s='seconds')
-        groups = re.findall(r'([a-zA-Z])+(\*|\d(?:,*\d+)*)', enc)
-        print groups
+        groups = re.findall(r'([a-zA-Z])+(\*|\d+(?:,\d+)*)', enc)
         p = {}
         for k, s in groups:
             if k in valid_keys:
@@ -185,6 +192,8 @@ class CronSchedule(BaseSchedule):
         for k in valid_keys:
             if not k in p:
                 p[k] = getattr(CronSchedule, valid_keys[k].upper())
+                if k == 's':    # Default to only one second.
+                    p[k] = [random.choice(p[k])]
         return p['o'], p['d'], p['w'], p['h'], p['m'], p['s']
     
     def __init__(self, *args, **kwargs):
@@ -248,4 +257,32 @@ class CronSchedule(BaseSchedule):
         for e in ls:
             if e >= p:
                 return e
+    
+    def encode(self):
+        tup = ()
+        for k in CronSchedule.FIELDS:
+            list_ = getattr(self, k)
+            if list_ == getattr(CronSchedule, k.upper()):
+                tup += ('*',)
+            else:
+                tup += (CronSchedule.unparse(list_),)
+        return 'o%sd%sw%sh%sm%ss%s' % tup
+        
+    def pretty_name(self):
+        """Returns the pretty (predefined) name for this schedule."""
+        searchs = {
+            r'o\*d\*w\*h\*m(\d+),(\d+)s\d+': 'HALFHOURLY',
+            r'o\*d\*w\*h\*m\d+s\d+': 'HOURLY',
+            r'o\*d\*w\*h\d+m\d+s\d+': 'DAILY',
+            r'o\*d\*w\d+h\d+m\d+s\d+': 'WEEKLY',
+            r'o\*d\d+w\*h\d+m\d+s\d+': 'MONTHLY',
+        }
+        encoding = self.encode()
+        for regex, name in searchs.items():
+            m = re.match(regex, encoding)
+            if m:
+                mins = map(int, m.groups())
+                if m.groups() and abs(mins[0] - mins[1]) != 30:
+                    continue
+                return name
     
