@@ -22,9 +22,9 @@ class SQSQueue(Queue):
         self.connection = c
     
     @staticmethod
-    def get_item(content_type_id, content_id):
-        ct = ContentType.objects.get(id=content_type_id)
-        return ct.get_object_for_this_type(id=content_id)
+    def get_item(content_type_pk, content_pk):
+        ct = ContentType.objects.get(pk=content_type_pk)
+        return ct.get_object_for_this_type(pk=content_pk)
     
     def peek(self):
         message = self.queue.read(0)
@@ -38,10 +38,8 @@ class SQSQueue(Queue):
             return SQSQueue.get_item(*pickle.loads(message.get_body()))
     
     def push(self, item):
-        content_type = ContentType.objects.get(
-            model=item.__class__.__name__.lower(),
-            app_label=item.__class__._meta.app_label)
-        body = (content_type.id, item.id)
+        content_type = ContentType.objects.get_for_model(item.__class__)
+        body = (content_type.pk, item.pk)
         message = self.queue.new_message(pickle.dumps(body))
         self.queue.write(message)
     
