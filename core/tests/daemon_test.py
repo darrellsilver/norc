@@ -67,5 +67,5 @@ class DaemonTest(TestCase):
             self._daemon.make_request(Daemon.REQUEST_KILL)
         self.thread.join(5)
         self._daemon.heart.join(5)
-        assert not self.thread.is_alive()
-        assert not self._daemon.heart.is_alive()
+        assert not self.thread.isAlive()
+        assert not self._daemon.heart.isAlive()
