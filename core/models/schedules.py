@@ -216,7 +216,8 @@ class CronSchedule(BaseSchedule):
     def calculate_next(self, dt=None):
         if not dt:
             dt = self.base if self.base else datetime.utcnow()
-        dt = dt.replace(second=dt.second + 1, microsecond=0)
+        dt = dt.replace(microsecond=0)
+        dt += timedelta(seconds=1)
         second = self.find_gte(dt.second, self.seconds)
         if not second:
             second = self.seconds[0]
