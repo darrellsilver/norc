@@ -1,44 +1,170 @@
+
+"""External modules should access Norc data using these functions.
+
+The main benefit currently is to prevent the occurence of a try block
+everywhere data is needed, and to reduce the amount of code needed for
+retrievals using consistent attributes.  Additionally, it prevents
+external modules from having to query core classes directly.
+
+"""
+from copy import copy
+
+from norc.core.models import *
+from norc.norc_utils.django_extras import get_object
+
+class Report(type):
+    """A definition for the data of a status table on the frontend.
+    
+    Contains all the information needed for retrieving and organizing the
+    data for displaying in a table on the status page.
+    
+    Required parameters:
+    
+    key         String which identifies this data.
+    data        A dictionary whose keys represent columns in the table and
+                whose values are functions which take an object and the GET
+                dict from the AJAX request and return the desired data.
+    
+    Optional parameters:
+    
+    retrieve        Function which returns the basic set of data.  Needed
+                    if the data is to have its own table.
+    detail_key      String which identifies the type of data that expanding
+                    a row in this table will reveal.
+    details         Function which takes the ID of an object and the GET
+                    params and returns the detail objects for that ID.
+    since_filter    Function which takes data and a since date and filters
+                    the data using that date.
+    order_by        Function which takes data and an optional order string
+                    and returns ordered data.
+    
+    """
+    
+    def __new__(cls, name, bases, dct):
+        function = type(lambda: None)
+        for k, v in dct.items()[:]:
+            print k, type(v)
+            if type(v) == function:
+                dct[k] = staticmethod(v)
+        return type.__new__(cls, name, bases, dct)
+    
+    def __init__(self, name, bases, dct):
+        super(MetaReport, self).__init__(self, name, bases, dct)
+        # if base:
+        #     self = copy(REPORT[base])
+        # for k, v in kwargs.iteritems():
+        #     setattr(self, k, v)
+        # DATA_DEFS[self.key] = self
+    
+    def __call__(self, id=None):
+        return self.get(id) if id != None else self.get_all()
+    
+
+class MakeReport(object):
+    """Ideally, this would be replaced with a class decorator in 2.6."""
+    __metaclass__ = Report
+
+date_ended_filter = lambda data, since: data.exclude(date_ended__lt=since)
+date_ended_order = lambda data, o: data.order_by(o if o else '-date_ended')
+date_ended_getter = lambda obj, _: obj.date_ended if obj.date_ended else '-'
+
+class daemons(MakeReport):
+    
+    get = lambda id: get_object(Daemon, id=id)
+    get_all = lambda: Daemon.objects.all()
+    details = {
+        'instances': lambda id, status='all', **kws:
+            get(id),
+    }
+    since_filter = date_ended_filter
+    order_by = date_ended_order
+    data = {
+        'id': lambda nds, _: nds.id,
+        'type': lambda nds, _: nds.get_daemon_type(),
+        'region': lambda nds, _: nds.region.name,
+        'host': lambda nds, _: nds.host,
+        'pid': lambda nds, _: nds.pid,
+        'running': lambda nds, _: len(report.trss(nds, 'running')),
+        'success': lambda nds, GET: len(report.trss(nds, 'success',
+                                        parse_since(GET.get('since')))),
+        'errored': lambda nds, GET: len(report.trss(nds, 'errored',
+                                        parse_since(GET.get('since')))),
+        'status': lambda nds, _: nds.status,
+        'started': lambda nds, _: nds.date_started,
+        'ended': date_ended_getter,
+    }
+
+class scheduler(MakeReport):
+    pass
+
+class tasks(MakeReport):
+    pass
+
+# DataDefinition(
+#     key='tasks',
+#     since_filter=date_ended_filter,
+#     order_by=date_ended_order,
+#     data={
+#         'id': lambda trs, _: trs.id,
+#         'job': lambda trs, _: trs.task.job.name,
+#         'task': lambda trs, _: trs.task.get_name(),
+#         'status': lambda trs, _: trs.status,
+#         'started': lambda trs, _: trs.date_started,
+#         'ended': date_ended_getter,
+#     },
+# )
+
+# tasks = DataDefinition(
+#     key='tasks',
+#     since_filter=date_ended_filter,
+#     order_by=date_ended_order,
+#     data={
+#         'id': lambda trs, _: trs.id,
+#         'job': lambda trs, _: trs.task.job.name,
+#         'iteration': lambda trs, _: trs.iteration.id,
+#         'task': lambda trs, _: trs.task.get_name(),
+#         'status': lambda trs, _: trs.status,
+#         'started': lambda trs, _: trs.date_started,
+#         'ended': date_ended_getter,
+#     },
+# )
 # 
-# """External modules should access Norc data using these functions.
+# DataDefinition(
+#     key='failedtasks',
+#     retrieve=lambda: TaskRunStatus.objects.filter(
+#         status__in=TaskRunStatus.STATUS_CATEGORIES['errored']),
+#     since_filter=tasks.since_filter,
+#     order_by=tasks.order_by,
+#     data=tasks.data,
+# )
 # 
-# The main benefit currently is to prevent the occurence of a try block
-# everywhere data is needed, and to reduce the amount of code needed for
-# retrievals using consistent attributes.  Additionally, it prevents
-# external modules from having to query core classes directly.
+# DataDefinition(
+#     key='jobs',
+#     retrieve=lambda: report.jobs(),
+#     detail_key='iterations',
+#     details=lambda cid, _: report.iterations(cid),
+#     data={
+#         'id': lambda job, _: job.id,
+#         'name': lambda job, _: job.name,
+#         'description': lambda job, _: job.description,
+#         'added': lambda job, _: job.date_added,
+#     },
+# )
 # 
-# """
-# 
-# from norc.core.models import *
-# 
-# DAEMON_STATUS_DICT = {}
-# DAEMON_STATUS_DICT['running'] = [NorcDaemonStatus.STATUS_RUNNING]
-# DAEMON_STATUS_DICT['active'] = [NorcDaemonStatus.STATUS_STARTING,
-#                                 NorcDaemonStatus.STATUS_RUNNING,
-#                                 NorcDaemonStatus.STATUS_PAUSEREQUESTED,
-#                                 NorcDaemonStatus.STATUS_STOPREQUESTED,
-#                                 NorcDaemonStatus.STATUS_KILLREQUESTED,
-#                                 NorcDaemonStatus.STATUS_PAUSED,
-#                                 NorcDaemonStatus.STATUS_STOPINPROGRESS,
-#                                 NorcDaemonStatus.STATUS_KILLINPROGRESS]
-# DAEMON_STATUS_DICT['errored'] = [NorcDaemonStatus.STATUS_ERROR]
-# DAEMON_STATUS_DICT['interesting'] = []
-# DAEMON_STATUS_DICT['interesting'].extend(DAEMON_STATUS_DICT['active'])
-# DAEMON_STATUS_DICT['interesting'].extend(DAEMON_STATUS_DICT['errored'])
-# DAEMON_STATUS_DICT['all'] = NorcDaemonStatus.ALL_STATUSES
-# 
-# def get_object(class_, **kwargs):
-#     """Retrieves a database object of the given class and attributes.
-#     
-#     class_ is the class of the object to find.
-#     kwargs are the parameters used to find the object.get_daemon_status
-#     If no object is found, returns None.
-#     
-#     """
-#     try:
-#         return class_.objects.get(**kwargs)
-#     except class_.DoesNotExist, dne:
-#         return None
-# 
+# DataDefinition(
+#     key='iterations',
+#     detail_key='tasks',
+#     details=lambda cid, _: report.tasks_from_iter(cid),
+#     order_by=date_ended_order,
+#     data={
+#         'id': lambda i, _: i.id,
+#         'status': lambda i, _: i.status,
+#         'type': lambda i, _: i.iteration_type,
+#         'started': lambda i, _: i.date_started,
+#         'ended': date_ended_getter,
+#     },
+# )
+
 # def job(name):
 #     """Retrieves the Job with the given name, or None."""
 #     return get_object(Job, name=name)
@@ -100,11 +226,11 @@
 #         task_statuses = task_statuses.filter(status__in=only_statuses)
 #     return task_statuses
 # 
-# # DEPR
-# # def get_task_statuses(status_filter='all'):
-# #     if status_filter == 'all':
-# #         TaskRunStatus.objects.all()
-# #     else:
-# #         include_statuses = TASK_STATUS_DICT[status_filter.lower()]
-# #         return TaskRunStatus.objects.filter(status__in=include_statuses)
-# 
+# DEPR
+# def get_task_statuses(status_filter='all'):
+#     if status_filter == 'all':
+#         TaskRunStatus.objects.all()
+#     else:
+#         include_statuses = TASK_STATUS_DICT[status_filter.lower()]
+#         return TaskRunStatus.objects.filter(status__in=include_statuses)
+

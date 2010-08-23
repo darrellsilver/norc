@@ -43,9 +43,7 @@ class DataDefinition(object):
                     and returns ordered data.
     
     """
-    def __init__(self, **kwargs):
-        for k in ['key', 'data']:
-            assert k in kwargs, "Missing required argument: '%s'." % k
+    def __init__(self, key, data, **kwargs):
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
         if not 'title' in kwargs:

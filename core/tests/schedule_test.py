@@ -20,8 +20,9 @@ class ScheduleTest(TestCase):
 class CronScheduleTest(TestCase):
     
     def setUp(self):
-        self.t = CommandTask.objects.create(name='ls', command='ls')
-        self.q = DBQueue.objects.create(name='test')
+        self.t = CommandTask.objects.create(
+            name='TestTask', command='echo "Testing, 1, 2, 3."')
+        self.q = DBQueue.objects.create(name='Test')
         # self.cron = CronSchedule.create(self.t, self.q, 'WEEKLY')
     
     def test_encoding(self):

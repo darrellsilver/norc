@@ -24,7 +24,7 @@ class MetaQueue(ModelBase):
     
     def __init__(self, name, bases, attrs):
         ModelBase.__init__(self, name, bases, attrs)
-        if name != 'Queue':
+        if not self._meta.abstract:
             MetaQueue.IMPLEMENTATIONS.append(self)
     
 

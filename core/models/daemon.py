@@ -118,7 +118,8 @@ class Daemon(Model):
         except Exception:
             self.set_status(Status.ERROR)
             self.log.error('Daemon suffered an internal error!', trace=True)
-            self.save()
+        self.ended = datetime.utcnow()
+        self.save()
         self.log.info("%s has ended gracefully." % self)
     
     def run(self):

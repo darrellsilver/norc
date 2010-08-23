@@ -12,9 +12,9 @@ from norc.norc_utils import wait_until, log
 class DaemonTest(TestCase):
     """Tests for a Norc daemon."""
     
-    def _get_daemon(self):
+    @property
+    def daemon(self):
         return Daemon.objects.get(pk=self._daemon.pk)
-    daemon = property(_get_daemon)
     
     def setUp(self):
         """Create the daemon and thread objects."""

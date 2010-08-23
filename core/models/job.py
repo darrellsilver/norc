@@ -14,7 +14,8 @@ from norc.norc_utils.django_extras import queryset_exists
 class Job(Task):
     """A Task composed of running several other Tasks."""
     
-    # def _get_start_nodes(self):
+    # @property
+    # def start_nodes(self):
     #     # return filter(lambda n: not queryset_exists(n.super_deps.all()),
     #     #     self.nodes.all()
     #     start_nodes = []
@@ -22,7 +23,6 @@ class Job(Task):
     #         if not queryset_exists(n.super_deps.all()):
     #             start_nodes.append(n)
     #     return start_nodes
-    # start_nodes = property(_get_start_nodes)
     
     def start(self, instance):
         """Modified to give run() the instance object."""
@@ -103,9 +103,9 @@ class NodeInstance(BaseInstance):
     def run(self):
         self.node.task.run()
     
-    def _get_timeout(self):
+    @property
+    def timeout(self):
         return self.node.task.timeout
-    timeout = property(_get_timeout)
     
     def can_run(self):
         """Whether dependencies are met for this instance to run."""
