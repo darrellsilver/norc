@@ -6,6 +6,11 @@ from datetime import datetime, timedelta
 from threading import Thread, Event, RLock
 from heapq import heappop, heappush
 
+def total_secs(td):
+    assert type(td) == timedelta
+    return (td.microseconds +
+        (td.seconds + td.days * 24 * 3600) * 10**6) / float(10**6)
+
 class MultiTimer(Thread):
     """A timer implementation that can handle multiple tasks at once."""
     
@@ -35,7 +40,7 @@ class MultiTimer(Thread):
         self.cancelled = True
         self.interrupt.set()
     
-    def addTask(self, delay, func, args=[], kwargs={}):
+    def add_task(self, delay, func, args=[], kwargs={}):
         if type(delay) == datetime:
             now = datetime.now()
             delay = delay - now if now < delay else 0

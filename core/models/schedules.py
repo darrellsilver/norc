@@ -3,7 +3,7 @@ import re
 import random
 from datetime import datetime, timedelta
 
-from django.db.models import (Model, Manager,
+from django.db.models import (Model, Manager, Q,
     BooleanField,
     CharField,
     DateTimeField,
@@ -12,19 +12,26 @@ from django.db.models import (Model, Manager,
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import GenericForeignKey
 
-from norc.core.constants import SCHEDULER_FREQUENCY
+from norc.core.constants import SCHEDULER_PERIOD
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
 
 class ScheduleManager(Manager):
+    
+    @property
+    def unfinished(self):
+        return self.filter(Q(remaining__gt=0) | Q(repetitions=0))
+    
     def unclaimed(self):
-        return self.filter(scheduler__isnull=True)
+        return self.unfinished.filter(scheduler__isnull=True)
+    
     def orphaned(self):
-        cutoff = datetime.utcnow() - \
-            timedelta(seconds=(SCHEDULER_FREQUENCY * 1.5))
-        active = self.filter(scheduler__active=True)
-        return active.filter(scheduler__heartbeat__lt=cutoff)
+        wait = SCHEDULER_PERIOD * 1.5
+        cutoff = datetime.utcnow() - timedelta(seconds=wait)
+        active = self.unfinished.filter(scheduler__active=True)
+        return active.exclude(scheduler__heartbeat__gt=cutoff)
+    
 
 class BaseSchedule(Model):
     """A schedule of executions for a specific task."""
@@ -36,12 +43,12 @@ class BaseSchedule(Model):
         abstract = True
     
     # The Task this is a schedule for.
-    task_type = ForeignKey(ContentType, related_name='%(class)s_set_a')
+    task_type = ForeignKey(ContentType, related_name='%(class)ss')
     task_id = PositiveIntegerField()
     task = GenericForeignKey('task_type', 'task_id')
     
     # The Queue to execute the Task through.
-    queue_type = ForeignKey(ContentType, related_name='%(class)s_set_b')
+    queue_type = ForeignKey(ContentType, related_name='%(class)s_set')
     queue_id = PositiveIntegerField()
     queue = GenericForeignKey('queue_type', 'queue_id')
     
@@ -81,7 +88,7 @@ class Schedule(BaseSchedule):
         if type(start) == timedelta:
             start = datetime.utcnow() + start
         return Schedule.objects.create(task=task, queue=queue, next=start,
-            repetitions=reps, remaining=reps, period=str(delay))
+            repetitions=reps, remaining=reps, period=delay)
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
@@ -90,12 +97,12 @@ class Schedule(BaseSchedule):
         assert self.next < now, "Enqueued too early!"
         if self.repetitions > 0:
             self.remaining -= 1
-        if not self.finished():
+        if not self.finished() and self.period > 0:
             period = timedelta(seconds=self.period)
             self.next += period
             while not self.make_up and self.next < now:
                 self.next += period
-        else:
+        elif self.finished():
             self.next = None
     
 
@@ -200,11 +207,11 @@ class CronSchedule(BaseSchedule):
                 self.base = now
             self._next = None # Don't calculate now, but clear the old value.
     
-    def _get_next(self):
+    @property
+    def next(self):
         if not self._next:
             self._next = self.calculate_next()
         return self._next
-    next = property(_get_next)
     
     def calculate_next(self, dt=None):
         if not dt:

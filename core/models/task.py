@@ -136,12 +136,12 @@ class BaseInstance(Model):
         self.save()
         sys.exit(1)
     
-    def _get_queue(self):
+    @property
+    def queue(self):
         try:
             return self.daemon.queue
         except AttributeError:
             return None
-    queue = property(_get_queue)
     
     def __unicode__(self):
         return u"%s #%s" % (self.__class__.__name__, self.id)
@@ -164,12 +164,16 @@ class Instance(BaseInstance):
     claimed = BooleanField(default=False)
     
     def run(self):
-        self.task.start(self)
+        self.source.start(self)
     
-    def _get_timeout(self):
+    @property
+    def timeout(self):
         return self.source.timeout
-    timeout = property(_get_timeout)
     
+    @property
+    def log_path(self):
+        return 'tasks/%s/%s/%s-%s' % (self.source.__class__.__name__,
+            self.source.name, self.source.name, self.id)
 
 class CommandTask(Task):
     """Task which runs an arbitrary shell command."""

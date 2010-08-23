@@ -12,17 +12,19 @@ from django.db.models import (Model, Manager,
     CharField,
     DateTimeField)
 
+from norc.core.models.task import Instance
 from norc.core.models.schedules import Schedule, CronSchedule
-from norc.core.constants import SCHEDULER_FREQUENCY, SCHEDULER_LIMIT
+from norc.core.constants import SCHEDULER_PERIOD, SCHEDULER_LIMIT
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
 
 class SchedulerManager(Manager):
+    
     def undead(self):
         """Schedulers that are active but no recent heartbeat."""
         cutoff = datetime.utcnow() - \
-            timedelta(seconds=(SCHEDULER_FREQUENCY * 1.5))
+            timedelta(seconds=(SCHEDULER_PERIOD * 1.5))
         return self.filter(active=True).filter(heartbeat__lt=cutoff)
     
 
@@ -61,19 +63,19 @@ class Scheduler(Model):
         """Whether the Scheduler is still running.
         
         A Scheduler is defined as alive if it is active and its last
-        heartbeat was within the last N*SCHEDULER_FREQUENCY seconds,
+        heartbeat was within the last N*SCHEDULER_PERIOD seconds,
         for some N > 1 (preferably with a decent amount of margin). 
         
         """
         return self.active and self.heartbeat > \
-            datetime.utcnow() - timedelta(seconds=(SCHEDULER_FREQUENCY * 1.5))
+            datetime.utcnow() - timedelta(seconds=(SCHEDULER_PERIOD * 1.5))
     
     def start(self):
         """Starts the Scheduler."""
         if not hasattr(self, 'log'):
             self.log = make_log(self.log_path)
-        if self.heartbeat != None:
-            self.log.error("Cannot restart a scheduler.")
+        if self.active or self.heartbeat != None:
+            print "Cannot restart a scheduler."
             return
         if __name__ == '__main__':
             for signum in [signal.SIGINT, signal.SIGTERM]:
@@ -92,8 +94,9 @@ class Scheduler(Model):
         self.timer.join()
         self.schedules.update(scheduler=None)
         self.cronschedules.update(scheduler=None)
-        self.log.info('Cleaning up %s instances.' %
-            len(self.timer.tasks))
+        num = len(self.timer.tasks)
+        if num > 0:
+            self.log.info('Cleaning up %s instances.' % num)
         for t in self.timer.tasks:
             # print t
             instance = t[2][1]
@@ -121,7 +124,7 @@ class Scheduler(Model):
     
     def wait(self):
         try:
-            self.flag.wait(SCHEDULER_FREQUENCY)
+            self.flag.wait(SCHEDULER_PERIOD)
         except KeyboardInterrupt:
             self.signal_handler(signal.SIGINT)
         except SystemExit:
@@ -137,6 +140,7 @@ class Scheduler(Model):
         """Adds the next instance for the schedule to the timer."""
         i = Instance.objects.create(source=schedule.task,
             start_date=schedule.next, schedule=schedule, claimed=True)
+        self.log.info('Adding instance %s to timer.' % i)
         self.timer.add_task(schedule.next, self.enqueue, [schedule, i])
     
     def enqueue(self, schedule, instance):
@@ -147,14 +151,16 @@ class Scheduler(Model):
         are scheduled close together.
         
         """
+        self.log.debug('Enqueuing %s.' % instance)
         schedule.queue.push(instance)
         schedule.enqueued()
         if not schedule.finished():
             # self.flag.set()
+            schedule.save()
             self.add(schedule)
         else:
             schedule.scheduler = None
-        schedule.save()
+            schedule.save()
     
     def signal_handler(self, signum, frame=None):
         """Handles signal interruption."""
@@ -171,9 +177,9 @@ class Scheduler(Model):
             self.stop()
             # sys.exit(1)     # Maybe?
     
-    def _get_log_path(self):
+    @property
+    def log_path(self):
         return 'scheduler/scheduler-%s' % self.id
-    log_path = property(_get_log_path)
     
     def __unicode__(self):
         return u"Scheduler #%s on host %s" % (self.id, self.host)

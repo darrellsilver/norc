@@ -10,7 +10,7 @@ should be defined here if possible.
 CONCURRENCY_LIMIT = 4
 
 # How often a scheduler can poll the database for new schedules.
-SCHEDULER_FREQUENCY = 30
+SCHEDULER_PERIOD = 5
 
 # How many new schedules the scheduler can pull from the database at once.
 SCHEDULER_LIMIT = 1000
@@ -69,6 +69,5 @@ class Status(object):
         return status >= 13
     
     @staticmethod
-    def decipher(*args):
-        # print args
-        return map(lambda s: Status.NAMES[s], args)
+    def name(status):
+        return Status.NAMES[status]

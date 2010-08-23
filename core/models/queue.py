@@ -119,7 +119,7 @@ class DBQueueItem(Model):
     
     class Meta:
         app_label = 'core'
-        ordering = ['enqueued']
+        ordering = ['-enqueued']
     
     # The queue this item is a part of.
     dbqueue = ForeignKey(DBQueue, related_name='items')

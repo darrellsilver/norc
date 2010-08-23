@@ -99,7 +99,7 @@ class Daemon(Model):
     def wait(self):
         try:
             self.flag.clear()
-            self.flag.wait(3)
+            self.flag.wait(1)
         except KeyboardInterrupt:
             self.make_request(Daemon.REQUEST_STOP)
         except SystemExit:
@@ -137,9 +137,9 @@ class Daemon(Model):
         self.log.info("%s is now running on host %s." % (self, self.host))
         # Main loop.
         self.update_request()
-        minimum_delay = timedelta(seconds=1)
+        period = timedelta(seconds=1)
         while not Status.is_final(self.status):
-            if datetime.utcnow() > self.last_request_update + minimum_delay:
+            if datetime.utcnow() > self.last_request_update + period:
                 self.update_request()
             if self.request:
                 self.handle_request()
@@ -156,10 +156,14 @@ class Daemon(Model):
                 self.set_status(Status.ENDED)
                 self.save()
             # Cleanup before iterating.
-            for pid, p in self.processes.iteritems():
+            for pid, p in self.processes.items()[:]:
+                p.poll()
+                self.log.debug(
+                    "Checking pid %s: return code %s." % (pid, p.returncode))
                 if not p.returncode == None:
+                    i = p.instance.__class__.objects.get(pk=p.instance.pk)
                     self.log.info("Instance '%s' ended with status %s." %
-                        (p.instance, Status.decipher(p.instance.status)))
+                        (i, Status.name(i.status)))
                     del self.processes[pid]
     
     def start_instance(self, instance):
@@ -252,12 +256,12 @@ class Daemon(Model):
     
     def set_status(self, status):
         self.log.info("Changing state from %s to %s." %
-            tuple(Status.decipher(self.status, status)))
+            (Status.name(self.status), Status.name(status)))
         self.status = status
     
-    def _get_log_path(self):
+    @property
+    def log_path(self):
         return 'daemons/daemon-%s' % self.id
-    log_path = property(_get_log_path)
     
     def __unicode__(self):
         return u"Daemon #%s" % self.id
