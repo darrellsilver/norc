@@ -102,6 +102,7 @@ class BaseInstance(Model):
             signal.alarm(self.timeout)
         self.log.info('Starting %s.' % self)
         self.log.start_redirect()
+        self.status = Status.RUNNING
         self.start_date = datetime.utcnow()
         self.save()
         try:
@@ -125,7 +126,7 @@ class BaseInstance(Model):
         raise NotImplementedError
     
     def kill_handler(self):
-        self.log.error("Kill signal received! Setting status to INTERRUPTED.")
+        self.log.error("Stop signal received! Setting status to INTERRUPTED.")
         self.status = Status.INTERRUPTED
         self.save()
         sys.exit(1)
