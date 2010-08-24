@@ -214,6 +214,7 @@ class CommandTask(Task):
             command = "nice -n %s %s" % (self.nice, command)
         print "Executing command...\n$ %s" % command
         sys.stdout.flush()
-        exit_status = subprocess.call(command, shell=True)
+        exit_status = subprocess.call(command, shell=True,
+            stdout=sys.stdout, stderr=sys.stderr)
         return exit_status == 0
     

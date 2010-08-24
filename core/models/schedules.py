@@ -104,6 +104,7 @@ class Schedule(BaseSchedule):
                 self.next += period
         elif self.finished():
             self.next = None
+        return 
     
 
 ri = random.randint

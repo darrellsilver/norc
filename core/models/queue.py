@@ -47,6 +47,7 @@ class Queue(Model):
             except Exception:
                 pass
     
+    # TODO: Unique names for queues should be enforced somehow around here.
     # def __init__(self, *args, **kwargs):
     #     print type(self)
     #     if type(self) == Queue:
@@ -81,11 +82,6 @@ class DBQueue(Queue):
     class Meta:
         app_label = 'core'
     
-    # true = BooleanField(default=True)
-    
-    # How frequently the database should be checked when waiting for an item.
-    FREQUENCY = 5
-    
     def peek(self):
         """Retrieves the next item but does not remove it from the queue.
         
@@ -119,7 +115,7 @@ class DBQueueItem(Model):
     
     class Meta:
         app_label = 'core'
-        ordering = ['-enqueued']
+        ordering = ['id']
     
     # The queue this item is a part of.
     dbqueue = ForeignKey(DBQueue, related_name='items')
@@ -132,3 +128,6 @@ class DBQueueItem(Model):
     # The datetime at which this item was enqueued.
     enqueued = DateTimeField(default=datetime.datetime.utcnow, db_index=True)
     
+    def __unicode__(self):
+        return u'DBQueueItem #%s, %s' % (self.id, self.enqueued)
+        

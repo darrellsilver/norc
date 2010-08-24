@@ -68,7 +68,7 @@ class Scheduler(Model):
         for some N > 1 (preferably with a decent amount of margin). 
         
         """
-        return self.active and self.heartbeat > \
+        return self.active and self.heartbeat and self.heartbeat > \
             datetime.utcnow() - timedelta(seconds=(SCHEDULER_PERIOD * 1.5))
     
     def start(self):
@@ -83,6 +83,7 @@ class Scheduler(Model):
                 signal.signal(signum, self.signal_handler)
         self.timer = MultiTimer()
         self.active = True
+        self.heartbeat = datetime.utcnow()
         self.save()
         self.log.info('Starting %s...' % self)
         try:
@@ -108,19 +109,22 @@ class Scheduler(Model):
     def run(self):
         while self.active:
             self.flag.clear()
+            
             # Clean up orphaned schedules and undead schedulers.
             Schedule.objects.orphaned().update(scheduler=None)
             CronSchedule.objects.orphaned().update(scheduler=None)
             Scheduler.objects.undead().update(active=False)
-            # Beat heart.
+            
             self.heartbeat = datetime.utcnow()
             self.save()
+            
             cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
             simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
             for schedule in itertools.chain(cron, simple):
                 schedule.scheduler = self
                 schedule.save()
                 self.add(schedule)
+            
             self.wait()
             self.active = Scheduler.objects.get(pk=self.pk).active
     
@@ -138,20 +142,14 @@ class Scheduler(Model):
         except SystemExit:
             self.signal_handler(signal.SIGTERM)
     
-    def stop(self):
-        """Stops the Scheduler (passively)."""
-        self.active = False
-        self.save()
-        self.flag.set()
-    
     def add(self, schedule):
         """Adds the next instance for the schedule to the timer."""
         i = Instance.objects.create(source=schedule.task,
             start_date=schedule.next, schedule=schedule, claimed=True)
-        self.log.info('Adding instance %s to timer.' % i)
-        self.timer.add_task(schedule.next, self.enqueue, [schedule, i])
+        self.log.info('Adding %s to timer.' % i)
+        self.timer.add_task(schedule.next, self._enqueue, [schedule, i])
     
-    def enqueue(self, schedule, instance):
+    def _enqueue(self, schedule, instance):
         """Called by the timer to add an instance to the queue.
         
         Try to make this method run AS QUICKLY AS POSSIBLE,
@@ -159,7 +157,7 @@ class Scheduler(Model):
         are scheduled close together.
         
         """
-        self.log.debug('Enqueuing %s.' % instance)
+        self.log.info('Enqueuing %s.' % instance)
         schedule.queue.push(instance)
         schedule.enqueued()
         if not schedule.finished():
@@ -185,9 +183,15 @@ class Scheduler(Model):
             self.stop()
             # sys.exit(1)     # Maybe?
     
+    def stop(self):
+        """Stops the Scheduler (passively)."""
+        self.active = False
+        self.save()
+        self.flag.set()
+    
     @property
     def log_path(self):
-        return 'scheduler/scheduler-%s' % self.id
+        return 'schedulers/scheduler-%s' % self.id
     
     def __unicode__(self):
         return u"Scheduler #%s on host %s" % (self.id, self.host)

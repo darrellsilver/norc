@@ -28,7 +28,7 @@ class MultiTimer(Thread):
                 self.interrupt.clear()
             else:
                 self.interrupt.wait(self.tasks[0][0] - time.time())
-                if not self.interrupt.is_set():
+                if not self.interrupt.isSet():
                     func, args, kwargs = heappop(self.tasks)[1:]
                     # self.tasks.pop()
                     # assert item == self.tasks.pop()
