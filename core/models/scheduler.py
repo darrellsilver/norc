@@ -6,6 +6,7 @@ import random
 import time
 from datetime import datetime, timedelta
 from threading import Event
+import itertools
 
 from django.db.models import (Model, Manager,
     BooleanField,
@@ -114,8 +115,9 @@ class Scheduler(Model):
             # Beat heart.
             self.heartbeat = datetime.utcnow()
             self.save()
-            unclaimed = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
-            for schedule in unclaimed:
+            cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
+            simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
+            for schedule in itertools.chain(cron, simple):
                 schedule.scheduler = self
                 schedule.save()
                 self.add(schedule)
@@ -123,6 +125,12 @@ class Scheduler(Model):
             self.active = Scheduler.objects.get(pk=self.pk).active
     
     def wait(self):
+        """Waits on the flag.
+        
+        The try is necessary because for some reason signal handling
+        doesn't work from within the flag.wait()
+        
+        """
         try:
             self.flag.wait(SCHEDULER_PERIOD)
         except KeyboardInterrupt:
