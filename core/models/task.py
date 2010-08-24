@@ -154,12 +154,14 @@ class Instance(BaseInstance):
     """Normal Instance implementation for Tasks."""
     
     # The object that spawned this instance.
-    source_type = ForeignKey(ContentType)
+    source_type = ForeignKey(ContentType, related_name='instances')
     source_id = PositiveIntegerField()
     source = GenericForeignKey('source_type', 'source_id')
     
     # The schedule from whence this instance spawned.
-    schedule = ForeignKey('Schedule', null=True, related_name='instances')
+    schedule_type = ForeignKey(ContentType, null=True)
+    schedule_id = PositiveIntegerField(null=True)
+    schedule = GenericForeignKey('schedule_type', 'schedule_id')
     
     # Flag for when this instance is claimed by a Scheduler.
     claimed = BooleanField(default=False)
@@ -175,6 +177,7 @@ class Instance(BaseInstance):
     def log_path(self):
         return 'tasks/%s/%s/%s-%s' % (self.source.__class__.__name__,
             self.source.name, self.source.name, self.id)
+    
 
 class CommandTask(Task):
     """Task which runs an arbitrary shell command."""
