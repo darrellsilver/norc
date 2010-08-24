@@ -2,6 +2,7 @@
 # from task_test import *
 # from scheduling_test import *
 from schedule_test import *
+from scheduler_test import *
 from daemon_test import *
 from queue_test import *
 # from utils_test import *

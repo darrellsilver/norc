@@ -19,7 +19,8 @@ def make_log(norc_path, **kwargs):
 
 def timestamp():
     """Returns a string timestamp of the current time."""
-    return datetime.datetime.utcnow().strftime('%Y/%m/%d %H:%M:%S.%f')
+    now = datetime.datetime.utcnow()
+    return now.strftime('%Y/%m/%d %H:%M:%S') + '.%06d' % now.microsecond
 
 class AbstractLog(object):
     """Abstract class for creating a text log."""

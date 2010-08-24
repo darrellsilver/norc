@@ -19,7 +19,6 @@ class MultiTimer(Thread):
         self.tasks = [] # SortedList(reverse=True)
         self.cancelled = False
         self.interrupt = Event()
-        self.start()
     
     def run(self):
         while not self.cancelled:

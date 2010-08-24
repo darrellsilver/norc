@@ -64,6 +64,13 @@ class BaseSchedule(Model):
     # Whether or not to make up missed executions.
     make_up = BooleanField(default=False)
     
+    @property
+    def instances(self):
+        """Custom implemented to avoid cascade-deleting instances."""
+        schedule_type = ContentType.objects.get_for_model(self)
+        return Instance.objects.filter(
+            schedule_type__pk=schedule_type.pk, schedule_id=self.id)
+    
     def enqueued(self):
         """Called when the next instance has been enqueued."""
         raise NotImplementedError

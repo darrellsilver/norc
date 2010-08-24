@@ -42,8 +42,7 @@ class Report(type):
     
     def __new__(cls, name, bases, dct):
         function = type(lambda: None)
-        for k, v in dct.items()[:]:
-            print k, type(v)
+        for k, v in dct.iteritems():
             if type(v) == function:
                 dct[k] = staticmethod(v)
         return type.__new__(cls, name, bases, dct)

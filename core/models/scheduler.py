@@ -59,6 +59,7 @@ class Scheduler(Model):
     def __init__(self, *args, **kwargs):
         Model.__init__(self, *args, **kwargs)
         self.flag = Event()
+        self.timer = MultiTimer()
         
     def is_alive(self):
         """Whether the Scheduler is still running.
@@ -81,7 +82,7 @@ class Scheduler(Model):
         if __name__ == '__main__':
             for signum in [signal.SIGINT, signal.SIGTERM]:
                 signal.signal(signum, self.signal_handler)
-        self.timer = MultiTimer()
+        self.timer.start()
         self.active = True
         self.heartbeat = datetime.utcnow()
         self.save()
