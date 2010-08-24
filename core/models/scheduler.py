@@ -110,7 +110,6 @@ class Scheduler(Model):
     def run(self):
         while self.active:
             self.flag.clear()
-            
             # Clean up orphaned schedules and undead schedulers.
             Schedule.objects.orphaned().update(scheduler=None)
             CronSchedule.objects.orphaned().update(scheduler=None)
@@ -146,8 +145,9 @@ class Scheduler(Model):
     def add(self, schedule):
         """Adds the next instance for the schedule to the timer."""
         i = Instance.objects.create(source=schedule.task,
-            start_date=schedule.next, schedule=schedule, claimed=True)
-        self.log.info('Adding %s to timer.' % i)
+            started=schedule.next, schedule=schedule, claimed=True)
+        self.log.debug('Adding %s to timer.' % i)
+        self.log.debug('At time %s.' % schedule.next)
         self.timer.add_task(schedule.next, self._enqueue, [schedule, i])
     
     def _enqueue(self, schedule, instance):

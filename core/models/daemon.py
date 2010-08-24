@@ -59,7 +59,7 @@ class Daemon(Model):
     
     # The status of this daemon.
     status = PositiveSmallIntegerField(default=Status.CREATED,
-        choices=[(s, Status.NAMES[s]) for s in VALID_STATUSES])
+        choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
     
     # A state-change request.
     request = PositiveSmallIntegerField(null=True,
@@ -164,7 +164,7 @@ class Daemon(Model):
                 if not p.returncode == None:
                     i = p.instance.__class__.objects.get(pk=p.instance.pk)
                     self.log.info("Instance '%s' ended with status %s." %
-                        (i, Status.name(i.status)))
+                        (i, Status.NAME[i.status]))
                     del self.processes[pid]
     
     def start_instance(self, instance):
@@ -257,7 +257,7 @@ class Daemon(Model):
     
     def set_status(self, status):
         self.log.info("Changing state from %s to %s." %
-            (Status.name(self.status), Status.name(status)))
+            (Status.NAME[self.status], Status.NAME[status]))
         self.status = status
     
     @property

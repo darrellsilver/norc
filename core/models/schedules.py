@@ -89,13 +89,13 @@ class Schedule(BaseSchedule):
     period = PositiveIntegerField()
     
     @staticmethod
-    def create(task, queue, start=0, reps=1, delay=0):
+    def create(task, queue, period, start=0, reps=1):
         if type(start) == int:
             start = timedelta(seconds=start)
         if type(start) == timedelta:
             start = datetime.utcnow() + start
         return Schedule.objects.create(task=task, queue=queue, next=start,
-            repetitions=reps, remaining=reps, period=delay)
+            repetitions=reps, remaining=reps, period=period)
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
@@ -191,8 +191,8 @@ class CronSchedule(BaseSchedule):
         for k in valid_keys:
             if not k in p:
                 p[k] = getattr(CronSchedule, valid_keys[k].upper())
-                if k == 's':    # Default to only one second.
-                    p[k] = [random.choice(p[k])]
+                # if k == 's':    # Default to only one second.
+                #     p[k] = [random.choice(p[k])]
         return p['o'], p['d'], p['w'], p['h'], p['m'], p['s']
     
     def __init__(self, *args, **kwargs):
@@ -227,17 +227,17 @@ class CronSchedule(BaseSchedule):
         dt = dt.replace(microsecond=0)
         dt += timedelta(seconds=1)
         second = self.find_gte(dt.second, self.seconds)
-        if not second:
+        if second == None:
             second = self.seconds[0]
             dt += timedelta(minutes=1)
         dt = dt.replace(second=second)
         minute = self.find_gte(dt.minute, self.minutes)
-        if not minute:
+        if minute == None:
             minute = self.minutes[0]
             dt += timedelta(hours=1)
         dt = dt.replace(minute=minute)
         hour = self.find_gte(dt.hour, self.hours)
-        if not hour:
+        if hour == None:
             hour = self.hours[0]
             dt += timedelta(days=1)
         dt = dt.replace(hour=hour)

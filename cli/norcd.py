@@ -29,7 +29,7 @@ def main():
     if len(args) != 1:
         bad_args("A single queue name is required.")
     
-    if not hasattr(options, 'concurrent'):
+    if options.concurrent == None:
         bad_args("You must give a maximum number of concurrent subprocesses.")
     
     queue = Queue.get(args[0])

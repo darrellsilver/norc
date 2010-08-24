@@ -6,7 +6,7 @@ from datetime import datetime
 import re
 import subprocess
 
-from django.db.models import (Model,
+from django.db.models import (Model, query,
     BooleanField,
     CharField,
     DateTimeField,
@@ -21,6 +21,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 from norc import settings
 from norc.core.constants import Status
 from norc.norc_utils.log import make_log
+from norc.norc_utils.django_extras import QuerySetManager
 
 class Task(Model):
     """An abstract class that represents something to be executed."""
@@ -75,16 +76,16 @@ class BaseInstance(Model):
     
     # The status of the execution.
     status = PositiveSmallIntegerField(default=Status.CREATED,
-        choices=[(s, Status.NAMES[s]) for s in VALID_STATUSES])
+        choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
     
     # When the instance was added to a queue.
     enqueue_date = DateTimeField(default=datetime.utcnow)
     
     # When the instance started.
-    start_date = DateTimeField(null=True)
+    started = DateTimeField(null=True)
     
     # When the instance ended.
-    end_date = DateTimeField(null=True)
+    ended = DateTimeField(null=True)
     
     # The daemon that executed/is executing this instance.
     daemon = ForeignKey('Daemon', null=True)
@@ -103,7 +104,7 @@ class BaseInstance(Model):
         self.log.info('Starting %s.' % self)
         self.log.start_redirect()
         self.status = Status.RUNNING
-        self.start_date = datetime.utcnow()
+        self.started = datetime.utcnow()
         self.save()
         try:
             success = self.run()
@@ -116,9 +117,9 @@ class BaseInstance(Model):
             else:
                 self.status = Status.FAILURE
         finally:
-            self.end_date = datetime.utcnow()
+            self.ended = datetime.utcnow()
             self.log.info("Task ended with status %s." %
-                Status.NAMES[self.status])
+                Status.NAME[self.status])
             self.log.stop_redirect()
             self.save()
     
@@ -152,6 +153,20 @@ class BaseInstance(Model):
 
 class Instance(BaseInstance):
     """Normal Instance implementation for Tasks."""
+    
+    objects = QuerySetManager()
+    
+    class QuerySet(query.QuerySet):
+        
+        def since(self, since):
+            if type(since) == str:
+                since = parse_since(since)
+            return self.exclude(ended__lt=since) if since else self
+        
+        def status_in(self, statuses):
+            if type(statuses) == str:
+                statuses = Status.GROUPS.get(statuses, None)
+            return self.filter(status__in=statuses) if statuses else self
     
     # The object that spawned this instance.
     source_type = ForeignKey(ContentType, related_name='instances')

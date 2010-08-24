@@ -19,16 +19,23 @@ class MetaStatus(type):
     """Generates the NAMES attribute of the Status class."""
     
     def __new__(cls, name, bases, dct):
-        NAMES = {}
+        NAME = {}
         ALL = []
         for k, v in dct.iteritems():
             if type(v) == int:
-                NAMES[v] = k
+                NAME[v] = k
                 ALL.append(v)
-        dct['NAMES'] = NAMES
+        dct['NAME'] = NAME
         dct['ALL'] = ALL
         return super(MetaStatus, cls).__new__(cls, name, bases, dct)
     
+    @property
+    def GROUPS(self):
+        return {
+            'running': [self.RUNNING],
+            'succeeded': filter(lambda s: s >= 7 and s < 13, self.ALL),
+            'failed': filter(lambda s: s > 13, self.ALL),
+        }
 
 class Status(object):
     """Class to hold all status constants.
@@ -68,6 +75,4 @@ class Status(object):
     def is_failure(status):
         return status >= 13
     
-    @staticmethod
-    def name(status):
-        return Status.NAMES[status]
+    

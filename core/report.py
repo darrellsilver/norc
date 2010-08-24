@@ -7,10 +7,14 @@ retrievals using consistent attributes.  Additionally, it prevents
 external modules from having to query core classes directly.
 
 """
-from copy import copy
 
 from norc.core.models import *
+from norc.core.constants import Status
+from norc.norc_utils.parsing import parse_since
+from norc.norc_utils.formatting import untitle
 from norc.norc_utils.django_extras import get_object
+
+REPORTS = {}
 
 class Report(type):
     """A definition for the data of a status table on the frontend.
@@ -39,16 +43,20 @@ class Report(type):
                     and returns ordered data.
     
     """
-    
     def __new__(cls, name, bases, dct):
         function = type(lambda: None)
         for k, v in dct.iteritems():
             if type(v) == function:
                 dct[k] = staticmethod(v)
+        for k in dct['headers']:
+            k = untitle(k)
+            if not k in dct['data']:
+                dct['data'][k] = lambda obj, **kws: getattr()
         return type.__new__(cls, name, bases, dct)
     
     def __init__(self, name, bases, dct):
-        super(MetaReport, self).__init__(self, name, bases, dct)
+        super(Report, self).__init__(self, name, bases, dct)
+        REPORTS[name] = self
         # if base:
         #     self = copy(REPORT[base])
         # for k, v in kwargs.iteritems():
@@ -58,46 +66,77 @@ class Report(type):
     def __call__(self, id=None):
         return self.get(id) if id != None else self.get_all()
     
+    # def __getattr__(self, *args, **kwargs):
+    #     try:
+    #         return super(Report, self).__getattr__(self, *args, **kwargs)
+    #     except AttributeError:
+    #         return None
+    
 
-class MakeReport(object):
+def since_filter(query, since):
+    if type(since) == str:
+        since = parse_since(since)
+    return query.exclude(ended__lt=since) if since else query
+
+date_ended_order = lambda data, o: data.order_by(o if o else '-ended')
+date_ended_getter = lambda obj, **kws: obj.ended if obj.ended else '-'
+
+class BaseReport(object):
     """Ideally, this would be replaced with a class decorator in 2.6."""
     __metaclass__ = Report
+    get = lambda id: None
+    get_all = lambda: None
+    details = {}
+    headers = []
+    data = {}
 
-date_ended_filter = lambda data, since: data.exclude(date_ended__lt=since)
-date_ended_order = lambda data, o: data.order_by(o if o else '-date_ended')
-date_ended_getter = lambda obj, _: obj.date_ended if obj.date_ended else '-'
-
-class daemons(MakeReport):
+class daemons(BaseReport):
     
     get = lambda id: get_object(Daemon, id=id)
     get_all = lambda: Daemon.objects.all()
-    details = {
-        'instances': lambda id, status='all', **kws:
-            get(id),
-    }
-    since_filter = date_ended_filter
+    since_filter = date_ended_since
     order_by = date_ended_order
+    
+    details = {
+        'instances': lambda id, status=None, **kws:
+            get(id).instances.status_in(status),
+    }
+    headers = ['ID', 'Queue', 'Queue Type', 'Host', 'PID', 'Running',
+        'Succeeded', 'Failed', 'Status', 'Started', 'Ended']
     data = {
-        'id': lambda nds, _: nds.id,
-        'type': lambda nds, _: nds.get_daemon_type(),
-        'region': lambda nds, _: nds.region.name,
-        'host': lambda nds, _: nds.host,
-        'pid': lambda nds, _: nds.pid,
-        'running': lambda nds, _: len(report.trss(nds, 'running')),
-        'success': lambda nds, GET: len(report.trss(nds, 'success',
-                                        parse_since(GET.get('since')))),
-        'errored': lambda nds, GET: len(report.trss(nds, 'errored',
-                                        parse_since(GET.get('since')))),
-        'status': lambda nds, _: nds.status,
-        'started': lambda nds, _: nds.date_started,
+        'queue': lambda daemon, **kws: daemon.queue.name,
+        'queue_type': lambda daemon, **kws: daemon.queue.__class__.__name__,
+        'running': lambda daemon, since, **kws:
+            daemon.instances.since(since).status_in([Status.RUNNING]).count(),
+        'succeeded': lambda daemon, since, **kws:
+            daemon.instances.since(since).status_in(Status.SUCCEEDED).count(),
+        'failed': lambda daemon, since, **kws:
+            daemon.instances.since(since).status_in(Status.FAILED).count(),
         'ended': date_ended_getter,
     }
+    
 
-class scheduler(MakeReport):
-    pass
+class scheduler(BaseReport):
+    
+    get = lambda id: get_object(Scheduler, id=id)
+    get_all = lambda: Scheduler.objects.all()
+    
+    details = {
+        'schedules': lambda id, **kws:
+            Schedule.objects.filter(scheduler__id=id)
+    }
+    headers = ['ID', 'Active', 'Host', 'Heartbeat']
+    
 
-class tasks(MakeReport):
-    pass
+class instances(MakeReport):
+    
+    get = lambda id: get_object(Instance, id=id)
+    get_all = lambda: Instance.objects.all()
+    since_filter = date_ended_since
+    order_by = date_ended_order
+    
+    headers = ['ID', 'Task', 'Task Type', '']
+    data = {}
 
 # DataDefinition(
 #     key='tasks',

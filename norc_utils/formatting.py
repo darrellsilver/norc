@@ -81,6 +81,9 @@ def pprint_table(out, table):
 def to_title(s):
     return ' '.join(map(lambda w: w.capitalize(), s.split('_')))
 
+def untitle(s):
+    return '_'.join([t.lower() for t in s.split(' ')])
+
 if __name__ == "__main__":
     table = [["", "taste", "land speed", "life"],
         ["spam", 300101, 4, 1003],
