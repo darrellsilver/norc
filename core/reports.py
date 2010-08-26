@@ -45,18 +45,21 @@ class Report(type):
     """
     def __new__(cls, name, bases, dct):
         function = type(lambda: None)
+        attr_getter = lambda a: lambda obj, **kws: getattr(obj, a)
         for k, v in dct.iteritems():
             if type(v) == function:
                 dct[k] = staticmethod(v)
-        for k in dct['headers']:
-            k = untitle(k)
+        for h in dct['headers']:
+            k = untitle(h)
             if not k in dct['data']:
-                dct['data'][k] = lambda obj, **kws: getattr()
+                # print k
+                dct['data'][k] = attr_getter(k)
         return type.__new__(cls, name, bases, dct)
     
     def __init__(self, name, bases, dct):
-        super(Report, self).__init__(self, name, bases, dct)
-        REPORTS[name] = self
+        type.__init__(self, name, bases, dct)
+        if name != 'BaseReport':
+            REPORTS[name] = self
         # if base:
         #     self = copy(REPORT[base])
         # for k, v in kwargs.iteritems():
@@ -73,7 +76,7 @@ class Report(type):
     #         return None
     
 
-def since_filter(query, since):
+def date_ended_since(query, since):
     if type(since) == str:
         since = parse_since(since)
     return query.exclude(ended__lt=since) if since else query
@@ -86,9 +89,15 @@ class BaseReport(object):
     __metaclass__ = Report
     get = lambda id: None
     get_all = lambda: None
+    since_filter = lambda data, since: data
+    order_by = lambda data, order: data
     details = {}
     headers = []
     data = {}
+
+def _daemon_instance_counter(daemon, since, group):
+    return daemon.instances.since(since).status_in(
+        Status.GROUPS[group]).count()
 
 class daemons(BaseReport):
     
@@ -99,24 +108,25 @@ class daemons(BaseReport):
     
     details = {
         'instances': lambda id, status=None, **kws:
-            get(id).instances.status_in(status),
+            daemons.get(id).instances.status_in(status),
     }
     headers = ['ID', 'Queue', 'Queue Type', 'Host', 'PID', 'Running',
-        'Succeeded', 'Failed', 'Status', 'Started', 'Ended']
+        'Succeeded', 'Failed', 'Heartbeat', 'Started', 'Ended', 'Status']
     data = {
         'queue': lambda daemon, **kws: daemon.queue.name,
         'queue_type': lambda daemon, **kws: daemon.queue.__class__.__name__,
         'running': lambda daemon, since, **kws:
-            daemon.instances.since(since).status_in([Status.RUNNING]).count(),
+            _daemon_instance_counter(daemon, since, 'running'),
         'succeeded': lambda daemon, since, **kws:
-            daemon.instances.since(since).status_in(Status.SUCCEEDED).count(),
+            _daemon_instance_counter(daemon, since, 'succeeded'),
         'failed': lambda daemon, since, **kws:
-            daemon.instances.since(since).status_in(Status.FAILED).count(),
+            _daemon_instance_counter(daemon, since, 'failed'),
+        'status': lambda daemon, **kws: Status.NAME[daemon.status],
         'ended': date_ended_getter,
     }
     
 
-class scheduler(BaseReport):
+class schedulers(BaseReport):
     
     get = lambda id: get_object(Scheduler, id=id)
     get_all = lambda: Scheduler.objects.all()
@@ -126,9 +136,12 @@ class scheduler(BaseReport):
             Schedule.objects.filter(scheduler__id=id)
     }
     headers = ['ID', 'Active', 'Host', 'Heartbeat']
+    data = {
+        'active': lambda obj, **kws: str(bool(obj.active)),
+    }
     
 
-class instances(MakeReport):
+class instances(BaseReport):
     
     get = lambda id: get_object(Instance, id=id)
     get_all = lambda: Instance.objects.all()
@@ -138,6 +151,14 @@ class instances(MakeReport):
     headers = ['ID', 'Task', 'Task Type', '']
     data = {}
 
+class tasks(BaseReport):
+    
+    get = lambda name: filter(lambda t: t.__name__ == name, TASK_MODELS)[0]
+    get_all = lambda: TASK_MODELS
+    
+    headers = ['Task', 'Objects', 'Added']
+    data = {}
+    
 # DataDefinition(
 #     key='tasks',
 #     since_filter=date_ended_filter,

@@ -6,8 +6,13 @@
         <title>Norc View</title>
         <link href="/static/css/status.css" type="text/css" rel="stylesheet">
         <script type="text/javascript">
-            var SQS_ENABLED = {{ sqs|lower }}
-            var IS_SUPERUSER = {{ is_superuser|lower }}
+            var SECTIONS = ['{{ sections|join:"', '" }}'];
+            var SQS_ENABLED = {{ sqs|lower }};
+            var IS_SUPERUSER = {{ is_superuser|lower }};
+            var DATA_HEADERS = {
+                {% for k, r in reports.items %}'{{ k }}': ['{{ r.headers|join:"', '" }}'],
+                {% endfor%}
+            }
         </script>
         <script src="/static/js/jquery-1.4.2.min.js" type="text/javascript"></script>
         <script src="/static/js/status.js" type="text/javascript"></script>
@@ -17,24 +22,11 @@
             <h1>Norc Status</h1>
             <span id="timestamp"></span>
             <span id="auto-reload"><input type="checkbox"/>Auto-reload</span>
-            <div id="daemons" class="section">
-                <h2>Daemons</h2>
+            {% for s in sections %}<div id="{{ s }}" class="section">
+                <h2>{{ reports.s.title|default:s|totitle }}</h2>
                 <table></table>
             </div>
-            <div id="failedtasks" class="section">
-                <h2>Failed Norc Tasks</h2>
-                <table></table>
-            </div>
-            {% if sqs %}
-            <div id="sqsqueues" class="section">
-                <h2>SQS Queues</h2>
-                <table></table>
-            </div>
-            {% endif %}
-            <div id="jobs" class="section">
-                <h2>Jobs</h2>
-                <table></table>
-            </div>
+            {% endfor %}
         </div>
     </body>
 </html>

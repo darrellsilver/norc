@@ -23,7 +23,7 @@ from norc.norc_utils.log import make_log
 class SchedulerManager(Manager):
     
     def undead(self):
-        """Schedulers that are active but no recent heartbeat."""
+        """Schedulers that are alive (active) but the heart isn't beating."""
         cutoff = datetime.utcnow() - \
             timedelta(seconds=(SCHEDULER_PERIOD * 1.5))
         return self.filter(active=True).filter(heartbeat__lt=cutoff)
@@ -56,6 +56,12 @@ class Scheduler(Model):
     # The host this scheduler ran on.
     host = CharField(default=lambda: os.uname()[1], max_length=128)
     
+    # When this scheduler was started.
+    started = DateTimeField(null=True)
+    
+    # When this scheduler was started.
+    ended = DateTimeField(null=True)
+    
     def __init__(self, *args, **kwargs):
         Model.__init__(self, *args, **kwargs)
         self.flag = Event()
@@ -74,11 +80,11 @@ class Scheduler(Model):
     
     def start(self):
         """Starts the Scheduler."""
-        if not hasattr(self, 'log'):
-            self.log = make_log(self.log_path)
         if self.active or self.heartbeat != None:
             print "Cannot restart a scheduler."
             return
+        if not hasattr(self, 'log'):
+            self.log = make_log(self.log_path)
         if __name__ == '__main__':
             for signum in [signal.SIGINT, signal.SIGTERM]:
                 signal.signal(signum, self.signal_handler)
@@ -92,20 +98,21 @@ class Scheduler(Model):
         except:
             self.log.error('An unhandled exception occurred within ' +
                 'the run function!', trace=True)
-        self.log.info('%s is shutting down...' % self)
-        self.timer.cancel()
-        self.timer.join()
-        self.schedules.update(scheduler=None)
-        self.cronschedules.update(scheduler=None)
-        num = len(self.timer.tasks)
-        if num > 0:
-            self.log.info('Cleaning up %s instances.' % num)
-        for t in self.timer.tasks:
-            # print t
-            instance = t[2][1]
-            instance.claimed = False
-            instance.save()
-        self.log.info('%s exited cleanly.' % self)
+        else:
+            self.log.info('%s is shutting down...' % self)
+            self.timer.cancel()
+            self.timer.join()
+            self.schedules.update(scheduler=None)
+            self.cronschedules.update(scheduler=None)
+            num = len(self.timer.tasks)
+            if num > 0:
+                self.log.info('Cleaning up %s schedules.' % num)
+            for t in self.timer.tasks:
+                s = t[2][0]
+                s.scheduler = None
+                s.save()
+                self.log.debug('%s set free.' % s)
+            self.log.info('%s exited cleanly.' % self)
     
     def run(self):
         while self.active:
@@ -121,6 +128,7 @@ class Scheduler(Model):
             cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
             simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
             for schedule in itertools.chain(cron, simple):
+                self.log.info('Claiming %s.' % schedule)
                 schedule.scheduler = self
                 schedule.save()
                 self.add(schedule)
@@ -144,13 +152,11 @@ class Scheduler(Model):
     
     def add(self, schedule):
         """Adds the next instance for the schedule to the timer."""
-        i = Instance.objects.create(source=schedule.task,
-            started=schedule.next, schedule=schedule, claimed=True)
-        self.log.debug('Adding %s to timer.' % i)
-        self.log.debug('At time %s.' % schedule.next)
-        self.timer.add_task(schedule.next, self._enqueue, [schedule, i])
+        self.log.debug('Adding %s to timer for time %s.' %
+            (schedule, schedule.next))
+        self.timer.add_task(schedule.next, self._enqueue, [schedule])
     
-    def _enqueue(self, schedule, instance):
+    def _enqueue(self, schedule):
         """Called by the timer to add an instance to the queue.
         
         Try to make this method run AS QUICKLY AS POSSIBLE,
@@ -158,16 +164,13 @@ class Scheduler(Model):
         are scheduled close together.
         
         """
+        instance = Instance.objects.create(
+            source=schedule.task, schedule=schedule)
         self.log.info('Enqueuing %s.' % instance)
         schedule.queue.push(instance)
         schedule.enqueued()
         if not schedule.finished():
-            # self.flag.set()
-            schedule.save()
             self.add(schedule)
-        else:
-            schedule.scheduler = None
-            schedule.save()
     
     def signal_handler(self, signum, frame=None):
         """Handles signal interruption."""

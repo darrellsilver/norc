@@ -15,20 +15,20 @@
 // ATTN: The names of these headers are unTitle'd and then used directly
 //       to pull data from JSON objects; changing them here requires a
 //       change on the backend as well or stuff will break.
-var DATA_HEADERS = {
-    daemons: ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
-        'Success', 'Errored', 'Started', 'Ended', 'Status'],
-    jobs: ['Job ID', 'Name', 'Description', 'Added'],
-    tasks: ['ID', 'Job', 'Iteration', 'Task', 'Started', 'Ended', 'Status'],
-    sqstasks: ['ID', 'Task ID', 'Started', 'Ended', 'Status'],
-    iterations: ['Iter ID', 'Type', 'Started', 'Ended', 'Status'],
-    sqsqueues: ['Name', 'Num Items', 'Timeout'],
-    failedtasks: ['ID', 'Job', 'Iteration', 'Task',
-        'Started', 'Ended', 'Status'],
-};
+// var DATA_HEADERS = {
+//     daemons: ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
+//         'Success', 'Errored', 'Started', 'Ended', 'Status'],
+//     jobs: ['Job ID', 'Name', 'Description', 'Added'],
+//     tasks: ['ID', 'Job', 'Iteration', 'Task', 'Started', 'Ended', 'Status'],
+//     sqstasks: ['ID', 'Task ID', 'Started', 'Ended', 'Status'],
+//     iterations: ['Iter ID', 'Type', 'Started', 'Ended', 'Status'],
+//     sqsqueues: ['Name', 'Num Items', 'Timeout'],
+//     failedtasks: ['ID', 'Job', 'Iteration', 'Task',
+//         'Started', 'Ended', 'Status'],
+// };
 
 var DETAIL_KEYS = {
-    daemons: 'tasks',
+    daemons: 'instances',
     jobs: 'iterations',
     iterations: 'tasks',
 };
@@ -190,7 +190,7 @@ var TABLE_CUSTOMIZATION = {
             });
             row.data('click_rewritten', true);
         }
-        if (isIn(header, ['running', 'success', 'errored'])) {
+        if (isIn(header, ['running', 'succeeded', 'failed'])) {
             cell.addClass('clickable');
             cell.click(function() {
                 if (cell.hasClass('selected')) {
@@ -437,17 +437,8 @@ function retrieveData(chain, id, options, callback) {
     if (id) {
         loading = $('<tr/>').addClass('loading').append(loading);
         $('#' + chain + '-' + id).before(loading);
-        path += id + '/';
+        path += id + '/' + DETAIL_KEYS[dataKey] + '/';
         dataKey = DETAIL_KEYS[dataKey];
-        // Turrible haxxorz (hardcoding) to make SQS shit work.
-        if (dataKey == 'tasks' && chain == 'daemons') {
-            var obj = state.data[chain].filter(function(k) {
-                return k.id == id;
-            })[0];
-            if (obj['type'] == 'SQS') {
-                dataKey = 'sqstasks';
-            }
-        }
         chain = chainJoin(chain, dataKey);
     } else {
         loading = $('<span/>').addClass('loading').append(loading);
@@ -502,8 +493,7 @@ function initSection(dataKey) {
 }
 
 $(document).ready(function() {
-    var SECTIONS = ['daemons', 'jobs', 'failedtasks'];
-    if (SQS_ENABLED) SECTIONS.push('sqsqueues');
+    // var SECTIONS = ['daemons', 'jobs', 'failedtasks'];
     $.each(SECTIONS, function(i, section) {
         initSection(section);
     });
@@ -512,7 +502,7 @@ $(document).ready(function() {
             reloadSection(section);
         });
         $('#timestamp').text('Last updated at: ' + new Date());
-    }
+    };
     reloadAll()
     $('#auto-reload input').attr('checked', false).click(function() {
         if (this.checked == true) {

@@ -21,7 +21,7 @@ def get_object(model, **kwargs):
     
     """
     try:
-        model.objects.get(**kwargs)
+        return model.objects.get(**kwargs)
     except model.DoesNotExist:
         return None
 

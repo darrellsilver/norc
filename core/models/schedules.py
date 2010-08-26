@@ -13,6 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import GenericForeignKey
 
 from norc.core.constants import SCHEDULER_PERIOD
+from norc.core.models.task import Instance
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
@@ -64,6 +65,9 @@ class BaseSchedule(Model):
     # Whether or not to make up missed executions.
     make_up = BooleanField(default=False)
     
+    # When this schedule was added.
+    added = DateTimeField(default=datetime.utcnow)
+    
     @property
     def instances(self):
         """Custom implemented to avoid cascade-deleting instances."""
@@ -89,13 +93,13 @@ class Schedule(BaseSchedule):
     period = PositiveIntegerField()
     
     @staticmethod
-    def create(task, queue, period, start=0, reps=1):
+    def create(task, queue, period, reps=1, start=0, make_up=False):
         if type(start) == int:
             start = timedelta(seconds=start)
         if type(start) == timedelta:
             start = datetime.utcnow() + start
         return Schedule.objects.create(task=task, queue=queue, next=start,
-            repetitions=reps, remaining=reps, period=period)
+            repetitions=reps, remaining=reps, period=period, make_up=make_up)
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
@@ -104,6 +108,7 @@ class Schedule(BaseSchedule):
         assert self.next < now, "Enqueued too early!"
         if self.repetitions > 0:
             self.remaining -= 1
+        self.period = Schedule.objects.get(pk=self.pk).period
         if not self.finished() and self.period > 0:
             period = timedelta(seconds=self.period)
             self.next += period
@@ -111,7 +116,7 @@ class Schedule(BaseSchedule):
                 self.next += period
         elif self.finished():
             self.next = None
-        return 
+        self.save()
     
 
 ri = random.randint
@@ -147,6 +152,15 @@ class CronSchedule(BaseSchedule):
     MINUTES = range(60)
     SECONDS = range(60)
     
+    SYNONYMS = {
+        'o': (('o', 'months'), MONTHS),
+        'd': (('d', 'day', 'days'), DAYS),
+        'w': (('w', 'weekday', 'weekdays', 'daysofweek'), DAYSOFWEEK),
+        'h': (('h', 'hour', 'hours'), HOURS),
+        'm': (('m', 'minute', 'minutes'), MINUTES),
+        's': (('s', 'second', 'seconds', 'sec', 'secs'), SECONDS),
+    }
+    
     FIELDS = ['months', 'days', 'daysofweek', 'hours', 'minutes', 'seconds']
     
     MAKE_PREDEFINED = {
@@ -163,43 +177,86 @@ class CronSchedule(BaseSchedule):
             pass
         if encoding.upper() in CronSchedule.MAKE_PREDEFINED:
             encoding = CronSchedule.MAKE_PREDEFINED[encoding.upper()]()
+        encoding = CronSchedule.validate(encoding)[0]
         return CronSchedule.objects.create(task=task, encoding=encoding,
             queue=queue, repetitions=reps, remaining=reps, make_up=make_up)
     
     @staticmethod
-    def parse(string):
-        return map(int, string.split(','))
+    def decode(encoding):
+        SYNS = CronSchedule.SYNONYMS.values()
+        regex = r'([a-zA-Z])+(\*|\d+(?:,\d+)*)'
+        encoding = ''.join(encoding.split())
+        results = {}
+        assert re.sub(regex, '', encoding) == '', \
+            "Invalid formatting found in encoding '%s'." % encoding
+        for k, ls in re.findall(regex, encoding):
+            choices = map(int, ls.split(',')) if ls != '*' else '*'
+            found = False
+            for names, valid_range in SYNS:
+                if k in names:
+                    if choices == '*':
+                        choices = valid_range
+                    assert all([e in valid_range for e in choices]), \
+                        "Invalid number found for key '%s'." % k
+                    choices.sort()
+                    results[names[0]] = choices
+                    found = True
+                    break
+            assert found, "Invalid key: '%s'" % k
+        return results
     
     @staticmethod
-    def unparse(ls):
-        return ','.join(map(str, ls))
-    
-    @staticmethod
-    def decode(enc):
-        enc = ''.join(enc.split()) # Strip whitespace.
-        valid_keys = dict(o='months', d='days', w='daysofweek',
-            h='hours', m='minutes', s='seconds')
-        groups = re.findall(r'([a-zA-Z])+(\*|\d+(?:,\d+)*)', enc)
-        p = {}
-        for k, s in groups:
-            if k in valid_keys:
-                try:
-                    p[k] = map(int, s.split(','))
-                    p[k].sort()
-                except ValueError:
-                    pass
-        for k in valid_keys:
-            if not k in p:
-                p[k] = getattr(CronSchedule, valid_keys[k].upper())
-                # if k == 's':    # Default to only one second.
-                #     p[k] = [random.choice(p[k])]
-        return p['o'], p['d'], p['w'], p['h'], p['m'], p['s']
+    def validate(encoding):
+        """Attempts to create a valid version of an encoding.
+        
+        This function will throw assertion errors if it finds invalid
+        content in the encoding.  It returns a validated version of the
+        encoding as well as a dictionary with the parsed schedule lists.
+        
+        """
+        SYNS = CronSchedule.SYNONYMS
+        results = CronSchedule.decode(encoding)
+        # Get everything possible from encoding and make sure it's valid.
+        for k, choices in results.iteritems():
+            assert all([c in SYNS[k][1] for c in choices]), \
+                "Invalid number found in range for key '%s'." % k
+        # Fill in any missing ranges.
+        for k, valid_r in [(k, v[1]) for k, v in SYNS.items()]:
+            if not k in results:
+                if k != 's':
+                    results[k] = valid_r
+                else:
+                    results[k] = [random.choice(valid_r)]
+        assert set(results.keys()) == set(SYNS.keys())
+        new_encoding = 'o%sd%sw%sh%sm%ss%s' % tuple(['*' if results[k] ==
+            SYNS[k][1] else ','.join(map(str, results[k])) for k in 'odwhms'])
+        return new_encoding, results
     
     def __init__(self, *args, **kwargs):
         BaseSchedule.__init__(self, *args, **kwargs)
-        self.months, self.days, self.daysofweek, self.hours, \
-            self.minutes, self.seconds = CronSchedule.decode(self.encoding)
-        self._next = self.calculate_next()
+        d = CronSchedule.validate(self.encoding)[1]
+        self.months = d['o']
+        self.days = d['d']
+        self.daysofweek = d['w']
+        self.hours = d['h']
+        self.minutes = d['m']
+        self.seconds = d['s']
+        self._next = None
+    
+    def encode(self):
+        """Re-construct the encoding, validate it, save it, and return it."""
+        tup = ()
+        for field in CronSchedule.FIELDS:
+            list_ = getattr(self, field)
+            if list_ == getattr(CronSchedule, field.upper()):
+                tup += ('*',)
+            else:
+                tup += (','.join(map(str, list_)),)
+        encoding = 'o%sd%sw%sh%sm%ss%s' % tup
+        encoding = CronSchedule.validate(encoding)[0]
+        self.encoding = encoding
+        self.save()
+        return encoding
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
@@ -213,10 +270,17 @@ class CronSchedule(BaseSchedule):
                 self.base = self.next
             else:
                 self.base = now
-            self._next = None # Don't calculate now, but clear the old value.
+        self._next = None # Don't calculate now, but clear the old value.
+        self.encoding = CronSchedule.objects.get(pk=self.pk).encoding
+        self.save()
     
     @property
     def next(self):
+        """Essentially a wrapper for calculate_next() with a cache.
+        
+        The cache is _next, and it is manually cleared by enqueued().
+        
+        """
         if not self._next:
             self._next = self.calculate_next()
         return self._next
@@ -254,16 +318,6 @@ class CronSchedule(BaseSchedule):
             if e >= p:
                 return e
     
-    def encode(self):
-        tup = ()
-        for field in CronSchedule.FIELDS:
-            list_ = getattr(self, field)
-            if list_ == getattr(CronSchedule, field.upper()):
-                tup += ('*',)
-            else:
-                tup += (CronSchedule.unparse(list_),)
-        return 'o%sd%sw%sh%sm%ss%s' % tup
-        
     def pretty_name(self):
         """Returns the pretty (predefined) name for this schedule."""
         searchs = {
@@ -277,6 +331,7 @@ class CronSchedule(BaseSchedule):
         for regex, name in searchs.items():
             m = re.match(regex, encoding)
             if m:
+                # A check just for HALFHOURLY.
                 mins = map(int, m.groups())
                 if m.groups() and abs(mins[0] - mins[1]) != 30:
                     continue

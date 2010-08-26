@@ -9,7 +9,7 @@ the appropriate object.
 
 from django.conf import settings
 
-from norc.core import report
+from norc.core import reports
 from norc.core.models import TaskRunStatus
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.formatting import to_title

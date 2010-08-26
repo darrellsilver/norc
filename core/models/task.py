@@ -23,6 +23,15 @@ from norc.core.constants import Status
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import QuerySetManager
 
+TASK_MODELS = []
+
+class MetaTask(type):
+    def __init__(self, name, bases, dct):
+        type.__init__(self, name, bases, dct)
+        if not self._meta.abstract:
+            TASK_MODELS.append(self)
+    
+
 class Task(Model):
     """An abstract class that represents something to be executed."""
     
@@ -79,7 +88,7 @@ class BaseInstance(Model):
         choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
     
     # When the instance was added to a queue.
-    enqueue_date = DateTimeField(default=datetime.utcnow)
+    enqueued = DateTimeField(default=datetime.utcnow)
     
     # When the instance started.
     started = DateTimeField(null=True)
@@ -88,7 +97,7 @@ class BaseInstance(Model):
     ended = DateTimeField(null=True)
     
     # The daemon that executed/is executing this instance.
-    daemon = ForeignKey('Daemon', null=True)
+    daemon = ForeignKey('Daemon', null=True, related_name='%(class)ss')
     
     def start(self):
         self.log = make_log(self.log_path)
@@ -165,7 +174,7 @@ class Instance(BaseInstance):
         
         def status_in(self, statuses):
             if type(statuses) == str:
-                statuses = Status.GROUPS.get(statuses, None)
+                statuses = Status.GROUPS.get(statuses)
             return self.filter(status__in=statuses) if statuses else self
     
     # The object that spawned this instance.
@@ -179,7 +188,7 @@ class Instance(BaseInstance):
     schedule = GenericForeignKey('schedule_type', 'schedule_id')
     
     # Flag for when this instance is claimed by a Scheduler.
-    claimed = BooleanField(default=False)
+    # claimed = BooleanField(default=False)
     
     def run(self):
         self.source.start(self)

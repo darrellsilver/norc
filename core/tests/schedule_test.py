@@ -2,7 +2,7 @@
 """Test schedule handling cases in the SchedulableTask class."""
 
 import unittest
-
+import re
 
 from django.test import TestCase
 
@@ -25,9 +25,16 @@ class CronScheduleTest(TestCase):
         self.q = DBQueue.objects.create(name='Test')
         # self.cron = CronSchedule.create(self.t, self.q, 'WEEKLY')
     
-    def test_encoding(self):
-        pass
-        # print self.cron.encode()
+    def test_validate(self):
+        v = lambda s: CronSchedule.validate(s)[0]
+        self.assertEqual(v('o1d1w1h1m1s1'), 'o1d1w1h1m1s1')
+        self.assertTrue(re.match(r'^o\*d\*w\*h\*m\*s\d+$', v('')))
+        self.assertEqual(v('d1w1h1m1s1'), 'o*d1w1h1m1s1')
+        self.assertEqual(v(' d 1 , 2 s 1 '), 'o*d1,2w*h*m*s1')
+        
+        self.assertRaises(AssertionError, lambda: v('adf'))
+        self.assertRaises(AssertionError, lambda: v('o1,13'))
+        
 
     def test_pretty_name(self):
         make = lambda p: CronSchedule.create(self.t, self.q, p)
