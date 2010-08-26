@@ -60,7 +60,8 @@ class BaseSchedule(Model):
     remaining = PositiveIntegerField()
     
     # The Scheduler that has scheduled the next execution.
-    scheduler = ForeignKey('Scheduler', null=True, related_name='%(class)ss')
+    scheduler = ForeignKey('Scheduler', null=True, blank=True, 
+        related_name='%(class)ss')
     
     # Whether or not to make up missed executions.
     make_up = BooleanField(default=False)
@@ -140,7 +141,7 @@ def _make_monthly():
 class CronSchedule(BaseSchedule):
     
     # The datetime that the next execution time is based off of.
-    base = DateTimeField(null=True)
+    base = DateTimeField(null=True, blank=True)
     
     # The string encoding of the schedule.
     encoding = CharField(max_length=864)
