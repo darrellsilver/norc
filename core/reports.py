@@ -9,7 +9,7 @@ external modules from having to query core classes directly.
 """
 
 from norc.core.models import *
-from norc.core.constants import Status
+from norc.core.constants import Status, TASK_MODELS
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.formatting import untitle
 from norc.norc_utils.django_extras import get_object
@@ -151,13 +151,16 @@ class instances(BaseReport):
     headers = ['ID', 'Task', 'Task Type', '']
     data = {}
 
-class tasks(BaseReport):
+class task_models(BaseReport):
     
     get = lambda name: filter(lambda t: t.__name__ == name, TASK_MODELS)[0]
     get_all = lambda: TASK_MODELS
     
-    headers = ['Task', 'Objects', 'Added']
-    data = {}
+    headers = ['Task', 'Objects']
+    data = {
+        'task': lambda task, **kws: task.__name__,
+        'objects': lambda task, **kws: task.objects.count(),
+    }
     
 # DataDefinition(
 #     key='tasks',

@@ -243,8 +243,9 @@ function makeDataTable(chain, data) {
         table.append($('<tr><td>No ' + dataKey + '.</td></tr>'));
     }
     $.each(data, function(i, rowData) {
+        var unTitledHeaders = headers.map(unTitle);
         // Make the row and add the ID cell.
-        var id = rowData['id'];
+        var id = rowData[unTitledHeaders[0]];
         var rID = chain + '-' + id;
         var row = $('<tr/>').attr('id', rID);
         if (DETAIL_KEYS[dataKey]) {
@@ -260,8 +261,8 @@ function makeDataTable(chain, data) {
                 showDetails(chain, id, false);
             }
         };
-        $.each(headers.map(unTitle), function(j, header) {
-            var cell = $('<td/>').append(rowData[j == 0 ? 'id' : header]);
+        $.each(unTitledHeaders, function(j, header) {
+            var cell = $('<td/>').append(rowData[header]);
             $.each(STYLE_BY_COLUMN, function(cls, hs) {
                 if (isIn(header, hs)) cell.addClass(cls);
             })

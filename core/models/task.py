@@ -6,7 +6,7 @@ from datetime import datetime
 import re
 import subprocess
 
-from django.db.models import (Model, query,
+from django.db.models import (Model, query, base,
     BooleanField,
     CharField,
     DateTimeField,
@@ -19,15 +19,13 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc import settings
-from norc.core.constants import Status
+from norc.core.constants import Status, TASK_MODELS
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import QuerySetManager
 
-TASK_MODELS = []
-
-class MetaTask(type):
+class MetaTask(base.ModelBase):
     def __init__(self, name, bases, dct):
-        type.__init__(self, name, bases, dct)
+        base.ModelBase.__init__(self, name, bases, dct)
         if not self._meta.abstract:
             TASK_MODELS.append(self)
     
@@ -35,6 +33,7 @@ class MetaTask(type):
 class Task(Model):
     """An abstract class that represents something to be executed."""
     
+    __metaclass__ = MetaTask
     class Meta:
         app_label = 'core'
         abstract = True

@@ -35,7 +35,6 @@ class SchedulerTest(TestCase):
         wait_until(lambda: s.instances.count() == 5, 5)
         s = Schedule.create(task, queue, 1, 10, -10, True)
         wait_until(lambda: s.instances.count() == 10, 5)
-        
     
     def test_cron(self):
         task = make_task()

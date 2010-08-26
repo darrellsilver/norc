@@ -15,10 +15,13 @@ SCHEDULER_PERIOD = 5
 # How many new schedules the scheduler can pull from the database at once.
 SCHEDULER_LIMIT = 1000
 
+TASK_MODELS = []
+
 class MetaStatus(type):
     """Generates the NAMES attribute of the Status class."""
     
     def __new__(cls, name, bases, dct):
+        """Magical function to dynamically create NAME and ALL."""
         NAME = {}
         ALL = []
         for k, v in dct.iteritems():
@@ -31,6 +34,7 @@ class MetaStatus(type):
     
     @property
     def GROUPS(self):
+        """Used for accessing groups of Statuses by a string name."""
         return {
             'running': [self.RUNNING],
             'succeeded': filter(lambda s: s >= 7 and s < 13, self.ALL),
@@ -69,10 +73,11 @@ class Status(object):
     
     @staticmethod
     def is_final(status):
+        """Whether the given status counts as final."""
         return status >= 7
     
     @staticmethod
     def is_failure(status):
+        """Whether the given status counts as a failure."""
         return status >= 13
-    
     

@@ -19,6 +19,7 @@ from norc.norc_utils.django_extras import queryset_exists
 from django.db.models.base import ModelBase
 
 class MetaQueue(ModelBase):
+    """This metaclass is used to create a list of Queue implementations."""
     
     IMPLEMENTATIONS = []
     

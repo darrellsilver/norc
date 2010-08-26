@@ -1,4 +1,10 @@
 
+"""The Norc Scheduler is defined here.
+
+Norc requires that at least one of these is running at all times.
+
+"""
+
 import os
 import re
 import signal
@@ -21,6 +27,7 @@ from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
 
 class SchedulerManager(Manager):
+    """Custom manager for Scheduler."""
     
     def undead(self):
         """Schedulers that are alive (active) but the heart isn't beating."""
@@ -115,6 +122,7 @@ class Scheduler(Model):
             self.log.info('%s exited cleanly.' % self)
     
     def run(self):
+        """Main run loop of the Scheduler."""
         while self.active:
             self.flag.clear()
             # Clean up orphaned schedules and undead schedulers.
@@ -151,19 +159,13 @@ class Scheduler(Model):
             self.signal_handler(signal.SIGTERM)
     
     def add(self, schedule):
-        """Adds the next instance for the schedule to the timer."""
-        self.log.debug('Adding %s to timer for time %s.' %
+        """Adds the schedule to the timer."""
+        self.log.debug('Adding %s to timer for %s.' %
             (schedule, schedule.next))
         self.timer.add_task(schedule.next, self._enqueue, [schedule])
     
     def _enqueue(self, schedule):
-        """Called by the timer to add an instance to the queue.
-        
-        Try to make this method run AS QUICKLY AS POSSIBLE,
-        otherwise tasks might start getting delayed if they
-        are scheduled close together.
-        
-        """
+        """Called by the timer to add an instance to the queue."""
         instance = Instance.objects.create(
             source=schedule.task, schedule=schedule)
         self.log.info('Enqueuing %s.' % instance)

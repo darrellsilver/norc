@@ -1,4 +1,6 @@
 
+"""The Norc Daemon (norcd) is defined here."""
+
 import os
 import sys
 import signal
@@ -25,7 +27,13 @@ from norc.norc_utils.log import make_log
 from norc import settings
 
 class Daemon(Model):
-    """Daemons are responsible for the running of Tasks."""
+    """Daemons are responsible for the running of instances.
+    
+    Daemons have a single queue that they pull instances from.  There
+    can (and in many cases should) be more than one Daemon running for
+    a single queue.
+    
+    """
     
     VALID_STATUSES = [
         Status.CREATED,
@@ -41,7 +49,7 @@ class Daemon(Model):
     REQUEST_UNPAUSE = 2
     REQUEST_STOP = 5
     REQUEST_KILL = 6
-    REQUESTS = {
+    REQUESTS = {        # Map the names.
         REQUEST_PAUSE: 'PAUSE',
         REQUEST_UNPAUSE: 'UNPAUSE',
         REQUEST_STOP: 'STOP',
@@ -96,15 +104,6 @@ class Daemon(Model):
             self.save()
             time.sleep(5)
     
-    def wait(self):
-        try:
-            self.flag.clear()
-            self.flag.wait(1)
-        except KeyboardInterrupt:
-            self.make_request(Daemon.REQUEST_STOP)
-        except SystemExit:
-            self.make_request(Daemon.REQUEST_KILL)
-    
     def start(self):
         """Starts the daemon.  Mostly just a wrapper for run()."""
         if not hasattr(self, 'id'):
@@ -150,9 +149,9 @@ class Daemon(Model):
                     if instance:
                         self.start_instance(instance)
                     else:
-                        self.wait()
+                        self._wait()
                 else:
-                    self.wait()
+                    self._wait()
             elif self.status == Status.STOPPING and len(self.processes) == 0:
                 self.set_status(Status.ENDED)
                 self.save()
@@ -178,8 +177,23 @@ class Daemon(Model):
             (ct.pk, instance.pk), shell=True)
         p.instance = instance
         self.processes[p.pid] = p
-        
     
+    def _wait(self):
+        """Waits on the flag.
+        
+        For whatever reason, when this is done signals are no longer
+        handled properly, so we must catch the exceptions explicitly.
+        
+        """
+        try:
+            self.flag.clear()
+            self.flag.wait(1)
+        except KeyboardInterrupt:
+            self.make_request(Daemon.REQUEST_STOP)
+        except SystemExit:
+            self.make_request(Daemon.REQUEST_KILL)
+    
+    # This should be used in 2.6, but with subprocess it's not possible.
     # def execute(self, func):
     #     """Calls a function, then sets the flag after its execution."""
     #     try:
@@ -206,7 +220,8 @@ class Daemon(Model):
         elif self.request == Daemon.REQUEST_KILL:
             # for p in self.processes.values():
             #     p.terminate()
-            for pid in self.processes:
+            for pid, p in self.processes.iteritems():
+                self.log.info("Killing process for %s." % p.instance)
                 os.kill(pid, signal.SIGTERM)
             self.set_status(Status.KILLED)
         
@@ -229,7 +244,14 @@ class Daemon(Model):
     
     # TODO: Probably should rethink this.
     def save(self, *args, **kwargs):
-        # Have to be very careful to never overwrite a request.
+        """Overwrites Model.save().
+        
+        We have to be very careful to never overwrite a request, so
+        we read the request from the database prior to saving.  The
+        update_request parameter must be explicitly set to False in
+        order to change the request field.
+        
+        """
         if kwargs.pop('update_request', True):
             try:
                 self.update_request()
@@ -250,12 +272,14 @@ class Daemon(Model):
             return self.request
     
     def make_request(self, req):
+        """This method is how the request field should always be set."""
         assert req in Daemon.REQUESTS, "Invalid request!"
         self.request = req
         self.save(update_request=False)
         self.flag.set()
     
     def set_status(self, status):
+        """Sets the status with a log message.  Does not save."""
         self.log.info("Changing state from %s to %s." %
             (Status.NAME[self.status], Status.NAME[status]))
         self.status = status
