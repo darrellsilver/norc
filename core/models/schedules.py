@@ -235,6 +235,10 @@ class CronSchedule(BaseSchedule):
     
     def __init__(self, *args, **kwargs):
         BaseSchedule.__init__(self, *args, **kwargs)
+        self.read_encoding()
+        self._next = None
+    
+    def read_encoding(self):
         d = CronSchedule.validate(self.encoding)[1]
         self.months = d['o']
         self.days = d['d']
@@ -242,7 +246,6 @@ class CronSchedule(BaseSchedule):
         self.hours = d['h']
         self.minutes = d['m']
         self.seconds = d['s']
-        self._next = None
     
     def encode(self):
         """Re-construct the encoding, validate it, save it, and return it."""
@@ -287,6 +290,7 @@ class CronSchedule(BaseSchedule):
         return self._next
     
     def calculate_next(self, dt=None):
+        self.read_encoding()
         if not dt:
             dt = self.base if self.base else datetime.utcnow()
         dt = dt.replace(microsecond=0)

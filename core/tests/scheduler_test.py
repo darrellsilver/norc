@@ -60,6 +60,17 @@ class SchedulerTest(TestCase):
         # print enqueued
         reduce(fold, enqueued)
     
+    def test_update_schedule(self):
+        task = make_task()
+        queue = make_queue()
+        s = CronSchedule.create(task, queue, 'o*d*w*h*m*s*', 10)
+        self._scheduler.flag.set()
+        wait_until(lambda: queue.count() == 2, 5)
+        s.encoding = 'o*d*w*h*m*s4'
+        s.save()
+        self.assertRaises(Exception,
+            lambda: wait_until(lambda: s.instances.count() > 3, 3))
+    
     def tearDown(self):
         if self._scheduler.active:
             self._scheduler.stop()
