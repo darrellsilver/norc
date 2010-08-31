@@ -191,7 +191,7 @@ class Instance(BaseInstance):
     # claimed = BooleanField(default=False)
     
     def run(self):
-        self.task.start(self)
+        return self.task.start(self)
     
     @property
     def timeout(self):

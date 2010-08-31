@@ -94,7 +94,7 @@ class Schedule(BaseSchedule):
     period = PositiveIntegerField()
     
     @staticmethod
-    def create(task, queue, period, reps=1, start=0, make_up=False):
+    def create(task, queue, period=0, reps=1, start=0, make_up=False):
         if type(start) == int:
             start = timedelta(seconds=start)
         if type(start) == timedelta:
