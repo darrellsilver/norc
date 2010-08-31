@@ -49,7 +49,7 @@ class Task(Model):
         
         This is useful because some types of task (such as Job) need access
         to the instance object that is currently running, but we don't want
-        to make run require any parameters for all tasks.
+        to make run have any parameters by default.
         
         """
         return self.run()
@@ -99,7 +99,8 @@ class BaseInstance(Model):
     daemon = ForeignKey('Daemon', null=True, related_name='%(class)ss')
     
     def start(self):
-        self.log = make_log(self.log_path)
+        if not hasattr(self, 'log'):
+            self.log = make_log(self.log_path)
         if self.status != Status.CREATED:
             self.log.error("Can't start an instance more than once.")
             return
@@ -177,9 +178,9 @@ class Instance(BaseInstance):
             return self.filter(status__in=statuses) if statuses else self
     
     # The object that spawned this instance.
-    source_type = ForeignKey(ContentType, related_name='instances')
-    source_id = PositiveIntegerField()
-    source = GenericForeignKey('source_type', 'source_id')
+    task_type = ForeignKey(ContentType, related_name='instances')
+    task_id = PositiveIntegerField()
+    task = GenericForeignKey('task_type', 'task_id')
     
     # The schedule from whence this instance spawned.
     schedule_type = ForeignKey(ContentType, null=True)
@@ -190,16 +191,16 @@ class Instance(BaseInstance):
     # claimed = BooleanField(default=False)
     
     def run(self):
-        self.source.start(self)
+        self.task.start(self)
     
     @property
     def timeout(self):
-        return self.source.timeout
+        return self.task.timeout
     
     @property
     def log_path(self):
-        return 'tasks/%s/%s/%s-%s' % (self.source.__class__.__name__,
-            self.source.name, self.source.name, self.id)
+        return 'tasks/%s/%s/%s-%s' % (self.task.__class__.__name__,
+            self.task.name, self.task.name, self.id)
     
 
 class CommandTask(Task):

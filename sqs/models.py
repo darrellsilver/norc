@@ -26,10 +26,11 @@ class SQSQueue(Queue):
         ct = ContentType.objects.get(pk=content_type_pk)
         return ct.get_object_for_this_type(pk=content_pk)
     
-    def peek(self):
-        message = self.queue.read(0)
-        if message:
-            return SQSQueue.get_item(*pickle.loads(message.get_body()))
+    # This has weird effects because SQS is crap.
+    # def peek(self):
+    #     message = self.queue.read(0)
+    #     if message:
+    #         return SQSQueue.get_item(*pickle.loads(message.get_body()))
     
     def pop(self):
         message = self.queue.read()

@@ -16,6 +16,7 @@ class ScheduleTest(TestCase):
     
     def test_run_schedule(self):
         pass
+    
 
 class CronScheduleTest(TestCase):
     
@@ -34,8 +35,7 @@ class CronScheduleTest(TestCase):
         
         self.assertRaises(AssertionError, lambda: v('adf'))
         self.assertRaises(AssertionError, lambda: v('o1,13'))
-        
-
+    
     def test_pretty_name(self):
         make = lambda p: CronSchedule.create(self.t, self.q, p)
         self.assertEqual(make('HALFHOURLY').pretty_name(), 'HALFHOURLY')
@@ -43,5 +43,4 @@ class CronScheduleTest(TestCase):
         self.assertEqual(make('DAILY').pretty_name(), 'DAILY')
         self.assertEqual(make('WEEKLY').pretty_name(), 'WEEKLY')
         self.assertEqual(make('MONTHLY').pretty_name(), 'MONTHLY')
-        
-        
+    

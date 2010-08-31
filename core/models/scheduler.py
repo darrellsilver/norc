@@ -167,7 +167,7 @@ class Scheduler(Model):
     def _enqueue(self, schedule):
         """Called by the timer to add an instance to the queue."""
         instance = Instance.objects.create(
-            source=schedule.task, schedule=schedule)
+            task=schedule.task, schedule=schedule)
         self.log.info('Enqueuing %s.' % instance)
         schedule.queue.push(instance)
         schedule.enqueued()

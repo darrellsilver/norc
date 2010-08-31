@@ -71,6 +71,8 @@ class Log(AbstractLog):
         
         """
         AbstractLog.__init__(self, debug)
+        if out and not os.path.isdir(os.path.dirname(out)):
+            os.makedirs(os.path.dirname(out))
         self.out = open(out, 'a') if out else sys.stdout
         if not err and out:
             self.err = self.out

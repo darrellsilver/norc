@@ -58,7 +58,7 @@ class DaemonTest(TestCase):
     # def test_run_instance(self):
     #     self.thread.start()
     #     ct = CommandTask.objects.create(name='test', command='echo "blah"')
-    #     _instance = Instance.objects.create(source=ct, daemon=self._daemon)
+    #     _instance = Instance.objects.create(task=ct, daemon=self._daemon)
     #     instance = lambda: Instance.objects.get(pk=_instance.pk)
     #     wait_until(lambda: self.daemon.status == Status.RUNNING, 3)
     #     self.queue.push(_instance)

@@ -1,4 +1,7 @@
 
+import os
+import time
+
 from django.db.models import (Model,
     BooleanField,
     PositiveIntegerField,
@@ -30,15 +33,14 @@ class Job(Task):
     
     def run(self, instance):
         """Enqueue instances for all nodes that don't have dependencies."""
-        for node in self.nodes:
+        for node in self.nodes.all():
             node_instance = NodeInstance.objects.create(
                 node=node,
-                job_instance=instance,
-                daemon=instance.daemon,
-                schedule=instance.schedule)
+                job_instance=instance)
             if node_instance.can_run():
                 instance.schedule.queue.push(node_instance)
         while True:
+            # print [(ni.status, ni.node) for ni in instance.nodis.all()]
             complete = True
             for ni in instance.nodis.all():
                 if not Status.is_final(ni.status):
@@ -70,7 +72,7 @@ class Node(Model):
     #                 queryset_exists(NodeInstance.objects.get(node=n, job_instance=instance.job_instance))
     #             # check for all deps
     #             ni, created = NodeInstance.objects.get_or_create(
-    #                 source=node,
+    #                 task=node,
     #                 job_instance=instance.job_instance,
     #             )
     #             if created:
@@ -92,12 +94,15 @@ class NodeInstance(BaseInstance):
     job_instance = ForeignKey(Instance, related_name='nodis')
     
     def start(self):
+        # print "starting %s" % self
         BaseInstance.start(self)
         ji = self.job_instance
         if not Status.is_failure(self.status):
-            for sub_node in self.node.sub_deps.all():
+            for sub_dep in self.node.sub_deps.all():
+                sub_node = sub_dep.child
                 ni = sub_node.nis.get(job_instance=ji)
-                if sub_node.can_run():
+                if ni.can_run():
+                    # print "%s pushing %s" % (self, ni)
                     self.job_instance.schedule.queue.push(ni)
     
     def run(self):
@@ -107,6 +112,11 @@ class NodeInstance(BaseInstance):
     def timeout(self):
         return self.node.task.timeout
     
+    @property
+    def log_path(self):
+        return os.path.join(self.job_instance.log_path + '-nodes',
+            'node-%s' % self.id)
+    
     def can_run(self):
         """Whether dependencies are met for this instance to run."""
         for dep in self.node.super_deps.all():
@@ -115,6 +125,8 @@ class NodeInstance(BaseInstance):
                 return False
         return True
     
+    def __unicode__(self):
+        return 'NodeInstance for %s' % self.node.task
 
 class Dependency(Model):
     """One task Node's dependency on another.

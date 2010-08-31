@@ -7,7 +7,7 @@ def wait_until(cond, timeout=60, freq=0.5):
     """Tests the condition repeatedly until <timeout> seconds have passed."""
     seconds = 0
     while not cond():
-        if seconds > timeout:
+        if seconds >= timeout:
             raise Exception('Timed out after %s seconds.' % seconds)
         time.sleep(freq)
         seconds += freq
