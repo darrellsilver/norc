@@ -121,6 +121,8 @@ class BaseInstance(Model):
         except Exception:
             self.log.error("Task failed with an exception!", trace=True)
             self.status = Status.ERROR
+        except SystemExit:
+            pass
         else:
             if success or success == None:
                 self.status = Status.SUCCESS
@@ -188,9 +190,6 @@ class Instance(BaseInstance):
     schedule_id = PositiveIntegerField(null=True)
     schedule = GenericForeignKey('schedule_type', 'schedule_id')
     
-    # Flag for when this instance is claimed by a Scheduler.
-    # claimed = BooleanField(default=False)
-    
     def run(self):
         return self.task.start(self)
     
@@ -241,5 +240,7 @@ class CommandTask(Task):
         sys.stdout.flush()
         exit_status = subprocess.call(command, shell=True,
             stdout=sys.stdout, stderr=sys.stderr)
+        if exit_status in [126, 127]:
+            raise ValueError("Invalid command: %s" % command)
         return exit_status == 0
     

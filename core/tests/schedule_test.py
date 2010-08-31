@@ -9,13 +9,13 @@ from django.test import TestCase
 from norc.core.models import CommandTask, DBQueue, Schedule, CronSchedule
 from norc.norc_utils import wait_until, log
 
-class ScheduleTest(TestCase):
-    
-    def setUp(self):
-        pass
-    
-    def test_run_schedule(self):
-        pass
+# class ScheduleTest(TestCase):
+#     
+#     def setUp(self):
+#         pass
+#     
+#     def test_run_schedule(self):
+#         pass
     
 
 class CronScheduleTest(TestCase):

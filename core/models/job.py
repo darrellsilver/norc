@@ -17,16 +17,6 @@ from norc.norc_utils.django_extras import queryset_exists
 class Job(Task):
     """A Task composed of running several other Tasks."""
     
-    # @property
-    # def start_nodes(self):
-    #     # return filter(lambda n: not queryset_exists(n.super_deps.all()),
-    #     #     self.nodes.all()
-    #     start_nodes = []
-    #     for n in self.nodes.all():
-    #         if not queryset_exists(n.super_deps.all()):
-    #             start_nodes.append(n)
-    #     return start_nodes
-    
     def start(self, instance):
         """Modified to give run() the instance object."""
         return self.run(instance)
@@ -40,7 +30,6 @@ class Job(Task):
             if node_instance.can_run():
                 instance.schedule.queue.push(node_instance)
         while True:
-            # print [(ni.status, ni.node) for ni in instance.nodis.all()]
             complete = True
             for ni in instance.nodis.all():
                 if not Status.is_final(ni.status):
@@ -61,22 +50,6 @@ class Node(Model):
     task_id = PositiveIntegerField()
     task = GenericForeignKey('task_type', 'task_id')
     job = ForeignKey(Job, related_name='nodes')
-    # optional = BooleanField(default=False)
-    
-    # def start(self, instance):
-    #     instance.start()
-    #     ji = instance.job_instance
-    #     if not Status.is_failure(instance.status):
-    #         for sub_node in self.sub_deps.all():
-    #             for deps in sub_node.super_deps.all():
-    #                 queryset_exists(NodeInstance.objects.get(node=n, job_instance=instance.job_instance))
-    #             # check for all deps
-    #             ni, created = NodeInstance.objects.get_or_create(
-    #                 task=node,
-    #                 job_instance=instance.job_instance,
-    #             )
-    #             if created:
-    #                 instance.job_instance.schedule.queue.push(ni)
     
     def __unicode__(self):
         return u"Node #%s in %s for %s" % (self.id, self.job, self.task)
@@ -94,7 +67,6 @@ class NodeInstance(BaseInstance):
     job_instance = ForeignKey(Instance, related_name='nodis')
     
     def start(self):
-        # print "starting %s" % self
         BaseInstance.start(self)
         ji = self.job_instance
         if not Status.is_failure(self.status):
@@ -102,7 +74,6 @@ class NodeInstance(BaseInstance):
                 sub_node = sub_dep.child
                 ni = sub_node.nis.get(job_instance=ji)
                 if ni.can_run():
-                    # print "%s pushing %s" % (self, ni)
                     self.job_instance.schedule.queue.push(ni)
     
     def run(self):

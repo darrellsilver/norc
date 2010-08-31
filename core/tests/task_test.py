@@ -1,65 +1,31 @@
 
 """Module for testing anything related to daemons."""
 
-import os, time
+import time
+
 from django.test import TestCase
 
-from django.conf import settings
-from norc.core import report
-from norc.core.models import *
-from norc.norc_utils import wait_until
+from norc.core.models import CommandTask, Instance
+from norc.core.constants import Status
+from norc.norc_utils.log import make_log
 
 class TestCommandTask(TestCase):
     """Tests for Norc tasks."""
     
-    def setUp(self):
-        """Initialize the DB and setup data."""
-        self.task = CommandTask.objects.create(
-            name='TestTask', command="echo 'This is a test.'")
-        self.get_nds = lambda: \
-            report.nds(self.daemon.get_daemon_status().id)
-        self.get_trs = lambda: \
-            TaskRunStatus.objects.get(id=self.task.current_run_status.id)
+    def run_task(self, ct):
+        if type(ct) == str:
+            ct = CommandTask.objects.create(name=ct, command=ct)
+        instance = Instance.objects.create(task=ct)
+        instance.log = make_log(instance.log_path, echo=True)
+        instance.start()
+        return Instance.objects.get(pk=instance.pk).status
     
-    def test_task_success(self):
+    def test_status(self):
         """Tests that a task can run successfully."""
-        class SuccessTask(TestTask):
-            class Meta:
-                proxy = True
-            def run(self):
-                self.ran = True
-                return True
-        self.task = SuccessTask(job=self.job, timeout=60)
-        self.task.save()
-        self.task.do_run(self.iter, self.get_nds())
-        self.assertTrue(self.task.ran)
-        self.assertEqual(self.get_trs().status, TaskRunStatus.STATUS_SUCCESS)
-    
-    def test_task_error(self):
-        """Tests that a task can run successfully."""
-        class ErrorTask(TestTask):
-            class Meta:
-                proxy = True
-            def run(self):
-                raise Exception()
-        self.task = ErrorTask(job=self.job, timeout=60)
-        self.task.save()
-        self.task.do_run(self.iter, self.get_nds())
-        self.assertEqual(self.get_trs().status, TaskRunStatus.STATUS_ERROR)
-    
-    def test_task_timeout(self):
-        class TimeOutTask(TestTask):
-            class Meta:
-                proxy = True
-            def run(self):
-                time.sleep(20)
-                return True
-        self.task = TimeOutTask(job=self.job, timeout=1)
-        self.task.save()
-        self.task.do_run(self.iter, self.get_nds())
-        self.assertEqual(self.get_trs().status, TaskRunStatus.STATUS_TIMEDOUT)
-    
-    def tearDown(self):
-        self.daemon.request_stop()
-        wait_until(lambda: self.get_nds().is_done(), 3)
+        self.assertEqual(Status.SUCCESS, self.run_task('echo "Success!"'))
+        self.assertEqual(Status.FAILURE, self.run_task('exit 1'))
+        self.assertEqual(Status.ERROR, self.run_task('asd78sad7ftao;q'))
+        self.assertEqual(Status.TIMEDOUT, self.run_task(
+            CommandTask.objects.create(
+                name='Timeout', command='sleep 5', timeout=1)))
     

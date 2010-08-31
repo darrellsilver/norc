@@ -42,7 +42,6 @@ class JobTest(TestCase):
         wait_until(lambda: self.queue.count() == 2, 2)
         self.assertEqual(set([i.item.node for i in self.queue.items.all()]),
             set([self.nodes[0], self.nodes[1]]))
-        # print [i.item for i in self.queue.items.all()]
         for i in self.queue_items():
             i.start()
         self.assertEqual(set([i.item.node for i in self.queue.items.all()]),
@@ -59,6 +58,4 @@ class JobTest(TestCase):
             i.start()
         self.thread.join(2)
         self.assertFalse(self.thread.isAlive())
-        # print [i.item for i in self.queue.items.all()]
-        
     

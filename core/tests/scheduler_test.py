@@ -35,7 +35,6 @@ class SchedulerTest(TestCase):
         s = Schedule.create(task, queue, 0, 5)
         self._scheduler.flag.set()
         wait_until(lambda: s.instances.count() == 5, 5)
-        # Tests make_up.
     
     def test_make_up(self):  
         task = make_task()
@@ -57,7 +56,6 @@ class SchedulerTest(TestCase):
         def fold(acc, e):
             self.assertEqual(e - acc, timedelta(seconds=1))
             return e
-        # print enqueued
         reduce(fold, enqueued)
     
     def test_update_schedule(self):
@@ -74,7 +72,6 @@ class SchedulerTest(TestCase):
     def tearDown(self):
         if self._scheduler.active:
             self._scheduler.stop()
-            # wait_until(lambda: not self._scheduler.is_alive(), 3)
         self.thread.join(5)
         self._scheduler.timer.join(5)
         assert not self.thread.isAlive()
