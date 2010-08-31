@@ -9,7 +9,7 @@ from norc.core.models import Scheduler
 from norc.norc_utils.log import make_log
 
 def main():
-    usage = "norcs [-e] [-d]"
+    usage = "norc_scheduler [-e] [-d]"
     
     def bad_args(message):
         print message

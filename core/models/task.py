@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 import re
 import subprocess
+import signal
 
 from django.db.models import (Model, query, base,
     BooleanField,
