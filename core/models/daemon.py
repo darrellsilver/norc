@@ -80,7 +80,7 @@ class Daemon(Model):
     started = DateTimeField(default=datetime.utcnow)
     
     # When the daemon was ended.
-    ended = DateTimeField(null=True)
+    ended = DateTimeField(null=True, blank=True)
     
     # The queue this daemon draws task instances from.
     queue_type = ForeignKey(ContentType)
@@ -101,7 +101,7 @@ class Daemon(Model):
         """Method to be called by the heart thread."""
         while not Status.is_final(self.status):
             self.heartbeat = datetime.utcnow()
-            self.save()
+            self.save(safe=True)
             time.sleep(5)
     
     def start(self):
@@ -133,7 +133,7 @@ class Daemon(Model):
             for signum in [signal.SIGINT, signal.SIGTERM]:
                 signal.signal(signum, self.signal_handler)
         self.status = Status.RUNNING
-        self.save(update_request=False)
+        self.save()
         self.log.info("%s is now running on host %s." % (self, self.host))
         # Main loop.
         self.update_request()
@@ -154,7 +154,7 @@ class Daemon(Model):
                     self._wait()
             elif self.status == Status.STOPPING and len(self.processes) == 0:
                 self.set_status(Status.ENDED)
-                self.save()
+                self.save(safe=True)
             # Cleanup before iterating.
             for pid, p in self.processes.items()[:]:
                 p.poll()
@@ -226,7 +226,7 @@ class Daemon(Model):
             self.set_status(Status.KILLED)
         
         self.request = None
-        self.save(update_request=False)
+        self.save()
     
     def signal_handler(self, signum, frame):
         """Handles signal interruption."""
@@ -247,12 +247,11 @@ class Daemon(Model):
         """Overwrites Model.save().
         
         We have to be very careful to never overwrite a request, so
-        we read the request from the database prior to saving.  The
-        update_request parameter must be explicitly set to False in
-        order to change the request field.
+        often the request must be read from the database prior to saving.
+        The safe parameter being set to True enables this behavior.
         
         """
-        if kwargs.pop('update_request', True):
+        if kwargs.pop('safe', False):
             try:
                 self.update_request()
             except Exception:
@@ -275,7 +274,7 @@ class Daemon(Model):
         """This method is how the request field should always be set."""
         assert req in Daemon.REQUESTS, "Invalid request!"
         self.request = req
-        self.save(update_request=False)
+        self.save()
         self.flag.set()
     
     def set_status(self, status):

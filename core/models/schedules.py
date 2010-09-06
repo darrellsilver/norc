@@ -119,6 +119,11 @@ class Schedule(BaseSchedule):
             self.next = None
         self.save()
     
+    def __unicode__(self):
+        return u'Schedule #%s of %s every %s seconds.' % \
+            (self.id, self.task, self.period)
+    
+    __repr__ = __unicode__
 
 ri = random.randint
 
@@ -341,4 +346,5 @@ class CronSchedule(BaseSchedule):
                 if m.groups() and abs(mins[0] - mins[1]) != 30:
                     continue
                 return name
+        return encoding
     

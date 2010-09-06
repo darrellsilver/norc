@@ -25,6 +25,7 @@ from norc.core.constants import SCHEDULER_PERIOD, SCHEDULER_LIMIT
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
+from norc.norc_utils.django_extras import queryset_exists
 
 class SchedulerManager(Manager):
     """Custom manager for Scheduler."""
@@ -166,6 +167,9 @@ class Scheduler(Model):
     
     def _enqueue(self, schedule):
         """Called by the timer to add an instance to the queue."""
+        if not queryset_exists(type(schedule).objects.filter(pk=schedule.pk)):
+            self.log.info('%s was removed.' % schedule)
+            return
         instance = Instance.objects.create(
             task=schedule.task, schedule=schedule)
         self.log.info('Enqueuing %s.' % instance)
