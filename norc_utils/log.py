@@ -116,16 +116,33 @@ class Log(AbstractLog):
             self.out.close()
         if self.err.name != '<stderr>' and self.err.name != '<stdout>':
             self.err.close()
-
-class S3Log(Log):
-    """Outputs logs to S3 in addition to a local file."""
     
-    # def __init__(self, *args, **kwargs):
-        # FileLog.__init__(self, *args, **kwargs)
-        
-    def close(self):
-        if not self.closed:
-            FileLog.close(self)
-            pass
-            self.closed = True
-        
+
+# class S3Log(Log):
+#     """Outputs logs to S3 in addition to a local file."""
+#     
+#     @staticmethod
+#     def make_s3_key(path):
+#         c = S3Connection(AWS_ID, AWS_KEY)
+#         b = c.get_bucket(AWS_BUCKET_NAME)
+#         if not b:
+#             b = c.create_bucket(AWS_BUCKET_NAME)
+#         k = Key(b)
+#         k.key = 'norc_logs/' + path
+#         return k
+#     
+#     def __init__(self, norcpath, debug=None):
+#         Log.__init__(self, norcpath, debug)
+#         try:
+#             self.key = S3Log.make_s3_key(norcpath)
+#         except:
+#             self.write(self.out, 'Error making S3 key.\n', False)
+#     
+#     def close(self):
+#         self.out.flush()
+#         if hasattr(self, 'key'):
+#             try:
+#                 self.key.set_contents_from_filename(self.path)
+#             except:
+#                 self.error('Unable to push log file to S3:\n', trace=True)
+#         NorcLog.close(self

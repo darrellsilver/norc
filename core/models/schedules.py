@@ -120,7 +120,7 @@ class Schedule(BaseSchedule):
         self.save()
     
     def __unicode__(self):
-        return u'Schedule #%s of %s every %s seconds.' % \
+        return u'<Schedule #%s, %s:%ss>' % \
             (self.id, self.task, self.period)
     
     __repr__ = __unicode__
@@ -179,8 +179,6 @@ class CronSchedule(BaseSchedule):
     
     @staticmethod
     def create(task, queue, encoding, reps=0, make_up=False):
-        if type(encoding) == tuple:
-            pass
         if encoding.upper() in CronSchedule.MAKE_PREDEFINED:
             encoding = CronSchedule.MAKE_PREDEFINED[encoding.upper()]()
         encoding = CronSchedule.validate(encoding)[0]
@@ -347,4 +345,10 @@ class CronSchedule(BaseSchedule):
                     continue
                 return name
         return encoding
+    
+    def __unicode__(self):
+        return u'<CronSchedule #%s, %s:%s>' % \
+            (self.id, self.task, self.encoding)
+    
+    __repr__ = __unicode__
     

@@ -60,7 +60,7 @@ class Task(Model):
         raise NotImplementedError
     
     def __unicode__(self):
-        return u"%s '%s'" % (self.__class__.__name__, self.name)
+        return u"<%s %s>" % (type(self).__name__, self.name)
     
     __repr__ = __unicode__
     
@@ -158,7 +158,7 @@ class BaseInstance(Model):
             return None
     
     def __unicode__(self):
-        return u"%s #%s" % (self.__class__.__name__, self.id)
+        return u"<%s #%s>" % (type(self).__name__, self.id)
     
     __repr__ = __unicode__
     
@@ -201,6 +201,11 @@ class Instance(BaseInstance):
     def log_path(self):
         return 'tasks/%s/%s/%s-%s' % (self.task.__class__.__name__,
             self.task.name, self.task.name, self.id)
+    
+    def __unicode__(self):
+        return u'<Instance #%s of %s>' % (self.id, self.task)
+    
+    __repr__ = __unicode__
     
 
 class CommandTask(Task):

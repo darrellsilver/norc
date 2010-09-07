@@ -242,7 +242,6 @@ class Daemon(Model):
         else:
             self.make_request(Daemon.REQUEST_KILL)
     
-    # TODO: Probably should rethink this.
     def save(self, *args, **kwargs):
         """Overwrites Model.save().
         
@@ -288,7 +287,7 @@ class Daemon(Model):
         return 'daemons/daemon-%s' % self.id
     
     def __unicode__(self):
-        return u"Daemon #%s" % self.id
+        return u"<Daemon #%s on %s>" % (self.id, self.host)
     
     __repr__ = __unicode__
     

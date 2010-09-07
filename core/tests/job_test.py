@@ -1,6 +1,7 @@
 
 """"""
 
+import os
 import unittest
 import re
 from threading import Thread
@@ -36,7 +37,7 @@ class JobTest(TestCase):
     def test_job(self):
         schedule = Schedule.create(self.job, self.queue, 1)
         instance = Instance.objects.create(task=self.job, schedule=schedule)
-        instance.log = log.Log(debug=True)
+        # instance.log = log.Log(os.devnull)
         self.thread = Thread(target=instance.start)
         self.thread.start()
         wait_until(lambda: self.queue.count() == 2, 2)

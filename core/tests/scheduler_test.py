@@ -1,6 +1,7 @@
 
 """Test schedule handling cases in the SchedulableTask class."""
 
+import os
 from threading import Thread
 from datetime import timedelta
 
@@ -19,8 +20,7 @@ class SchedulerTest(TestCase):
     
     def setUp(self):
         self._scheduler = Scheduler.objects.create()
-        self._scheduler.log = log.make_log(
-            self._scheduler.log_path, echo=True)
+        self._scheduler.log = log.Log(os.devnull)
         self.thread = Thread(target=self._scheduler.start)
         self.thread.start()
         wait_until(lambda: self.scheduler.is_alive(), 3)
@@ -69,11 +69,18 @@ class SchedulerTest(TestCase):
         self.assertRaises(Exception,
             lambda: wait_until(lambda: s.instances.count() > 3, 3))
     
+    # def test_stress(self):
+    #     task = make_task()
+    #     queue = make_queue()
+    #     for i in range(5000):
+    #         CronSchedule.create(task, queue, 'HALFHOURLY')
+    #     self._scheduler.flag.set()
+    #     wait_until(lambda: self._scheduler.cronschedules.count() == 5000, 60)
+    
     def tearDown(self):
         if self._scheduler.active:
             self._scheduler.stop()
-        self.thread.join(5)
-        self._scheduler.timer.join(5)
+        self.thread.join(15)
         assert not self.thread.isAlive()
         assert not self._scheduler.timer.isAlive()
     

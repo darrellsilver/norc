@@ -11,7 +11,7 @@ import signal
 import random
 import time
 from datetime import datetime, timedelta
-from threading import Event
+from threading import Thread, Event
 import itertools
 
 from django.db.models import (Model, Manager,
@@ -74,6 +74,8 @@ class Scheduler(Model):
         Model.__init__(self, *args, **kwargs)
         self.flag = Event()
         self.timer = MultiTimer()
+        self.heart = Thread(target=self.heart_run)
+        self.heart.daemon = True
         
     def is_alive(self):
         """Whether the Scheduler is still running.
@@ -85,6 +87,12 @@ class Scheduler(Model):
         """
         return self.active and self.heartbeat and self.heartbeat > \
             datetime.utcnow() - timedelta(seconds=(SCHEDULER_PERIOD * 1.5))
+    
+    def heart_run(self):
+        while self.active:
+            self.heartbeat = datetime.utcnow()
+            self.save()
+            time.sleep(SCHEDULER_PERIOD)
     
     def start(self):
         """Starts the Scheduler."""
@@ -100,6 +108,7 @@ class Scheduler(Model):
         self.active = True
         self.heartbeat = datetime.utcnow()
         self.save()
+        self.heart.start()
         self.log.info('Starting %s...' % self)
         try:
             self.run()
@@ -110,29 +119,24 @@ class Scheduler(Model):
             self.log.info('%s is shutting down...' % self)
             self.timer.cancel()
             self.timer.join()
-            self.schedules.update(scheduler=None)
-            self.cronschedules.update(scheduler=None)
-            num = len(self.timer.tasks)
-            if num > 0:
-                self.log.info('Cleaning up %s schedules.' % num)
-            for t in self.timer.tasks:
-                s = t[2][0]
-                s.scheduler = None
-                s.save()
-                self.log.debug('%s set free.' % s)
+            cron = self.cronschedules.all()
+            simple = self.schedules.all()
+            claimed_count = cron.count() + simple.count()
+            if claimed_count > 0:
+                self.log.info('Cleaning up %s schedules.' % claimed_count)
+                cron.update(scheduler=None)
+                simple.update(scheduler=None)
             self.log.info('%s exited cleanly.' % self)
     
     def run(self):
         """Main run loop of the Scheduler."""
         while self.active:
             self.flag.clear()
+            
             # Clean up orphaned schedules and undead schedulers.
             Schedule.objects.orphaned().update(scheduler=None)
             CronSchedule.objects.orphaned().update(scheduler=None)
             Scheduler.objects.undead().update(active=False)
-            
-            self.heartbeat = datetime.utcnow()
-            self.save()
             
             cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
             simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
@@ -177,6 +181,9 @@ class Scheduler(Model):
         schedule.enqueued()
         if not schedule.finished():
             self.add(schedule)
+        else:
+            schedule.scheduler = None
+            schedule.save()
     
     def signal_handler(self, signum, frame=None):
         """Handles signal interruption."""

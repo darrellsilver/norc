@@ -13,7 +13,7 @@ CONCURRENCY_LIMIT = 4
 SCHEDULER_PERIOD = 5
 
 # How many new schedules the scheduler can pull from the database at once.
-SCHEDULER_LIMIT = 1000
+SCHEDULER_LIMIT = 10000
 
 TASK_MODELS = []
 

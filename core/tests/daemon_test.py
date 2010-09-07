@@ -1,6 +1,7 @@
 
 """Module for testing anything related to daemons."""
 
+import os
 from threading import Thread
 
 from django.test import TestCase
@@ -20,8 +21,7 @@ class DaemonTest(TestCase):
         """Create the daemon and thread objects."""
         self.queue = DBQueue.objects.create(name='test')
         self._daemon = Daemon.objects.create(queue=self.queue, concurrent=4)
-        # Uncomment the following line for verbose daemons.
-        # self._daemon.log = log.make_log(self._daemon.log_path, echo=True)
+        self._daemon.log = log.Log(os.devnull)
         self.thread = Thread(target=self._daemon.start)
     
     def test_start_stop(self):    

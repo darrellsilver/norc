@@ -1,13 +1,14 @@
 
 """Module for testing anything related to daemons."""
 
+import os
 import time
 
 from django.test import TestCase
 
 from norc.core.models import CommandTask, Instance
 from norc.core.constants import Status
-from norc.norc_utils.log import make_log
+from norc.norc_utils import log
 
 class TestCommandTask(TestCase):
     """Tests for Norc tasks."""
@@ -16,7 +17,7 @@ class TestCommandTask(TestCase):
         if type(ct) == str:
             ct = CommandTask.objects.create(name=ct, command=ct)
         instance = Instance.objects.create(task=ct)
-        instance.log = make_log(instance.log_path, echo=True)
+        # instance.log = log.Log(os.devnull)
         instance.start()
         return Instance.objects.get(pk=instance.pk).status
     
