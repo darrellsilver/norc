@@ -91,3 +91,31 @@ def control(request, content_key, content_id):
             daemon_control[do](daemon)
             executed = True
     return http.HttpResponse(simplejson.dumps(executed), mimetype="json")
+
+def get_log(request, content_type, content_id):
+    data_def = DATA_DEFS[content_type]
+    obj = data_def.get(content_id)
+    header_data = \
+        [data_def.data[untitle(s)](obj, {}) for s in data_def.headers]
+    local_path = os.path.join(settings.NORC_LOG_DIR, obj.log_path)
+    if os.path.isfile(local_path):
+        with open(local_path, 'r') as f:
+            log = ''.join(f.readlines())
+    else:
+        from boto.s3.connection import S3Connection
+        from boto.s3.key import Key
+        from boto.exception import S3ResponseError
+        try:
+            c = S3Connection(settings.AWS_ACCESS_KEY_ID,
+                settings.AWS_SECRET_ACCESS_KEY)
+            key = Key(c.get_bucket(settings.AWS_BUCKET_NAME))
+            key.key = 'norc_logs/' + obj.log_path
+            log = key.get_contents_as_string()
+        except S3ResponseError:
+            log = 'Could not retrieve log file from local machine or S3.'
+    return render_to_response('log.html', {
+        'key': content_type,
+        'log': log,
+        'headers': data_def.headers,
+        'data': header_data,
+    })
