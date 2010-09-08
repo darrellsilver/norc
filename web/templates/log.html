@@ -1,0 +1,62 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>{{ key|title|slice:":-1" }} Log</title>
+        <style>
+            body {
+                background-color: #001E24;
+                padding:10px;
+            }
+            h1 {
+                color: #00D5DF;
+                font-family: 'Courier New', Courier;
+                font-size: 30px;
+                letter-spacing: 10px;
+                margin: 0px;
+                padding-bottom: 2px;
+                padding-top:0px;
+                text-align: center;
+                text-transform: uppercase;
+            }
+            table {
+                background-color: #00D5DF;
+                color: #001E24;
+                font-family: Arial;
+                font-size: 13px;
+                margin-bottom:10px;
+                text-align: center;
+                width: 100%;
+                white-space: nowrap;
+            }
+            #log {
+                background-color: #000515;
+                border:1px #09515E solid;
+                color: #00D5DF;
+                font-family:'Bitstream Vera Sans Mono', 'Courier New', Courier;
+                font-size:12px;
+                max-height:100%;
+                overflow:auto;
+                padding: 5px;
+                white-space: pre-wrap;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>{{ key|title|slice:":-1" }} Log</h1>
+        {# <h2><script type="text/javascript"> #}
+        {#             document.write(document.location.href) #}
+        {#         </script></h2> #}
+        <table id="header">
+            <tr>
+                {% for h in headers %}<th>{{ h }}</th>
+                {% endfor %}
+            </tr>
+            <tr>
+                {% for d in data %}<td>{{ d }}</td>
+                {% endfor %}
+            </tr>
+        </table>
+        <div id="log">{{ log }}</div>
+    </body>
+</html>

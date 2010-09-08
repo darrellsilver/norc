@@ -120,6 +120,7 @@ class Daemon(Model):
         self.ended = datetime.utcnow()
         self.save()
         self.log.info("%s has ended gracefully." % self)
+        self.log.close()
     
     def run(self):
         """Core Daemon function.  Returns the exit status of the Daemon."""

@@ -6,16 +6,14 @@ import sys
 import datetime
 import traceback
 
-from norc.settings import LOGGING_DEBUG, NORC_LOG_DIR
+try:
+    from boto.s3.connection import S3Connection
+    from boto.s3.key import Key
+except ImportError:
+    pass
 
-def make_log(norc_path, **kwargs):
-    """Make a log object with a subpath of the norc log directory."""
-    path = os.path.join(NORC_LOG_DIR, norc_path)
-    try:
-        os.makedirs(os.path.dirname(path))
-    except (IOError, OSError):
-        pass
-    return Log(path, **kwargs)
+from norc.settings import (LOGGING_DEBUG, NORC_LOG_DIR, LOG_BACKUP_SYSTEM,
+    AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME)
 
 def timestamp():
     """Returns a string timestamp of the current time."""
@@ -59,27 +57,25 @@ class AbstractLog(object):
 class Log(AbstractLog):
     """Implementation of Log that sends logs to a file."""
     
-    def __init__(self, out=None, err=None, debug=None, echo=False):
+    def __init__(self, path=None, debug=None, echo=False):
         """ Parameters:
         
-        out     Path to the file that output should go in.  Defaults
-                to sys.stdout if no string is given.
-        err     Path to the file that error output should go in.  Defaults
-                to out if out is given and sys.stderr if it isn't.
+        path    Path to the file that all output should go in.
+                Defaults to sys.stdout if no string is given.
         debug   Boolean; whether debug output should be logged.
         echo    Echoes all logging to stdout if True.
         
         """
         AbstractLog.__init__(self, debug)
-        if out and not os.path.isdir(os.path.dirname(out)):
-            os.makedirs(os.path.dirname(out))
-        self.out = open(out, 'a') if out else sys.stdout
-        if not err and out:
-            self.err = self.out
+        if path:
+            if not os.path.isdir(os.path.dirname(path)):
+                os.makedirs(os.path.dirname(path))
+            self.out = self.err = open(path, 'a')
         else:
-            self.err = open(err, 'a') if err else sys.stderr
-        # Don't echo if already outputting to stdout.
-        self.echo = echo and out
+            self.out = sys.stdout
+            self.err = sys.stderr
+        self.path = path    
+        self.echo = echo
     
     def _write(self, stream, msg, format_prefix):
         if format_prefix:
@@ -118,31 +114,49 @@ class Log(AbstractLog):
             self.err.close()
     
 
-# class S3Log(Log):
-#     """Outputs logs to S3 in addition to a local file."""
-#     
-#     @staticmethod
-#     def make_s3_key(path):
-#         c = S3Connection(AWS_ID, AWS_KEY)
-#         b = c.get_bucket(AWS_BUCKET_NAME)
-#         if not b:
-#             b = c.create_bucket(AWS_BUCKET_NAME)
-#         k = Key(b)
-#         k.key = 'norc_logs/' + path
-#         return k
-#     
-#     def __init__(self, norcpath, debug=None):
-#         Log.__init__(self, norcpath, debug)
-#         try:
-#             self.key = S3Log.make_s3_key(norcpath)
-#         except:
-#             self.write(self.out, 'Error making S3 key.\n', False)
-#     
-#     def close(self):
-#         self.out.flush()
-#         if hasattr(self, 'key'):
-#             try:
-#                 self.key.set_contents_from_filename(self.path)
-#             except:
-#                 self.error('Unable to push log file to S3:\n', trace=True)
-#         NorcLog.close(self
+class NorcLog(Log):
+    
+    def __init__(self, norc_path=None, *args, **kwargs):
+        path = os.path.join(NORC_LOG_DIR, norc_path)
+        Log.__init__(self, path, *args, **kwargs)
+        self.norc_path = norc_path
+    
+
+class S3Log(NorcLog):
+    """Outputs logs to S3 in addition to a local file."""
+    
+    @staticmethod
+    def make_s3_key(path):
+        c = S3Connection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+        b = c.get_bucket(AWS_BUCKET_NAME)
+        if not b:
+            b = c.create_bucket(AWS_BUCKET_NAME)
+        k = Key(b)
+        k.key = 'norc_logs/' + path
+        return k
+    
+    def __init__(self, norc_path, *args, **kwargs):
+        NorcLog.__init__(self, norc_path, *args, **kwargs)
+        try:
+            self.key = S3Log.make_s3_key(norc_path)
+        except:
+            traceback.print_exc()
+            self._write(self.out, 'Error making S3 key.\n', False)
+    
+    def close(self):
+        self.out.flush()
+        if hasattr(self, 'key'):
+            try:
+                self.key.set_contents_from_filename(self.path)
+            except:
+                self.error('Unable to push log file to S3:\n', trace=True)
+        NorcLog.close(self)
+
+BACKUP_LOGS = {
+    'AmazonS3': S3Log,
+}
+
+def make_log(norc_path, *args, **kwargs):
+    """Make a log object with a subpath of the norc log directory."""
+    log_class = BACKUP_LOGS.get(LOG_BACKUP_SYSTEM, NorcLog)
+    return log_class(norc_path, *args, **kwargs)

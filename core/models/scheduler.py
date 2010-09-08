@@ -127,6 +127,8 @@ class Scheduler(Model):
                 cron.update(scheduler=None)
                 simple.update(scheduler=None)
             self.log.info('%s exited cleanly.' % self)
+        finally:
+            self.log.close()
     
     def run(self):
         """Main run loop of the Scheduler."""

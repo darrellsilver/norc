@@ -23,6 +23,7 @@ from norc import settings
 from norc.core.constants import Status, TASK_MODELS
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import QuerySetManager
+from norc.norc_utils.parsing import parse_since
 
 class MetaTask(base.ModelBase):
     def __init__(self, name, bases, dct):
@@ -134,6 +135,7 @@ class BaseInstance(Model):
                 Status.NAME[self.status])
             self.log.stop_redirect()
             self.save()
+            self.log.close()
     
     def run(self):
         raise NotImplementedError
