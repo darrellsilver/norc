@@ -41,6 +41,13 @@ var STYLE_BY_COLUMN = {
 // The data keys for which statuses should be colored.
 var HAS_STATUS_COLOR = ['tasks', 'sqstasks', 'failedtasks'];
 
+var HAS_LOGS = {
+    'daemons': 'daemons',
+    'tasks': 'tasks',
+    'sqstasks': 'sqstasks',
+    'failedtasks': 'tasks',
+};
+
 // Map of statuses to their style classes.
 var STATUS_CSS_CLASSES = {
     SUCCESS : 'status_good',
@@ -269,8 +276,19 @@ function makeDataTable(chain, data) {
             if (dataKey in TABLE_CUSTOMIZATION) {
                 TABLE_CUSTOMIZATION[dataKey](chain, id, header, cell, row);
             }
-            if (header == 'status' && isIn(dataKey, HAS_STATUS_COLOR)) {
-                cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
+            if (header == 'status') {
+                if (isIn(dataKey, HAS_STATUS_COLOR)) {
+                    cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
+                }
+                if (dataKey in HAS_LOGS) {
+                    cell.addClass('clickable')
+                    cell.click(function() {
+                        window.open(
+                            'logs/' + HAS_LOGS[dataKey] + '/' + id,
+                            HAS_LOGS[dataKey] + '-' + id + '-log',
+                            'menubar=no, innerWidth=700, innerHeight=700')
+                    });
+                }
             }
             row.append(cell);
         });
