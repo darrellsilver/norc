@@ -106,7 +106,7 @@ class Scheduler(Model):
                 signal.signal(signum, self.signal_handler)
         self.timer.start()
         self.active = True
-        self.heartbeat = datetime.utcnow()
+        self.heartbeat = self.started = datetime.utcnow()
         self.save()
         self.heart.start()
         self.log.info('Starting %s...' % self)
@@ -129,6 +129,8 @@ class Scheduler(Model):
             self.log.info('%s exited cleanly.' % self)
         finally:
             self.log.close()
+            self.ended = datetime.utcnow()
+            self.save()
     
     def run(self):
         """Main run loop of the Scheduler."""
