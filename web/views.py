@@ -101,8 +101,9 @@ def get_log(request, content_type, content_id):
         [report.data[untitle(s)](obj, since='all') for s in report.headers]
     local_path = os.path.join(settings.NORC_LOG_DIR, obj.log_path)
     if os.path.isfile(local_path):
-        with open(local_path, 'r') as f:
-            log = ''.join(f.readlines())
+        f = open(local_path, 'r')
+        log = ''.join(f.readlines())
+        f.close()
     else:
         from boto.s3.connection import S3Connection
         from boto.s3.key import Key
