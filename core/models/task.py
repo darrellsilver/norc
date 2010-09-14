@@ -44,7 +44,8 @@ class Task(Model):
     description = CharField(max_length=512, blank=True, default='')
     date_added = DateTimeField(default=datetime.utcnow)
     timeout = PositiveIntegerField(default=0)
-    instances = GenericRelation('Instance')
+    instances = GenericRelation('Instance',
+        content_type_field='task_type', object_id_field='task_id')
     
     def start(self, instance):
         """A hook function for easily changing the parameters to run().
