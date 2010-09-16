@@ -111,6 +111,7 @@ class Scheduler(Model):
         self.heartbeat = self.started = datetime.utcnow()
         self.save()
         self.heart.start()
+        self.log.start_redirect()
         self.log.info('Starting %s...' % self)
         try:
             self.run()
@@ -130,6 +131,7 @@ class Scheduler(Model):
                 simple.update(scheduler=None)
             self.log.info('%s exited cleanly.' % self)
         finally:
+            self.log.stop_redirect()
             self.log.close()
             self.ended = datetime.utcnow()
             self.active = False

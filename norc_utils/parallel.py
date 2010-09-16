@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timedelta
 from threading import Thread, Event, RLock
 from heapq import heappop, heappush
+import traceback
 
 def total_secs(td):
     assert type(td) == timedelta
@@ -31,7 +32,10 @@ class MultiTimer(Thread):
                     func, args, kwargs = heappop(self.tasks)[1:]
                     # self.tasks.pop()
                     # assert item == self.tasks.pop()
-                    func(*args, **kwargs)
+                    try:
+                        func(*args, **kwargs)
+                    except Exception:
+                        traceback.print_exc()
                 else:
                     self.interrupt.clear()
     

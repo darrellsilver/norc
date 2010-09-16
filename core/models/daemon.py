@@ -111,11 +111,21 @@ class Daemon(Model):
     
     def start(self):
         """Starts the daemon.  Mostly just a wrapper for run()."""
+        if self.status != Status.CREATED:
+            print "Can't start a Daemon that's already been run."
+            return
         if not hasattr(self, 'id'):
             self.save()
         if not hasattr(self, 'log'):
             self.log = make_log(self.log_path)
-        self.log.debug("Starting %s..." % self)
+        if settings.DEBUG:
+            self.log.info("WARNING, DEBUG is True, which means Django " +
+                "will gobble memory as it stores all database queries.")
+        if __name__ == '__main__':
+            for signum in [signal.SIGINT, signal.SIGTERM]:
+                signal.signal(signum, self.signal_handler)
+        self.log.start_redirect()
+        self.log.info("Starting %s..." % self)
         self.heart.start()
         try:
             self.run()
@@ -124,20 +134,12 @@ class Daemon(Model):
             self.log.error('Daemon suffered an internal error!', trace=True)
         self.ended = datetime.utcnow()
         self.save()
-        self.log.info("%s has ended gracefully." % self)
+        self.log.info("%s has shut down." % self)
+        self.log.stop_redirect()
         self.log.close()
     
     def run(self):
-        """Core Daemon function.  Returns the exit status of the Daemon."""
-        if settings.DEBUG:
-            self.log.info("WARNING, DEBUG is True, which means Django " +
-                "will gobble memory as it stores all database queries.")
-        if self.status != Status.CREATED:
-            self.log.error("Can't start a Daemon that's already been run.")
-            return Status.ERROR
-        if __name__ == '__main__':
-            for signum in [signal.SIGINT, signal.SIGTERM]:
-                signal.signal(signum, self.signal_handler)
+        """Core Daemon function."""
         self.status = Status.RUNNING
         self.save()
         self.log.info("%s is now running on host %s." % (self, self.host))
