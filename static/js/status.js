@@ -1,31 +1,39 @@
 
-// TODO: Fix double-clicking sometimes opening two details tables.
-// TODO: Sorting (sorttables?)
 // TODO: Log viewing.
-// TODO: Daemon interactive control.
 // TODO: Historical error rates (caching in db) for a region or job or status.
 //       Average run time for each status.  Distribution... standard deviation
 // TODO: Comment this file. (javadoc style?)
-
 
 /****************
     Constants
 ****************/
 
-// ATTN: The names of these headers are unTitle'd and then used directly
-//       to pull data from JSON objects; changing them here requires a
-//       change on the backend as well or stuff will break.
-// var DATA_HEADERS = {
-//     daemons: ['ID', 'Type', 'Region', 'Host', 'PID', 'Running',
-//         'Success', 'Errored', 'Started', 'Ended', 'Status'],
-//     jobs: ['Job ID', 'Name', 'Description', 'Added'],
-//     tasks: ['ID', 'Job', 'Iteration', 'Task', 'Started', 'Ended', 'Status'],
-//     sqstasks: ['ID', 'Task ID', 'Started', 'Ended', 'Status'],
-//     iterations: ['Iter ID', 'Type', 'Started', 'Ended', 'Status'],
-//     sqsqueues: ['Name', 'Num Items', 'Timeout'],
-//     failedtasks: ['ID', 'Job', 'Iteration', 'Task',
-//         'Started', 'Ended', 'Status'],
-// };
+String.format = function() {
+  var s = arguments[0];
+  for (var i = 0; i < arguments.length - 1; i++) {       
+    var reg = new RegExp("\\{" + i + "\\}", "gm");             
+    s = s.replace(reg, arguments[i + 1]);
+  }
+
+  return s;
+}
+
+function pad(n, i) {
+    var s = n.toString();
+    while (s.length < i) {
+        s = '0' + s;
+    }
+    return s;
+}
+
+function formatDate(date) {
+    return  pad(date.getFullYear(), 4) + '/' +
+            pad(date.getMonth(), 2) + '/' +
+            pad(date.getDate(), 2) + ' ' +
+            pad(date.getHours(), 2) + ':' +
+            pad(date.getMinutes(), 2) + ':' +
+            pad(date.getSeconds(), 2)
+}
 
 var DETAIL_KEYS = {
     daemons: 'instances',
@@ -516,11 +524,11 @@ $(document).ready(function() {
     $.each(SECTIONS, function(i, section) {
         initSection(section);
     });
-    reloadAll = function() {
+    var reloadAll = function() {
         $.each(SECTIONS, function(i, section) {
             reloadSection(section);
         });
-        $('#timestamp').text('Last updated at: ' + new Date());
+        $('#timestamp').text('Last updated at: ' + formatDate(new Date()));
     };
     reloadAll()
     $('#auto-reload input').attr('checked', false).click(function() {
