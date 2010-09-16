@@ -21,7 +21,9 @@ from django.db.models import (Model, Manager,
 
 from norc.core.models.task import Instance
 from norc.core.models.schedules import Schedule, CronSchedule
-from norc.core.constants import SCHEDULER_PERIOD, SCHEDULER_LIMIT
+from norc.core.constants import (SCHEDULER_PERIOD, 
+                                 SCHEDULER_LIMIT,
+                                 HEARTBEAT_PERIOD)
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
@@ -33,7 +35,7 @@ class SchedulerManager(Manager):
     def undead(self):
         """Schedulers that are alive (active) but the heart isn't beating."""
         cutoff = datetime.utcnow() - \
-            timedelta(seconds=(SCHEDULER_PERIOD * 1.5))
+            timedelta(seconds=(HEARTBEAT_PERIOD + 1))
         return self.filter(active=True).filter(heartbeat__lt=cutoff)
     
 
@@ -86,13 +88,13 @@ class Scheduler(Model):
         
         """
         return self.active and self.heartbeat and self.heartbeat > \
-            datetime.utcnow() - timedelta(seconds=(SCHEDULER_PERIOD * 1.5))
+            datetime.utcnow() - timedelta(seconds=(HEARTBEAT_PERIOD + 1))
     
     def heart_run(self):
         while self.active:
             self.heartbeat = datetime.utcnow()
             self.save()
-            time.sleep(SCHEDULER_PERIOD)
+            time.sleep(HEARTBEAT_PERIOD)
     
     def start(self):
         """Starts the Scheduler."""
@@ -130,6 +132,7 @@ class Scheduler(Model):
         finally:
             self.log.close()
             self.ended = datetime.utcnow()
+            self.active = False
             self.save()
     
     def run(self):

@@ -22,7 +22,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc.core.models.queue import Queue
-from norc.core.constants import Status, CONCURRENCY_LIMIT
+from norc.core.constants import Status, CONCURRENCY_LIMIT, HEARTBEAT_PERIOD
 from norc.norc_utils.log import make_log
 from norc import settings
 
@@ -90,6 +90,11 @@ class Daemon(Model):
     # The number of things that can be run concurrently.
     concurrent = IntegerField()
     
+    @property
+    def alive(self):
+        return self.status == Status.RUNNING and self.heartbeat > \
+            datetime.utcnow() - timedelta(seconds=HEARTBEAT_PERIOD + 1)
+    
     def __init__(self, *args, **kwargs):
         Model.__init__(self, *args, **kwargs)
         self.flag = Event()
@@ -102,7 +107,7 @@ class Daemon(Model):
         while not Status.is_final(self.status):
             self.heartbeat = datetime.utcnow()
             self.save(safe=True)
-            time.sleep(5)
+            time.sleep(HEARTBEAT_PERIOD)
     
     def start(self):
         """Starts the daemon.  Mostly just a wrapper for run()."""
@@ -146,7 +151,9 @@ class Daemon(Model):
                 self.handle_request()
             elif self.status == Status.RUNNING:
                 if len(self.processes) < self.concurrent:
+                    self.log.debug("Popping instance..")
                     instance = self.queue.pop()
+                    self.log.debug("Popped %s" % instance)
                     if instance:
                         self.start_instance(instance)
                     else:
@@ -170,10 +177,11 @@ class Daemon(Model):
     def start_instance(self, instance):
         """Starts a given instance in a new process."""
         instance.daemon = self
+        instance.save()
         self.log.info("Starting instance '%s'..." % instance)
         # p = Process(target=self.execute, args=[instance.start])
         # p.start()
-        ct = ContentType.objects.get_for_model(instance.__class__)
+        ct = ContentType.objects.get_for_model(instance)
         p = Popen('norc_executor --ct_pk %s --target_pk %s' %
             (ct.pk, instance.pk), shell=True)
         p.instance = instance

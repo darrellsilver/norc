@@ -62,7 +62,7 @@ class Task(Model):
         raise NotImplementedError
     
     def __unicode__(self):
-        return u"<%s %s>" % (type(self).__name__, self.name)
+        return u"%s %s" % (type(self).__name__, self.name)
     
     __repr__ = __unicode__
     

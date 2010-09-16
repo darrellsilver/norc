@@ -21,7 +21,7 @@ def index(request):
         'sqs': 'norc.sqs' in settings.INSTALLED_APPS,
         'is_superuser': request.user.is_superuser,
         'reports': REPORTS,
-        'sections': ['daemons', 'schedulers', 'task_models'],
+        'sections': ['daemons', 'schedulers', 'task_classes'],
     })
 
 def get_data(request, content_type, content_id=None, detail_type=None):

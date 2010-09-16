@@ -12,7 +12,10 @@ class JSONObjectEncoder(simplejson.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, datetime.datetime):
             return obj.strftime("%m/%d/%Y %H:%M:%S")
-        return simplejson.JSONEncoder.default(self, obj)
+        try:
+            return simplejson.JSONEncoder.default(self, obj)
+        except TypeError:
+            return str(obj)
 
 def paginate(request, data_set):
     try:

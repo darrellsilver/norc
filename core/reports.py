@@ -111,7 +111,7 @@ class daemons(BaseReport):
             daemons.get(id).instances.status_in(status),
     }
     headers = ['ID', 'Queue', 'Queue Type', 'Host', 'PID', 'Running',
-        'Succeeded', 'Failed', 'Heartbeat', 'Started', 'Ended', 'Status']
+        'Succeeded', 'Failed', 'Started', 'Ended', 'Alive', 'Status']
     data = {
         'queue': lambda daemon, **kws: daemon.queue.name,
         'queue_type': lambda daemon, **kws: daemon.queue.__class__.__name__,
@@ -123,6 +123,7 @@ class daemons(BaseReport):
             _daemon_instance_counter(daemon, since, 'failed'),
         'status': lambda daemon, **kws: Status.NAME[daemon.status],
         'ended': date_ended_getter,
+        'alive': lambda daemon, **kws: str(daemon.alive),
     }
     
 
@@ -148,10 +149,14 @@ class instances(BaseReport):
     since_filter = date_ended_since
     order_by = date_ended_order
     
-    headers = ['ID', 'Task', 'Task Type', '']
-    data = {}
+    headers = ['ID', 'Task', 'Schedule',
+        'Started', 'Ended', 'Status']
+    data = {
+        # 'task_type': lambda i, **kws: type(i.task),
+        'status': lambda obj, **kws: Status.NAME[obj.status],
+    }
 
-class task_models(BaseReport):
+class task_classes(BaseReport):
     
     get = lambda name: filter(lambda t: t.__name__ == name, TASK_MODELS)[0]
     get_all = lambda: TASK_MODELS
