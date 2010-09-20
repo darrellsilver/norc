@@ -6,7 +6,7 @@ from optparse import OptionParser
 from boto.sqs.connection import SQSConnection
 from boto.exception import SQSError
 
-from django.conf import settings
+from norc import settings
 from norc.norc_utils import formatting
 from norc.norc_utils import log
 log = log.Log(settings.LOGGING_DEBUG)

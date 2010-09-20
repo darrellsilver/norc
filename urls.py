@@ -1,10 +1,12 @@
 
 import os
-from django.conf import settings
+
 from django.conf.urls.defaults import *
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
 admin.autodiscover()
+
+from norc.settings import MEDIA_ROOT
 
 urlpatterns = patterns('',
     # Uncomment the admin/doc line below and add 'django.contrib.admindocs' 
@@ -18,5 +20,5 @@ urlpatterns = patterns('',
     (r'^control/(\w+)/(\w+)/$', 'norc.web.views.control'),
     (r'^logs/(\w+)/(\w+)/$', 'norc.web.views.get_log'),
     (r'^static/(?P<path>.*)$', 'django.views.static.serve',
-        {'document_root': settings.MEDIA_ROOT}),
+        {'document_root': MEDIA_ROOT}),
 )

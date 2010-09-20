@@ -1,19 +1,17 @@
+
 import os
 import datetime
 
 from django import http
 from django.shortcuts import render_to_response
 from django.utils import simplejson
-from django.conf import settings
 from django.db.models.query import QuerySet
 
-# from norc.core import report
-# from norc.core.models import NorcDaemonStatus
+from norc import settings
+from norc.core.reports import REPORTS
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.web import JSONObjectEncoder, paginate
 from norc.norc_utils.formatting import untitle
-# from norc.web.data_defs import DATA_DEFS
-from norc.core.reports import REPORTS
 
 def index(request):
     """Returns the index.html template."""

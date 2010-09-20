@@ -26,8 +26,8 @@ import os, sys
 import datetime
 
 from django.contrib.auth.models import User
-from django.conf import settings
 
+from norc import settings
 from norc.core.models import *
 from norc.norc_utils.log_new import FileLog
 log = FileLog(os.devnull)
