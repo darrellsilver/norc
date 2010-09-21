@@ -52,7 +52,6 @@ class Report(type):
         for h in dct['headers']:
             k = untitle(h)
             if not k in dct['data']:
-                # print k
                 dct['data'][k] = attr_getter(k)
         return type.__new__(cls, name, bases, dct)
     
@@ -96,8 +95,7 @@ class BaseReport(object):
     data = {}
 
 def _daemon_instance_counter(daemon, since, group):
-    return daemon.instances.since(since).status_in(
-        Status.GROUPS[group]).count()
+    return daemon.instances.since(since).status_in(group).count()
 
 class daemons(BaseReport):
     
@@ -107,8 +105,8 @@ class daemons(BaseReport):
     order_by = date_ended_order
     
     details = {
-        'instances': lambda id, status=None, **kws:
-            daemons.get(id).instances.status_in(status),
+        'instances': lambda id, since=None, status=None, **kws:
+            daemons.get(id).instances.since(since).status_in(status),
     }
     headers = ['ID', 'Queue', 'Queue Type', 'Host', 'PID', 'Running',
         'Succeeded', 'Failed', 'Started', 'Ended', 'Alive', 'Status']
@@ -116,11 +114,11 @@ class daemons(BaseReport):
         'queue': lambda daemon, **kws: daemon.queue.name,
         'queue_type': lambda daemon, **kws: daemon.queue.__class__.__name__,
         'running': lambda daemon, since, **kws:
-            _daemon_instance_counter(daemon, since, 'running'),
+            daemon.instances.since(since).status_in('running').count(),
         'succeeded': lambda daemon, since, **kws:
-            _daemon_instance_counter(daemon, since, 'succeeded'),
+            daemon.instances.since(since).status_in('succeeded').count(),
         'failed': lambda daemon, since, **kws:
-            _daemon_instance_counter(daemon, since, 'failed'),
+            daemon.instances.since(since).status_in('failed').count(),
         'status': lambda daemon, **kws: Status.NAME[daemon.status],
         'ended': date_ended_getter,
         'alive': lambda daemon, **kws: str(daemon.alive),
@@ -149,8 +147,7 @@ class instances(BaseReport):
     since_filter = date_ended_since
     order_by = date_ended_order
     
-    headers = ['ID', 'Task', 'Schedule',
-        'Started', 'Ended', 'Status']
+    headers = ['ID', 'Task', 'Started', 'Ended', 'Status']
     data = {
         # 'task_type': lambda i, **kws: type(i.task),
         'status': lambda obj, **kws: Status.NAME[obj.status],

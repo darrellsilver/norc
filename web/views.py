@@ -19,7 +19,7 @@ def index(request):
         'sqs': 'norc.sqs' in settings.INSTALLED_APPS,
         'is_superuser': request.user.is_superuser,
         'reports': REPORTS,
-        'sections': ['daemons', 'schedulers', 'task_classes'],
+        'sections': ['daemons', 'task_classes'],
     })
 
 def get_data(request, content_type, content_id=None, detail_type=None):
@@ -34,19 +34,19 @@ def get_data(request, content_type, content_id=None, detail_type=None):
     if not content_type in REPORTS:
         raise ValueError("Invalid content type '%s'." % content_type)
     report = REPORTS[content_type]
+    kws = {}
+    for k, v in request.GET.iteritems():
+        kws[str(k)] = v
+    kws['since'] = parse_since(kws.get('since'))
     if detail_type:
         if not detail_type in report.details:
             raise ValueError("Invalid detail type '%s'." % detail_type)
         data_key = detail_type
-        data_set = report.details[data_key](content_id)
+        data_set = report.details[data_key](content_id, **kws)
     else:
         data_key = content_type
         data_set = report(content_id)
     report = REPORTS[data_key]
-    kws = {}
-    for k, v in request.GET.items():
-        kws[str(k)] = v
-    kws['since'] = parse_since(kws.get('since'))
     if type(data_set) == QuerySet:
         data_set = report.since_filter(data_set, kws['since'])
         data_set = report.order_by(data_set, kws.get('order'))
