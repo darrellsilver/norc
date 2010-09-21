@@ -146,7 +146,7 @@ def _make_monthly():
 class CronSchedule(BaseSchedule):
     
     # The datetime that the next execution time is based off of.
-    base = DateTimeField(null=True, blank=True)
+    base = DateTimeField(default=datetime.utcnow)
     
     # The string encoding of the schedule.
     encoding = CharField(max_length=864)
@@ -189,7 +189,7 @@ class CronSchedule(BaseSchedule):
     def decode(encoding):
         SYNS = CronSchedule.SYNONYMS.values()
         regex = r'([a-zA-Z])+(\*|\d+(?:,\d+)*)'
-        encoding = ''.join(encoding.split())
+        encoding = ''.join(encoding.split()) # Strip whitespace.
         results = {}
         assert re.sub(regex, '', encoding) == '', \
             "Invalid formatting found in encoding '%s'." % encoding
@@ -295,7 +295,7 @@ class CronSchedule(BaseSchedule):
     def calculate_next(self, dt=None):
         self.read_encoding()
         if not dt:
-            dt = self.base if self.base else datetime.utcnow()
+            dt = self.base
         dt = dt.replace(microsecond=0)
         dt += timedelta(seconds=1)
         second = self.find_gte(dt.second, self.seconds)

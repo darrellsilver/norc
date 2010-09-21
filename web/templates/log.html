@@ -6,7 +6,8 @@
         <style>
             body {
                 background-color: #001E24;
-                padding:10px;
+                padding:0px;
+                overflow:auto;
             }
             h1 {
                 color: #00D5DF;
@@ -19,26 +20,41 @@
                 text-align: center;
                 text-transform: uppercase;
             }
+            tbody {
+                
+                margin: 0px;
+                padding: 0px;
+            }
             table {
                 background-color: #00D5DF;
                 color: #001E24;
                 font-family: Arial;
                 font-size: 13px;
-                margin-bottom:10px;
+                margin: 0px;
+                padding: 0px;
                 text-align: center;
                 width: 100%;
                 white-space: nowrap;
+            }
+            tr {
+                margin: 0px;
+                padding: 0px;
             }
             #log {
                 background-color: #000515;
                 border:1px #09515E solid;
                 color: #00D5DF;
-                font-family:'Bitstream Vera Sans Mono', 'Courier New', Courier;
-                font-size:12px;
-                max-height:100%;
-                overflow:auto;
+                font-family: 'Bitstream Vera Sans Mono', 'Courier New', Courier;
+                font-size: 12px;
+/*                max-height: 500px;*/
+                overflow: auto;
                 padding: 5px;
                 white-space: pre-wrap;
+                position: absolute;
+                top:100px;
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
             }
         </style>
     </head>
