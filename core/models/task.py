@@ -179,7 +179,7 @@ class Instance(BaseInstance):
             return self.exclude(ended__lt=since) if since else self
         
         def status_in(self, statuses):
-            if type(statuses) == str:
+            if isinstance(statuses, basestring):
                 statuses = Status.GROUPS.get(statuses)
             return self.filter(status__in=statuses) if statuses else self
     

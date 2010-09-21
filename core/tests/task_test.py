@@ -17,7 +17,7 @@ class TestCommandTask(TestCase):
         if type(ct) == str:
             ct = CommandTask.objects.create(name=ct, command=ct)
         instance = Instance.objects.create(task=ct)
-        # instance.log = log.Log(os.devnull)
+        instance.log = log.Log(os.devnull)
         instance.start()
         return Instance.objects.get(pk=instance.pk).status
     
@@ -25,7 +25,7 @@ class TestCommandTask(TestCase):
         """Tests that a task can run successfully."""
         self.assertEqual(Status.SUCCESS, self.run_task('echo "Success!"'))
         self.assertEqual(Status.FAILURE, self.run_task('exit 1'))
-        self.assertEqual(Status.ERROR, self.run_task('asd78sad7ftao;q'))
+        self.assertEqual(Status.ERROR, self.run_task('asd78sad7ftaoq'))
         self.assertEqual(Status.TIMEDOUT, self.run_task(
             CommandTask.objects.create(
                 name='Timeout', command='sleep 5', timeout=1)))
