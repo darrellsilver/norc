@@ -93,6 +93,7 @@ class Scheduler(Model):
     def heart_run(self):
         while self.active:
             self.heartbeat = datetime.utcnow()
+            self.active = Scheduler.objects.get(pk=self.pk).active
             self.save()
             time.sleep(HEARTBEAT_PERIOD)
     
