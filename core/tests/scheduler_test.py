@@ -3,7 +3,7 @@
 
 import os
 from threading import Thread
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 from django.test import TestCase
 
@@ -69,13 +69,32 @@ class SchedulerTest(TestCase):
         self.assertRaises(Exception,
             lambda: wait_until(lambda: s.instances.count() > 3, 3))
     
-    # def test_stress(self):
-    #     task = make_task()
-    #     queue = make_queue()
-    #     for i in range(5000):
-    #         CronSchedule.create(task, queue, 'HALFHOURLY')
-    #     self._scheduler.flag.set()
-    #     wait_until(lambda: self._scheduler.cronschedules.count() == 5000, 60)
+    def test_make_up(self):
+        task = make_task()
+        queue = make_queue()
+        now = datetime.utcnow()
+        s = CronSchedule(encoding='o*d*w*h*m*s%s' % (now.second - 1),
+            task=task, queue=queue, repetitions=0, remaining=0, make_up=False)
+        s.base = now - timedelta(seconds=2)
+        s.save()
+        self._scheduler.flag.set()
+        wait_until(lambda: s.instances.count() == 1, 3)
+        
+        now = datetime.utcnow()
+        s = CronSchedule(encoding='o*d*w*h*m*s*',
+            task=task, queue=queue, repetitions=0, remaining=0, make_up=True)
+        s.base = now - timedelta(seconds=5)
+        s.save()
+        self._scheduler.flag.set()
+        wait_until(lambda: s.instances.count() == 6, 1)
+    
+    #def test_stress(self):
+    #    task = make_task()
+    #    queue = make_queue()
+    #    for i in range(5000):
+    #        CronSchedule.create(task, queue, 'HALFHOURLY')
+    #    self._scheduler.flag.set()
+    #    wait_until(lambda: self._scheduler.cronschedules.count() == 5000, 60)
     
     def tearDown(self):
         if self._scheduler.active:
