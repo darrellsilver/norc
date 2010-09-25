@@ -70,7 +70,7 @@ class Scheduler(Model):
     started = DateTimeField(null=True)
     
     # When this scheduler was started.
-    ended = DateTimeField(null=True)
+    ended = DateTimeField(null=True, blank=True)
     
     def __init__(self, *args, **kwargs):
         Model.__init__(self, *args, **kwargs)
