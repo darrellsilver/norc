@@ -8,13 +8,24 @@ external modules from having to query core classes directly.
 
 """
 
+from django.contrib.contenttypes.models import ContentType
+
 from norc.core.models import *
 from norc.core.constants import Status, TASK_MODELS
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.formatting import untitle
 from norc.norc_utils.django_extras import get_object
 
-REPORTS = {}
+all = {}
+
+def generate(data_set, report, params):
+    ret_list = []
+    for obj in data_set:
+        obj_data = {}
+        for key, func in report.data.iteritems():
+            obj_data[key] = func(obj, **params)
+        ret_list.append(obj_data)
+    return ret_list
 
 class Report(type):
     """A definition for the data of a status table on the frontend.
@@ -58,7 +69,7 @@ class Report(type):
     def __init__(self, name, bases, dct):
         type.__init__(self, name, bases, dct)
         if name != 'BaseReport':
-            REPORTS[name] = self
+            all[name] = self
         # if base:
         #     self = copy(REPORT[base])
         # for k, v in kwargs.iteritems():
@@ -138,7 +149,47 @@ class schedulers(BaseReport):
     data = {
         'active': lambda obj, **kws: str(bool(obj.active)),
     }
+
+def _queue_failure_rate(obj, **kws):
+    instances = Instance.objects.from_queue(obj)
+    failed = instances.status_in('failed').count()
+    total = instances.count()
+    return '%.2f%%' % (100.0 * failed / total)
+
+class queues(BaseReport):
     
+    get = Queue.get
+    get_all = Queue.all_queues
+    order_by = lambda data, o: sorted(data, key=lambda v: v.name)
+    
+    headers = ['Name', 'Type', 'Items', 'Failure Rate']
+    data = {
+        'type': lambda obj, **kws: type(obj).__name__,
+        'items': lambda obj, **kws: obj.count(),
+        'failure_rate': _queue_failure_rate,
+    }
+
+def _parse_task_id(id_str):
+    ct_id, obj_id = map(int, id_str.split('_'))
+    ct = ContentType.objects.get(id=ct_id)
+    return ct.get_object_for_this_type(id=obj_id)
+
+class tasks(BaseReport):
+    
+    get_all = lambda: reduce(lambda a, b: a + b,
+        [[t for t in TaskClass.objects.all()] for TaskClass in TASK_MODELS])
+    
+    details = {
+        'instances': lambda id, **kws: _parse_task_id(id).instances.all(),
+    }
+    headers = ['Name', 'Type', 'Description', 'Added', 'Timeout', 'Instances']
+    data = {
+        'id': lambda obj, **kws: '%s_%s' %
+            (ContentType.objects.get_for_model(obj).id, obj.id),
+        'type': lambda obj, **kws: type(obj).__name__,
+        'added': lambda obj, **kws: obj.date_added,
+        'instances': lambda obj, **kws: obj.instances.count(),
+    }
 
 class instances(BaseReport):
     

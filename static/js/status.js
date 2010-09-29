@@ -37,8 +37,7 @@ function formatDate(date) {
 
 var DETAIL_KEYS = {
     daemons: 'instances',
-    jobs: 'iterations',
-    iterations: 'tasks',
+    tasks: 'instances',
 };
 
 var STYLE_BY_COLUMN = {
@@ -51,6 +50,7 @@ var HAS_STATUS_COLOR = ['tasks', 'sqstasks', 'failedtasks'];
 
 var HAS_LOGS = {
     'daemons': 'daemons',
+    'instances': 'instances',
     'tasks': 'tasks',
     'sqstasks': 'sqstasks',
     'failedtasks': 'tasks',
@@ -260,7 +260,7 @@ function makeDataTable(chain, data) {
     $.each(data, function(i, rowData) {
         var unTitledHeaders = headers.map(unTitle);
         // Make the row and add the ID cell.
-        var id = rowData[unTitledHeaders[0]];
+        var id = rowData.id;
         var rID = chain + '-' + id;
         var row = $('<tr/>').attr('id', rID);
         if (DETAIL_KEYS[dataKey]) {
@@ -411,7 +411,11 @@ function showDetails(chain, id, slide, options) {
 }
 
 function hideDetails(chain, id) {
-    state.detailsShowing[chain + '-' + id] = false;
+    var idChain = chain + '-' + id;
+    state.detailsShowing[idChain] = false;
+    state.prevPage[idChain] = undefined;
+    state.nextPage[idChain] = undefined;
+    state.page[idChain] = undefined;
     var detailKey = DETAIL_KEYS[getKeyFromChain(chain)];
     var parentRowID = '#' + chain + '-' + id;
     $(parentRowID).children('td').animate({

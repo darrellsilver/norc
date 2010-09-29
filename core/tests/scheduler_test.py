@@ -36,16 +36,6 @@ class SchedulerTest(TestCase):
         self._scheduler.flag.set()
         wait_until(lambda: s.instances.count() == 5, 5)
     
-    def test_make_up(self):  
-        task = make_task()
-        queue = make_queue()
-        s = Schedule.create(task, queue, 1, 10, -10, True)
-        self._scheduler.flag.set()
-        wait_until(lambda: s.instances.count() == 10, 5)
-        s = Schedule.create(task, queue, 60, 10, -10, False)
-        self._scheduler.flag.set()
-        wait_until(lambda: s.instances.count() == 1, 5)
-    
     def test_cron(self):
         task = make_task()
         queue = make_queue()
@@ -69,7 +59,17 @@ class SchedulerTest(TestCase):
         self.assertRaises(Exception,
             lambda: wait_until(lambda: s.instances.count() > 3, 3))
     
-    def test_make_up(self):
+    def test_make_up(self):  
+        task = make_task()
+        queue = make_queue()
+        s = Schedule.create(task, queue, 1, 10, -10, True)
+        self._scheduler.flag.set()
+        wait_until(lambda: s.instances.count() == 10, 5)
+        s = Schedule.create(task, queue, 60, 10, -10, False)
+        self._scheduler.flag.set()
+        wait_until(lambda: s.instances.count() == 1, 5)
+    
+    def test_cron_make_up(self):
         task = make_task()
         queue = make_queue()
         now = datetime.utcnow()

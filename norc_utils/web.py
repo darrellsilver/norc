@@ -27,7 +27,7 @@ def paginate(request, data_set):
         page_num = int(request.GET.get('page', 1))
     except ValueError:
         page_num = 1
-    if 0 > page_num > paginator.num_pages:
+    if page_num < 1 or page_num > paginator.num_pages:    
         page_num = 1
     page = paginator.page(page_num)
     page_data = {

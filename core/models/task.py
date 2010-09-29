@@ -182,6 +182,10 @@ class Instance(BaseInstance):
             if isinstance(statuses, basestring):
                 statuses = Status.GROUPS.get(statuses)
             return self.filter(status__in=statuses) if statuses else self
+        
+        def from_queue(self, q):
+            return self.filter(daemon__queue_id=q.id,
+                daemon__queue_type=ContentType.objects.get_for_model(q).id)
     
     # The object that spawned this instance.
     task_type = ForeignKey(ContentType, related_name='instances')

@@ -48,6 +48,12 @@ class Queue(Model):
             except Exception:
                 pass
     
+    @staticmethod
+    def all_queues():
+        return reduce(lambda a, b: a + b,
+            [[q for q in QueueClass.objects.all()]
+                for QueueClass in MetaQueue.IMPLEMENTATIONS])
+    
     # TODO: Unique names for queues should be enforced somehow around here.
     # def __init__(self, *args, **kwargs):
     #     print type(self)

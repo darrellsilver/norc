@@ -8,7 +8,7 @@ from django.utils import simplejson
 from django.db.models.query import QuerySet
 
 from norc import settings
-from norc.core.reports import REPORTS
+from norc.core import reports
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.web import JSONObjectEncoder, paginate
 from norc.norc_utils.formatting import untitle
@@ -18,8 +18,8 @@ def index(request):
     return render_to_response('index.html', {
         'sqs': 'norc.sqs' in settings.INSTALLED_APPS,
         'is_superuser': request.user.is_superuser,
-        'reports': REPORTS,
-        'sections': ['daemons', 'task_classes'],
+        'reports': reports.all,
+        'sections': ['daemons', 'queues', 'tasks'],
     })
 
 def get_data(request, content_type, content_id=None, detail_type=None):
@@ -31,32 +31,30 @@ def get_data(request, content_type, content_id=None, detail_type=None):
     filtered by GET parameters in the request.
     
     """
-    if not content_type in REPORTS:
+    if not content_type in reports.all:
         raise ValueError("Invalid content type '%s'." % content_type)
-    report = REPORTS[content_type]
-    kws = {}
+    report = reports.all[content_type]
+    params = {}
     for k, v in request.GET.iteritems():
-        kws[str(k)] = v
-    kws['since'] = parse_since(kws.get('since'))
+        params[str(k)] = v
+    params['since'] = parse_since(params.get('since'))
     if detail_type:
         if not detail_type in report.details:
             raise ValueError("Invalid detail type '%s'." % detail_type)
         data_key = detail_type
-        data_set = report.details[data_key](content_id, **kws)
+        data_set = report.details[data_key](content_id, **params)
     else:
         data_key = content_type
         data_set = report(content_id)
-    report = REPORTS[data_key]
+    report = reports.all[data_key]
     if type(data_set) == QuerySet:
-        data_set = report.since_filter(data_set, kws['since'])
-        data_set = report.order_by(data_set, kws.get('order'))
+        data_set = report.since_filter(data_set, params['since'])
+        data_set = report.order_by(data_set, params.get('order'))
     page, page_data = paginate(request, data_set)
-    json_data = {'data': [], 'page': page_data}
-    for obj in page.object_list:
-        obj_data = {}
-        for key, func in report.data.iteritems():
-            obj_data[key] = func(obj, **kws)
-        json_data['data'].append(obj_data)
+    json_data = {
+        'data': reports.generate(page.object_list, report, params),
+        'page': page_data,
+    }
     json = simplejson.dumps(json_data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")
 
@@ -93,7 +91,7 @@ def control(request, content_key, content_id):
     return http.HttpResponse(simplejson.dumps(executed), mimetype="json")
 
 def get_log(request, content_type, content_id):
-    report = REPORTS[content_type]
+    report = reports.all[content_type]
     obj = report.get(content_id)
     header_data = \
         [report.data[untitle(s)](obj, since='all') for s in report.headers]
