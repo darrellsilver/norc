@@ -154,7 +154,7 @@ def _queue_failure_rate(obj, **kws):
     instances = Instance.objects.from_queue(obj)
     failed = instances.status_in('failed').count()
     total = instances.count()
-    return '%.2f%%' % (100.0 * failed / total)
+    return '%.2f%%' % (100.0 * failed / total) if total > 0 else 'n/a'
 
 class queues(BaseReport):
     
