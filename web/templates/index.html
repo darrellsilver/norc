@@ -20,8 +20,10 @@
     <body>
         <div class="content">
             <h1>Norc Status</h1>
-            <span id="timestamp"></span>
-            <span id="auto-reload"><input type="checkbox"/>Auto-reload</span>
+            <div id="timestuff">
+                <span id="timestamp"></span><br>
+                <span id="auto-reload"><input type="checkbox"/>Auto-reload</span>
+            </div>
             {% for s in sections %}<div id="{{ s }}" class="section">
                 <h2>{{ reports.s.title|default:s|totitle }}</h2>
                 <table></table>

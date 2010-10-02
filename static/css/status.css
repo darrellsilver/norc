@@ -7,7 +7,8 @@ body {
     padding-left:30px;
 }
 h1 {
-    text-align:center;
+    display:inline-block;
+    text-align:left;
 }
 h2 {
     margin-bottom:0px;
@@ -18,6 +19,9 @@ div.content {
 div.section {
     display:table;
     min-width:500px;
+}
+#timestuff {
+    float:right;
 }
 table {
     border-spacing:0px;

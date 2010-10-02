@@ -9,6 +9,7 @@ from django.db.models.query import QuerySet
 
 from norc import settings
 from norc.core import reports
+from norc.core.models import Scheduler, Executor
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.web import JSONObjectEncoder, paginate
 from norc.norc_utils.formatting import untitle
@@ -19,8 +20,13 @@ def index(request):
         'sqs': 'norc.sqs' in settings.INSTALLED_APPS,
         'is_superuser': request.user.is_superuser,
         'reports': reports.all,
-        'sections': ['daemons', 'queues', 'tasks'],
+        'sections': ['executors', 'queues', 'tasks'],
     })
+
+def get_counts(request):
+    s_count = Scheduler.objects.alive().count()
+    json = simplejson.dumps(s_count, cls=JSONObjectEncoder)
+    return http.HttpResponse(json, mimetype="json")
 
 def get_data(request, content_type, content_id=None, detail_type=None):
     """Retrieves and structures data, then returns it as a JSON object.
@@ -58,7 +64,7 @@ def get_data(request, content_type, content_id=None, detail_type=None):
     json = simplejson.dumps(json_data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")
 
-daemon_control = dict(
+executor_control = dict(
     kill=lambda d: d.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED),
     stop=lambda d: d.set_status(NorcDaemonStatus.STATUS_STOPREQUESTED),
     pause=lambda d: d.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED),
@@ -81,14 +87,14 @@ allowed_status_changes = {
 }
 
 def control(request, content_key, content_id):
-    executed = False
-    if content_key == 'daemon' and request.user.is_superuser:
-        daemon = report.nds(content_id)
+    success = False
+    if content_key == 'executor' and request.user.is_superuser:
+        executor = report.nds(content_id)
         do = request.POST.get('do')
-        if do and do in allowed_status_changes.get(daemon.status, []):
-            daemon_control[do](daemon)
-            executed = True
-    return http.HttpResponse(simplejson.dumps(executed), mimetype="json")
+        if do and do in allowed_status_changes.get(executor.status, []):
+            executor_control[do](executor)
+            success = True
+    return http.HttpResponse(simplejson.dumps(success), mimetype="json")
 
 def get_log(request, content_type, content_id):
     report = reports.all[content_type]

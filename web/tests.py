@@ -15,8 +15,8 @@ from django.utils import simplejson as json
 #         self.c = Client()
 #         # self.c.login(username='max', password='norc')
 #     
-#     def test_daemons(self):
-#         data = self.c.get('/data/daemons/')
+#     def test_executors(self):
+#         data = self.c.get('/data/executors/')
 #         self.assertEqual(json.loads(data.content)['data'], [{
 #             "status": "ENDED",
 #             "success": 1,
@@ -31,8 +31,8 @@ from django.utils import simplejson as json
 #             "id": 1
 #         }])
 #     
-#     def test_daemon_details(self):
-#         data = self.c.get('/data/daemons/1/')
+#     def test_executor_details(self):
+#         data = self.c.get('/data/executors/1/')
 #         self.assertEqual(json.loads(data.content)['data'], [{
 #             "status": "SUCCESS",
 #             "task": "RunCommand.1",

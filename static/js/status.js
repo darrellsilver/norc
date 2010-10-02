@@ -36,7 +36,7 @@ function formatDate(date) {
 }
 
 var DETAIL_KEYS = {
-    daemons: 'instances',
+    executors: 'instances',
     tasks: 'instances',
 };
 
@@ -49,7 +49,7 @@ var STYLE_BY_COLUMN = {
 var HAS_STATUS_COLOR = ['tasks', 'sqstasks', 'failedtasks'];
 
 var HAS_LOGS = {
-    'daemons': 'daemons',
+    'executors': 'executors',
     'instances': 'instances',
     'tasks': 'tasks',
     'sqstasks': 'sqstasks',
@@ -77,7 +77,7 @@ var state = {
     'detailsShowing': {},
     // The last timeframe selection.
     'since': {
-        'daemons': '10m',
+        'executors': '10m',
         'failedtasks': 'all',
     },
     // Paging data; next page and previous page numbers.
@@ -86,7 +86,7 @@ var state = {
     // Data request options.
     'page': {},
     'per_page': {},
-    // Data cache; unnecessary except for the need to know daemon types.
+    // Data cache; unnecessary except for the need to know executor types.
     'data': {},
 };
 
@@ -171,19 +171,19 @@ function insertNewRow(rowAbove, contents, slide) {
     Core Functions
 *********************/
 
-function makeDaemonControls(id) {
+function makeExecutorControls(id) {
     var div = $('<div/>').addClass('slideout');
     var ul = $('<ul/>');
     $.each(['pause', 'stop', 'kill', 'salvage', 'delete'], function(i, v) {
         var li = $('<li/>').text(v);
         li.click(function() {
             var reply = prompt('Are you sure you want to try to ' +
-                v + ' daemon ' + id + '?  If so, type "' + v + '" below.');
+                v + ' executor ' + id + '?  If so, type "' + v + '" below.');
             if (reply == v) {
-                var path = '/control/daemon/' + id + '/';
+                var path = '/control/executor/' + id + '/';
                 $.post(path, {'do': v}, function(data) {
                     if (data == true) {
-                        reloadSection('daemons');
+                        reloadSection('executors');
                     }
                 });
             }
@@ -194,7 +194,7 @@ function makeDaemonControls(id) {
 }
 
 var TABLE_CUSTOMIZATION = {
-    daemons: function(chain, id, header, cell, row) {
+    executors: function(chain, id, header, cell, row) {
         if (!row.data('click_rewritten')) {
             row.unbind('click');
             row.click(function() {
@@ -224,7 +224,7 @@ var TABLE_CUSTOMIZATION = {
             });
         } else if (header == 'status' && IS_SUPERUSER) {
             cell.addClass('clickable');
-            var controls = makeDaemonControls(id);
+            var controls = makeExecutorControls(id);
             cell.hover(function() {
                 row.data('overruled', true);
                 var ul = controls.find('ul');
@@ -524,7 +524,7 @@ function initSection(dataKey) {
 }
 
 $(document).ready(function() {
-    // var SECTIONS = ['daemons', 'jobs', 'failedtasks'];
+    // var SECTIONS = ['executors', 'jobs', 'failedtasks'];
     $.each(SECTIONS, function(i, section) {
         initSection(section);
     });

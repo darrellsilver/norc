@@ -10,7 +10,7 @@ from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.formatting import untitle, pprint_table
 
 def main():
-    usage = "norc_reporter [--daemons] [--schedulers] [--queues]"
+    usage = "norc_reporter [--executors] [--schedulers] [--queues]"
     
     def bad_args(message):
         print message
@@ -18,8 +18,8 @@ def main():
         sys.exit(2)
     
     parser = OptionParser(usage)
-    parser.add_option("-d", "--daemons", action="store_true",
-        help="Report on daemons.")
+    parser.add_option("-d", "--executors", action="store_true",
+        help="Report on executors.")
     parser.add_option("-s", "--schedulers", action="store_true",
         help="Report on schedulers.")
     parser.add_option("-q", "--queues", action="store_true",
@@ -30,8 +30,8 @@ def main():
     (options, args) = parser.parse_args()
     since = parse_since(options.since)
     
-    if not any([options.daemons, options.schedulers, options.queues]):
-        options.daemons = True
+    if not any([options.executors, options.schedulers, options.queues]):
+        options.executors = True
     
     print time.strftime('[%Y/%m/%d %H:%M:%S]'),
     if since:
@@ -50,9 +50,9 @@ def main():
         else:
             print 'None found.'
 
-    if options.daemons:
-        print '\n## Daemons ##'
-        print_report(reports.daemons)
+    if options.executors:
+        print '\n## Executors ##'
+        print_report(reports.executors)
     if options.schedulers:
         print '\n## Schedulers ##'
         print_report(reports.schedulers)

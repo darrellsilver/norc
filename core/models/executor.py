@@ -1,5 +1,5 @@
 
-"""The Norc Daemon (norcd) is defined here."""
+"""The Norc Executor (norcd) is defined here."""
 
 import os
 import sys
@@ -10,7 +10,7 @@ from threading import Thread, Event
 # from multiprocessing import Process
 from subprocess import Popen
 
-from django.db.models import (Model, Manager,
+from django.db.models import (Model, Manager, query,
     CharField,
     DateTimeField,
     IntegerField,
@@ -23,17 +23,45 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 
 from norc.core.models.queue import Queue
 from norc.core.constants import Status, CONCURRENCY_LIMIT, HEARTBEAT_PERIOD
+from norc.norc_utils.django_extras import QuerySetManager
 from norc.norc_utils.log import make_log
 from norc import settings
 
-class Daemon(Model):
-    """Daemons are responsible for the running of instances.
+class Executor(Model):
+    """Executors are responsible for the running of instances.
     
-    Daemons have a single queue that they pull instances from.  There
-    can (and in many cases should) be more than one Daemon running for
+    Executors have a single queue that they pull instances from.  There
+    can (and in many cases should) be more than one Executor running for
     a single queue.
     
     """
+    
+    class Meta:
+        app_label = 'core'
+        db_table = 'norc_executor'
+    
+    objects = QuerySetManager()
+    
+    class QuerySet(query.QuerySet):
+        
+        def alive(self):
+            cutoff = datetime.utcnow() - \
+                timedelta(seconds=(HEARTBEAT_PERIOD + 1))
+            return self.filter(status=Status.RUNNING, heartbeat__gt=cutoff)
+
+        def since(self, since):
+            if type(since) == str:
+                since = parse_since(since)
+            return self.exclude(ended__lt=since) if since else self
+        
+        def status_in(self, statuses):
+            if isinstance(statuses, basestring):
+                statuses = Status.GROUPS.get(statuses)
+            return self.filter(status__in=statuses) if statuses else self
+        
+        def for_queue(self, q):
+            return self.filter(queue_id=q.id,
+                queue_type=ContentType.objects.get_for_model(q).id)
     
     VALID_STATUSES = [
         Status.CREATED,
@@ -56,16 +84,13 @@ class Daemon(Model):
         REQUEST_KILL: 'KILL',
     }
     
-    class Meta:
-        app_label = 'core'
-    
-    # The host this daemon ran on.
+    # The host this executor ran on.
     host = CharField(default=lambda: os.uname()[1], max_length=128)
     
-    # The process ID of the main daemon process.
+    # The process ID of the main executor process.
     pid = IntegerField(default=os.getpid)
     
-    # The status of this daemon.
+    # The status of this executor.
     status = PositiveSmallIntegerField(default=Status.CREATED,
         choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
     
@@ -73,16 +98,16 @@ class Daemon(Model):
     request = PositiveSmallIntegerField(null=True,
         choices=[(k, v) for k, v in REQUESTS.iteritems()])
     
-    # The last heartbeat of the daemon.
+    # The last heartbeat of the executor.
     heartbeat = DateTimeField(default=datetime.utcnow)
     
-    # When the daemon was started.
+    # When the executor was started.
     started = DateTimeField(default=datetime.utcnow)
     
-    # When the daemon was ended.
+    # When the executor was ended.
     ended = DateTimeField(null=True, blank=True)
     
-    # The queue this daemon draws task instances from.
+    # The queue this executor draws task instances from.
     queue_type = ForeignKey(ContentType)
     queue_id = PositiveIntegerField()
     queue = GenericForeignKey('queue_type', 'queue_id')
@@ -110,9 +135,9 @@ class Daemon(Model):
             time.sleep(HEARTBEAT_PERIOD)
     
     def start(self):
-        """Starts the daemon.  Mostly just a wrapper for run()."""
+        """Starts the executor.  Mostly just a wrapper for run()."""
         if self.status != Status.CREATED:
-            print "Can't start a Daemon that's already been run."
+            print "Can't start a executor that's already been run."
             return
         if not hasattr(self, 'id'):
             self.save()
@@ -131,7 +156,7 @@ class Daemon(Model):
             self.run()
         except Exception:
             self.set_status(Status.ERROR)
-            self.log.error('Daemon suffered an internal error!', trace=True)
+            self.log.error('Executor suffered an internal error!', trace=True)
         self.ended = datetime.utcnow()
         self.save()
         self.log.info("%s has shut down." % self)
@@ -139,7 +164,7 @@ class Daemon(Model):
         self.log.close()
     
     def run(self):
-        """Core Daemon function."""
+        """Core executor function."""
         self.status = Status.RUNNING
         self.save()
         self.log.info("%s is now running on host %s." % (self, self.host))
@@ -178,13 +203,13 @@ class Daemon(Model):
     
     def start_instance(self, instance):
         """Starts a given instance in a new process."""
-        instance.daemon = self
+        instance.executor = self
         instance.save()
         self.log.info("Starting instance '%s'..." % instance)
         # p = Process(target=self.execute, args=[instance.start])
         # p.start()
         ct = ContentType.objects.get_for_model(instance)
-        p = Popen('norc_executor --ct_pk %s --target_pk %s' %
+        p = Popen('norc_taskrunner --ct_pk %s --target_pk %s' %
             (ct.pk, instance.pk), shell=True)
         p.instance = instance
         self.processes[p.pid] = p
@@ -200,9 +225,9 @@ class Daemon(Model):
             self.flag.clear()
             self.flag.wait(1)
         except KeyboardInterrupt:
-            self.make_request(Daemon.REQUEST_STOP)
+            self.make_request(Executor.REQUEST_STOP)
         except SystemExit:
-            self.make_request(Daemon.REQUEST_KILL)
+            self.make_request(Executor.REQUEST_KILL)
     
     # This should be used in 2.6, but with subprocess it's not possible.
     # def execute(self, func):
@@ -214,21 +239,21 @@ class Daemon(Model):
     
     def handle_request(self):
         """Called when a request is found."""
-        self.log.info("Request received: %s" % Daemon.REQUESTS[self.request])
+        self.log.info("Request received: %s" % Executor.REQUESTS[self.request])
         
-        if self.request == Daemon.REQUEST_PAUSE:
+        if self.request == Executor.REQUEST_PAUSE:
             self.set_status(Status.PAUSED)
         
-        elif self.request == Daemon.REQUEST_UNPAUSE:
+        elif self.request == Executor.REQUEST_UNPAUSE:
             if self.status != Status.PAUSED:
                 self.log.info("Must be paused to unpause; clearing request.")
             else:
                 self.set_status(Status.RUNNING)
         
-        elif self.request == Daemon.REQUEST_STOP:
+        elif self.request == Executor.REQUEST_STOP:
             self.set_status(Status.STOPPING)
         
-        elif self.request == Daemon.REQUEST_KILL:
+        elif self.request == Executor.REQUEST_KILL:
             # for p in self.processes.values():
             #     p.terminate()
             for pid, p in self.processes.iteritems():
@@ -249,9 +274,9 @@ class Daemon(Model):
                 break
         self.log.info("Signal '%s' received!" % sig_name)
         if signum == signal.SIGINT:
-            self.make_request(Daemon.REQUEST_STOP)
+            self.make_request(Executor.REQUEST_STOP)
         else:
-            self.make_request(Daemon.REQUEST_KILL)
+            self.make_request(Executor.REQUEST_KILL)
     
     def save(self, *args, **kwargs):
         """Overwrites Model.save().
@@ -276,13 +301,13 @@ class Daemon(Model):
         
         """
         if hasattr(self, 'id'):
-            self.request = Daemon.objects.get(id=self.id).request
+            self.request = Executor.objects.get(id=self.id).request
             self.last_request_update = datetime.utcnow()
             return self.request
     
     def make_request(self, req):
         """This method is how the request field should always be set."""
-        assert req in Daemon.REQUESTS, "Invalid request!"
+        assert req in Executor.REQUESTS, "Invalid request!"
         self.request = req
         self.save()
         self.flag.set()
@@ -295,10 +320,10 @@ class Daemon(Model):
     
     @property
     def log_path(self):
-        return 'daemons/daemon-%s' % self.id
+        return 'executors/executor-%s' % self.id
     
     def __unicode__(self):
-        return u"<Daemon #%s on %s>" % (self.id, self.host)
+        return u"<Executor #%s on %s>" % (self.id, self.host)
     
     __repr__ = __unicode__
     

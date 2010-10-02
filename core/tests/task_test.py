@@ -1,5 +1,5 @@
 
-"""Module for testing anything related to daemons."""
+"""Module for testing CommandTasks."""
 
 import os
 import time

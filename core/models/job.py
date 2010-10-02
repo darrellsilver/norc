@@ -17,6 +17,10 @@ from norc.norc_utils.django_extras import queryset_exists
 class Job(Task):
     """A Task composed of running several other Tasks."""
     
+    class Meta:
+        app_label = 'core'
+        db_table = 'norc_job'
+    
     def start(self, instance):
         """Modified to give run() the instance object."""
         return self.run(instance)
@@ -24,7 +28,7 @@ class Job(Task):
     def run(self, instance):
         """Enqueue instances for all nodes that don't have dependencies."""
         for node in self.nodes.all():
-            node_instance = NodeInstance.objects.create(
+            node_instance = JobNodeInstance.objects.create(
                 node=node,
                 job_instance=instance)
             if node_instance.can_run():
@@ -41,10 +45,11 @@ class Job(Task):
             time.sleep(1)
     
 
-class Node(Model):
+class JobNode(Model):
     
     class Meta:
         app_label = 'core'
+        db_table = 'norc_jobnode'
     
     task_type = ForeignKey(ContentType)
     task_id = PositiveIntegerField()
@@ -52,16 +57,20 @@ class Node(Model):
     job = ForeignKey(Job, related_name='nodes')
     
     def __unicode__(self):
-        return u"Node #%s in %s for %s" % (self.id, self.job, self.task)
+        return u"JobNode #%s in %s for %s" % (self.id, self.job, self.task)
     
     __repr__ = __unicode__
     
 
-class NodeInstance(BaseInstance):
+class JobNodeInstance(BaseInstance):
     """An instance of a node executed within a job."""
     
+    class Meta:
+        app_label = 'core'
+        db_table = 'norc_jobnodeinstance'
+    
     # The node that spawned this instance.
-    node = ForeignKey('Node', related_name='nis') # nis -> NodeInstances
+    node = ForeignKey(JobNode, related_name='nis') # nis -> NodeInstances
     
     # The JobInstance that this NodeInstance belongs to.
     job_instance = ForeignKey(Instance, related_name='nodis')
@@ -107,9 +116,10 @@ class Dependency(Model):
     """
     class Meta:
         app_label = 'core'
+        db_table = 'norc_dependency'
     
-    parent = ForeignKey(Node, related_name='sub_deps')
-    child = ForeignKey(Node, related_name='super_deps')
+    parent = ForeignKey(JobNode, related_name='sub_deps')
+    child = ForeignKey(JobNode, related_name='super_deps')
     
     def __init__(self, *args, **kwargs):
         Model.__init__(self, *args, **kwargs)

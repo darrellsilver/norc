@@ -60,7 +60,7 @@ class BaseSchedule(Model):
     remaining = PositiveIntegerField()
     
     # The Scheduler that has scheduled the next execution.
-    scheduler = ForeignKey('Scheduler', null=True, blank=True, 
+    scheduler = ForeignKey('core.Scheduler', null=True, blank=True, 
         related_name='%(class)ss')
     
     # Whether or not to make up missed executions.
@@ -86,6 +86,10 @@ class BaseSchedule(Model):
     
 
 class Schedule(BaseSchedule):
+    
+    class Meta:
+        app_label = 'core'
+        db_table = 'norc_schedule'
     
     # Next execution.
     next = DateTimeField(null=True)
@@ -144,6 +148,10 @@ def _make_monthly():
     return 'o*d%sw*h%sm%ss%s' % (ri(1, 28), ri(0, 23), ri(0, 59), ri(0, 59))
 
 class CronSchedule(BaseSchedule):
+    
+    class Meta:
+        app_label = 'core'
+        db_table = 'norc_cronschedule'
     
     # The datetime that the next execution time is based off of.
     base = DateTimeField(default=datetime.utcnow)

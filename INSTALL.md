@@ -1,3 +1,6 @@
+
+# ATTN: THIS IS SUPER OUT OF DATE #
+
 TODO:
     django must be in python path
     setting up an environment

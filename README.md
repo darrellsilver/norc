@@ -1,4 +1,6 @@
 
+# ATTN: THIS IS SUPER OUT OF DATE #
+
 # Norc
 
 Norc is a Task Management System that replaces Unix cron.  Its goal is to allow Tasks to be created, managed and audited in a flexible, user-friendly way.  Norc was first developed by [Darrell Silver](http://darrellsilver.com/) for use as the scheduling system for [Perpetually.com](http://www.perpetually.com/), the web archiving company.  It was open-sourced in October, 2009 at [NYC Python](http://www.nycpython.org/) at the suggestion of [David Christian](http://twitter.com/duganesque).

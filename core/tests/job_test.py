@@ -8,7 +8,7 @@ from threading import Thread
 
 from django.test import TestCase
 
-from norc.core.models import Job, Node, Dependency, Instance, Schedule
+from norc.core.models import Job, JobNode, Dependency, Instance, Schedule
 from norc.norc_utils import wait_until, log, testing
 
 class JobTest(TestCase):
@@ -23,7 +23,7 @@ class JobTest(TestCase):
         self.queue = testing.make_queue()
         self.tasks = [testing.make_task('JobTask%s' % i) for i in range(6)]
         self.job = Job.objects.create(name='TestJob')
-        self.nodes = [Node.objects.create(task=self.tasks[i], job=self.job)
+        self.nodes = [JobNode.objects.create(task=self.tasks[i], job=self.job)
             for i in range(6)]
         n = self.nodes
         Dependency.objects.create(parent=n[0], child=n[2])

@@ -94,6 +94,14 @@ def date_ended_since(query, since):
 date_ended_order = lambda data, o: data.order_by(o if o else '-ended')
 date_ended_getter = lambda obj, **kws: obj.ended if obj.ended else '-'
 
+def _parse_content_ids(id_str):
+    ct_id, obj_id = map(int, id_str.split('_'))
+    ct = ContentType.objects.get(id=ct_id)
+    return ct.get_object_for_this_type(id=obj_id)
+
+def _find_ct(obj):
+    return ContentType.objects.get_for_model(obj).id
+
 class BaseReport(object):
     """Ideally, this would be replaced with a class decorator in 2.6."""
     __metaclass__ = Report
@@ -105,34 +113,34 @@ class BaseReport(object):
     headers = []
     data = {}
 
-def _daemon_instance_counter(daemon, since, group):
-    return daemon.instances.since(since).status_in(group).count()
+def _executor_instance_counter(executor, since, group):
+    return executor.instances.since(since).status_in(group).count()
 
-class daemons(BaseReport):
+class executors(BaseReport):
     
-    get = lambda id: get_object(Daemon, id=id)
-    get_all = lambda: Daemon.objects.all()
+    get = lambda id: get_object(Executor, id=id)
+    get_all = lambda: Executor.objects.all()
     since_filter = date_ended_since
     order_by = date_ended_order
     
     details = {
         'instances': lambda id, since=None, status=None, **kws:
-            daemons.get(id).instances.since(since).status_in(status),
+            executors.get(id).instances.since(since).status_in(status),
     }
     headers = ['ID', 'Queue', 'Queue Type', 'Host', 'PID', 'Running',
         'Succeeded', 'Failed', 'Started', 'Ended', 'Alive', 'Status']
     data = {
-        'queue': lambda daemon, **kws: daemon.queue.name,
-        'queue_type': lambda daemon, **kws: daemon.queue.__class__.__name__,
-        'running': lambda daemon, since, **kws:
-            daemon.instances.since(since).status_in('running').count(),
-        'succeeded': lambda daemon, since, **kws:
-            daemon.instances.since(since).status_in('succeeded').count(),
-        'failed': lambda daemon, since, **kws:
-            daemon.instances.since(since).status_in('failed').count(),
-        'status': lambda daemon, **kws: Status.NAME[daemon.status],
+        'queue': lambda obj, **kws: obj.queue.name,
+        'queue_type': lambda obj, **kws: obj.queue.__class__.__name__,
+        'running': lambda obj, since, **kws:
+            obj.instances.since(since).status_in('running').count(),
+        'succeeded': lambda obj, since, **kws:
+            obj.instances.since(since).status_in('succeeded').count(),
+        'failed': lambda obj, since, **kws:
+            obj.instances.since(since).status_in('failed').count(),
+        'status': lambda obj, **kws: Status.NAME[obj.status],
         'ended': date_ended_getter,
-        'alive': lambda daemon, **kws: str(daemon.alive),
+        'alive': lambda obj, **kws: str(obj.alive),
     }
     
 
@@ -162,17 +170,14 @@ class queues(BaseReport):
     get_all = Queue.all_queues
     order_by = lambda data, o: sorted(data, key=lambda v: v.name)
     
-    headers = ['Name', 'Type', 'Items', 'Failure Rate']
+    headers = ['Name', 'Type', 'Items', 'Executors', 'Failure Rate']
     data = {
         'type': lambda obj, **kws: type(obj).__name__,
         'items': lambda obj, **kws: obj.count(),
+        'executors': lambda obj, **kws:
+            Executor.objects.for_queue(obj).alive().count(),
         'failure_rate': _queue_failure_rate,
     }
-
-def _parse_task_id(id_str):
-    ct_id, obj_id = map(int, id_str.split('_'))
-    ct = ContentType.objects.get(id=ct_id)
-    return ct.get_object_for_this_type(id=obj_id)
 
 class tasks(BaseReport):
     
@@ -180,7 +185,7 @@ class tasks(BaseReport):
         [[t for t in TaskClass.objects.all()] for TaskClass in TASK_MODELS])
     
     details = {
-        'instances': lambda id, **kws: _parse_task_id(id).instances.all(),
+        'instances': lambda id, **kws: _parse_content_ids(id).instances.all(),
     }
     headers = ['Name', 'Type', 'Description', 'Added', 'Timeout', 'Instances']
     data = {
@@ -214,138 +219,3 @@ class task_classes(BaseReport):
         'task': lambda task, **kws: task.__name__,
         'objects': lambda task, **kws: task.objects.count(),
     }
-    
-# DataDefinition(
-#     key='tasks',
-#     since_filter=date_ended_filter,
-#     order_by=date_ended_order,
-#     data={
-#         'id': lambda trs, _: trs.id,
-#         'job': lambda trs, _: trs.task.job.name,
-#         'task': lambda trs, _: trs.task.get_name(),
-#         'status': lambda trs, _: trs.status,
-#         'started': lambda trs, _: trs.date_started,
-#         'ended': date_ended_getter,
-#     },
-# )
-
-# tasks = DataDefinition(
-#     key='tasks',
-#     since_filter=date_ended_filter,
-#     order_by=date_ended_order,
-#     data={
-#         'id': lambda trs, _: trs.id,
-#         'job': lambda trs, _: trs.task.job.name,
-#         'iteration': lambda trs, _: trs.iteration.id,
-#         'task': lambda trs, _: trs.task.get_name(),
-#         'status': lambda trs, _: trs.status,
-#         'started': lambda trs, _: trs.date_started,
-#         'ended': date_ended_getter,
-#     },
-# )
-# 
-# DataDefinition(
-#     key='failedtasks',
-#     retrieve=lambda: TaskRunStatus.objects.filter(
-#         status__in=TaskRunStatus.STATUS_CATEGORIES['errored']),
-#     since_filter=tasks.since_filter,
-#     order_by=tasks.order_by,
-#     data=tasks.data,
-# )
-# 
-# DataDefinition(
-#     key='jobs',
-#     retrieve=lambda: report.jobs(),
-#     detail_key='iterations',
-#     details=lambda cid, _: report.iterations(cid),
-#     data={
-#         'id': lambda job, _: job.id,
-#         'name': lambda job, _: job.name,
-#         'description': lambda job, _: job.description,
-#         'added': lambda job, _: job.date_added,
-#     },
-# )
-# 
-# DataDefinition(
-#     key='iterations',
-#     detail_key='tasks',
-#     details=lambda cid, _: report.tasks_from_iter(cid),
-#     order_by=date_ended_order,
-#     data={
-#         'id': lambda i, _: i.id,
-#         'status': lambda i, _: i.status,
-#         'type': lambda i, _: i.iteration_type,
-#         'started': lambda i, _: i.date_started,
-#         'ended': date_ended_getter,
-#     },
-# )
-
-# def job(name):
-#     """Retrieves the Job with the given name, or None."""
-#     return get_object(Job, name=name)
-# 
-# def task(class_, id):
-#     """Retrieves the task of type class_ and with the given ID, or None."""
-#     return get_object(class_, id=id)
-# 
-# def region(name):
-#     """Retrieves the ResourceRegion with the given name, or None."""
-#     return get_object(ResourceRegion, name=name)
-# 
-# def iteration(id):
-#     """Retrieves the Iteration with the given ID, or None."""
-#     return get_object(Iteration, id=id)
-# 
-# def nds(id):
-#     """Retrieves the NorcDaemonStatus with the given ID, or None."""
-#     return get_object(NorcDaemonStatus, id=id)
-# 
-# def jobs():
-#     return Job.objects.all()
-# 
-# def ndss(since_date=None, status_filter='all'):
-#     """Retrieve NorcDaemonStatuses.
-#     
-#     Gets all NDSs that have ended since the given date or are still
-#     running and match the given status filter.
-#     
-#     """
-#     nds_query = NorcDaemonStatus.objects.all()
-#     if since_date != None:
-#         # Exclude lte instead of filter gte to retain running daemons.
-#         nds_query = nds_query.exclude(date_ended__lte=since_date)
-#     if status_filter != 'all' and status_filter in DAEMON_STATUS_DICT:
-#         include_statuses = DAEMON_STATUS_DICT[status_filter.lower()]
-#         nds_query = nds_query.filter(status__in=include_statuses)
-#     return nds_query
-# 
-# def iterations(jid):
-#     return Iteration.objects.filter(job__id=jid)
-# 
-# def tasks_from_iter(iid):
-#     return TaskRunStatus.objects.filter(iteration__id=iid)
-# 
-# def trss(nds, status_filter='all', since_date=None):
-#     """A hack fix so we can get the statuses for the proper daemon type."""
-#     status_filter = status_filter.lower()
-#     if nds.get_daemon_type() == 'NORC':
-#         task_statuses = nds.taskrunstatus_set.all()
-#     else:
-#         task_statuses = nds.sqstaskrunstatus_set.all()
-#     status_filter = status_filter.lower()
-#     TRS_CATS = TaskRunStatus.STATUS_CATEGORIES
-#     if not since_date == None:
-#         task_statuses = task_statuses.exclude(date_ended__lt=since_date)
-#     if status_filter != 'all' and status_filter in TRS_CATS:
-#         only_statuses = TRS_CATS[status_filter]
-#         task_statuses = task_statuses.filter(status__in=only_statuses)
-#     return task_statuses
-# 
-# DEPR
-# def get_task_statuses(status_filter='all'):
-#     if status_filter == 'all':
-#         TaskRunStatus.objects.all()
-#     else:
-#         include_statuses = TASK_STATUS_DICT[status_filter.lower()]
-#         return TaskRunStatus.objects.filter(status__in=include_statuses)
-

@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from threading import Thread, Event
 import itertools
 
+from django.db.models.query import QuerySet
 from django.db.models import (Model, Manager,
     BooleanField,
     CharField,
@@ -27,17 +28,7 @@ from norc.core.constants import (SCHEDULER_PERIOD,
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
-from norc.norc_utils.django_extras import queryset_exists
-
-class SchedulerManager(Manager):
-    """Custom manager for Scheduler."""
-    
-    def undead(self):
-        """Schedulers that are alive (active) but the heart isn't beating."""
-        cutoff = datetime.utcnow() - \
-            timedelta(seconds=(HEARTBEAT_PERIOD + 1))
-        return self.filter(active=True).filter(heartbeat__lt=cutoff)
-    
+from norc.norc_utils.django_extras import queryset_exists, QuerySetManager
 
 class Scheduler(Model):
     """Scheduling process for handling Schedules.
@@ -51,10 +42,25 @@ class Scheduler(Model):
     for new schedules.
     
     """
-    objects = SchedulerManager()
-    
     class Meta:
         app_label = 'core'
+        db_table = 'norc_scheduler'
+    
+    objects = QuerySetManager()
+    
+    class QuerySet(QuerySet):
+        """Custom manager/query set for Scheduler."""
+        
+        def undead(self):
+            """Schedulers that are alive (active) but the heart isn't beating."""
+            cutoff = datetime.utcnow() - \
+                timedelta(seconds=(HEARTBEAT_PERIOD + 1))
+            return self.filter(active=True).filter(heartbeat__lt=cutoff)
+
+        def alive(self):
+            cutoff = datetime.utcnow() - \
+                timedelta(seconds=(HEARTBEAT_PERIOD + 1))
+            return self.filter(active=True).filter(heartbeat__gte=cutoff)
     
     # Whether the Scheduler is currently running.
     active = BooleanField(default=False)

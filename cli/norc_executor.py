@@ -1,15 +1,15 @@
 #!/usr/bin/python
 
-"""A command-line script to run a Norc daemon."""
+"""A command-line script to run a Norc executor."""
 
 import sys
 from optparse import OptionParser
 
-from norc.core.models import Daemon, Queue
+from norc.core.models import Executor, Queue
 from norc.norc_utils.log import make_log
 
 def main():
-    usage = "norcd <queue_name> -c <n> [-e] [-d]"
+    usage = "norc_executor <queue_name> -c <n> [-e] [-d]"
     
     def bad_args(message):
         print message
@@ -36,10 +36,10 @@ def main():
     if not queue:
         bad_args("Invalid queue name '%s'." % args[0])
     
-    daemon = Daemon.objects.create(queue=queue, concurrent=options.concurrent)
-    daemon.log = make_log(daemon.log_path,
+    executor = Executor.objects.create(queue=queue, concurrent=options.concurrent)
+    executor.log = make_log(executor.log_path,
         echo=options.echo, debug=options.debug)
-    daemon.start()
+    executor.start()
     
 if __name__ == '__main__':
     main()

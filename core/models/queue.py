@@ -88,6 +88,8 @@ class DBQueue(Queue):
     """
     class Meta:
         app_label = 'core'
+        db_table = 'norc_dbqueue'
+
     
     def peek(self):
         """Retrieves the next item but does not remove it from the queue.
@@ -122,6 +124,7 @@ class DBQueueItem(Model):
     
     class Meta:
         app_label = 'core'
+        db_table = 'norc_dbqueueitem'
         ordering = ['id']
     
     # The queue this item is a part of.

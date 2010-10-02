@@ -12,6 +12,7 @@ class SQSQueue(Queue):
     
     class Meta:
         app_label = 'sqs'
+        db_table = 'norc_sqsqueue'
     
     def __init__(self, *args, **kwargs):
         Queue.__init__(self, *args, **kwargs)

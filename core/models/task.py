@@ -98,8 +98,8 @@ class BaseInstance(Model):
     # When the instance ended.
     ended = DateTimeField(null=True)
     
-    # The daemon that executed/is executing this instance.
-    daemon = ForeignKey('Daemon', null=True, related_name='%(class)ss')
+    # The executor of this instance.
+    executor = ForeignKey('core.Executor', null=True, related_name='%(class)ss')
     
     def start(self):
         if not hasattr(self, 'log'):
@@ -156,7 +156,7 @@ class BaseInstance(Model):
     @property
     def queue(self):
         try:
-            return self.daemon.queue
+            return self.executor.queue
         except AttributeError:
             return None
     
@@ -168,6 +168,10 @@ class BaseInstance(Model):
 
 class Instance(BaseInstance):
     """Normal Instance implementation for Tasks."""
+    
+    class Meta:
+        app_label = 'core'
+        db_table = 'norc_instance'
     
     objects = QuerySetManager()
     
@@ -184,8 +188,8 @@ class Instance(BaseInstance):
             return self.filter(status__in=statuses) if statuses else self
         
         def from_queue(self, q):
-            return self.filter(daemon__queue_id=q.id,
-                daemon__queue_type=ContentType.objects.get_for_model(q).id)
+            return self.filter(executor__queue_id=q.id,
+                executor__queue_type=ContentType.objects.get_for_model(q).id)
     
     # The object that spawned this instance.
     task_type = ForeignKey(ContentType, related_name='instances')
@@ -217,6 +221,10 @@ class Instance(BaseInstance):
 
 class CommandTask(Task):
     """Task which runs an arbitrary shell command."""
+    
+    class Meta:
+        app_label = 'core'
+        db_table = 'norc_commandtask'
     
     command = CharField(max_length=1024)
     nice = IntegerField(default=0)

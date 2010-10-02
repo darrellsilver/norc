@@ -4,11 +4,11 @@ from django.contrib import admin
 from norc.core import models
 
 
-class DaemonAdmin(admin.ModelAdmin):
+class ExecutorAdmin(admin.ModelAdmin):
     list_display = ['id', 'host', 'pid', 'status', 'request', 
         'heartbeat', 'started', 'ended', 'queue', 'concurrent']
 
-admin.site.register(models.Daemon, DaemonAdmin)
+admin.site.register(models.Executor, ExecutorAdmin)
 
 class DBQueueAdmin(admin.ModelAdmin):
     list_display = ['id', 'name', 'count_']

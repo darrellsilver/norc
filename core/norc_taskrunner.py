@@ -7,11 +7,8 @@ from optparse import OptionParser
 
 from django.contrib.contenttypes.models import ContentType
 
-from norc.core.models import Daemon, Queue
-from norc.norc_utils.log import make_log
-
 def main():
-    usage = "norc_executor --ct_pk <pk> --content_pk <pk>" # [-e] [-d]"
+    usage = "norc_taskrunner --ct_pk <pk> --content_pk <pk>" # [-e] [-d]"
     
     def bad_args(message):
         print message
