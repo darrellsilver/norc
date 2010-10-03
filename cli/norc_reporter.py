@@ -18,7 +18,7 @@ def main():
         sys.exit(2)
     
     parser = OptionParser(usage)
-    parser.add_option("-d", "--executors", action="store_true",
+    parser.add_option("-e", "--executors", action="store_true",
         help="Report on executors.")
     parser.add_option("-s", "--schedulers", action="store_true",
         help="Report on schedulers.")
