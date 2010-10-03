@@ -2,7 +2,7 @@
 import os
 import time
 
-from django.db.models import (Model,
+from django.db.models import (Model, query,
     BooleanField,
     PositiveIntegerField,
     ForeignKey)
@@ -12,7 +12,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 
 from norc.core.constants import Status
 from norc.core.models.task import Task, BaseInstance, Instance
-from norc.norc_utils.django_extras import queryset_exists
+from norc.norc_utils.django_extras import queryset_exists, QuerySetManager
 
 class Job(Task):
     """A Task composed of running several other Tasks."""
@@ -69,6 +69,10 @@ class JobNodeInstance(BaseInstance):
         app_label = 'core'
         db_table = 'norc_jobnodeinstance'
     
+    objects = QuerySetManager()
+    
+    QuerySet = Instance.QuerySet
+    
     # The node that spawned this instance.
     node = ForeignKey(JobNode, related_name='nis') # nis -> NodeInstances
     
@@ -96,6 +100,10 @@ class JobNodeInstance(BaseInstance):
     def log_path(self):
         return os.path.join(self.job_instance.log_path + '-nodes',
             'node-%s' % self.id)
+    
+    @property
+    def task(self):
+        return self.node.task
     
     def can_run(self):
         """Whether dependencies are met for this instance to run."""

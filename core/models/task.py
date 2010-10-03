@@ -20,7 +20,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc import settings
-from norc.core.constants import Status, TASK_MODELS
+from norc.core.constants import Status, TASK_MODELS, INSTANCE_MODELS
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import QuerySetManager
 from norc.norc_utils.parsing import parse_since
@@ -65,10 +65,17 @@ class Task(Model):
         return u"%s %s" % (type(self).__name__, self.name)
     
     __repr__ = __unicode__
-    
+
+class MetaInstance(base.ModelBase):
+    def __init__(self, name, bases, dct):
+        base.ModelBase.__init__(self, name, bases, dct)
+        if not self._meta.abstract:
+            INSTANCE_MODELS.append(self)
 
 class BaseInstance(Model):
     """One instance (run) of a Task."""
+    
+    __metaclass__ = MetaInstance
     
     class Meta:
         app_label = 'core'
@@ -99,7 +106,7 @@ class BaseInstance(Model):
     ended = DateTimeField(null=True)
     
     # The executor of this instance.
-    executor = ForeignKey('core.Executor', null=True, related_name='%(class)ss')
+    executor = ForeignKey('core.Executor', null=True, related_name='_%(class)ss')
     
     def start(self):
         if not hasattr(self, 'log'):

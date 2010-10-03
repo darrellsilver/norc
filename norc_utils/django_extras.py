@@ -43,3 +43,41 @@ class QuerySetManager(Manager):
         """Forward attribute lookup to the QuerySet."""
         return getattr(self.get_query_set(), attr, *args)
     
+
+class MultiQuerySet(object):
+    
+    def __init__(self, *args):
+        self.querysets = args
+    
+    def count(self):
+        return sum(qs.count() for qs in self.querysets)
+    
+    def __len__(self):
+        return self.count()
+    
+    def __getitem__(self, item):
+        indices = (offset, stop, step) = item.indices(self.count())
+        items = []
+        total_len = stop - offset
+        for qs in self.querysets:
+            if len(qs) < offset:
+                offset -= len(qs)
+            else:
+                items += list(qs[offset:stop])
+                if len(items) >= total_len:
+                    return items
+                else:
+                    offset = 0
+                    stop = total_len - len(items)
+                    continue
+    
+    def __call__(self, *args, **kwargs):
+        """Call each queryset."""
+        self.querysets = [qs(*args, **kwargs) for qs in self.querysets]
+        return self
+    
+    def __getattr__(self, attr, *args):
+        """Get the attribute for each queryset."""
+        self.querysets = [getattr(qs, attr, *args) for qs in self.querysets]
+        return self
+    

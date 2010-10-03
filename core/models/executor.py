@@ -22,8 +22,9 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc.core.models.queue import Queue
-from norc.core.constants import Status, CONCURRENCY_LIMIT, HEARTBEAT_PERIOD
-from norc.norc_utils.django_extras import QuerySetManager
+from norc.core.constants import (Status,
+    CONCURRENCY_LIMIT, HEARTBEAT_PERIOD, INSTANCE_MODELS)
+from norc.norc_utils.django_extras import QuerySetManager, MultiQuerySet
 from norc.norc_utils.log import make_log
 from norc import settings
 
@@ -62,6 +63,12 @@ class Executor(Model):
         def for_queue(self, q):
             return self.filter(queue_id=q.id,
                 queue_type=ContentType.objects.get_for_model(q).id)
+    
+    @property
+    def instances(self):
+        return MultiQuerySet(*[i.objects.filter(executor=self.pk)
+            for i in INSTANCE_MODELS])
+            
     
     VALID_STATUSES = [
         Status.CREATED,
