@@ -205,7 +205,7 @@ class instances(BaseReport):
     
     headers = ['ID', 'Task', 'Started', 'Ended', 'Status']
     data = {
-        # 'task_type': lambda i, **kws: type(i.task),
+        'task': lambda i, **kws: i.task.name,
         'status': lambda obj, **kws: Status.NAME[obj.status],
     }
 

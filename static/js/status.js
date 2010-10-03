@@ -530,6 +530,8 @@ function updateSchedulerCount() {
         "Norc is OFF! Where is norc_scheduler?",
         "Screw you, NORC! You're OFF!",
         "I miss you Norc! Come back soon.",
+        "What the hell Norc?! Wake up!",
+        "\"We've lost him!\" \"Not yet we haven't. Clear!\"",
     ]
     $.get('/data/counts/', {}, function(count) {
         state.scheduler_count = count;
@@ -563,12 +565,10 @@ function updateSchedulerCount() {
 }
 
 $(document).ready(function() {
-    // var SECTIONS = ['executors', 'jobs', 'failedtasks'];
     $.each(SECTIONS, function(i, section) {
         initSection(section);
     });
     var reloadAll = function() {
-        
         $.each(SECTIONS, function(i, section) {
             reloadSection(section);
         });
