@@ -206,7 +206,7 @@ class instances(BaseReport):
     headers = ['ID', 'Type', 'Task', 'Started', 'Ended', 'Status']
     data = {
         'type': lambda obj, **kws: type(obj).__name__,
-        'task': lambda i, **kws: i.task.name,
+        'task': lambda i, **kws: i.task.name if hasattr(i, 'task') else 'n/a',
         'status': lambda obj, **kws: Status.NAME[obj.status],
     }
 
