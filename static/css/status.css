@@ -23,6 +23,13 @@ div.section {
 #timestuff {
     float:right;
 }
+#scheduler_monitor {
+    text-align: center;
+}
+#scheduler_count {
+    cursor: default;
+    font-size: 36px;
+}
 table {
     border-spacing:0px;
     font-family:"Trebuchet MS", "Futura", "Courier New";

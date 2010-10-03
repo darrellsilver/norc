@@ -88,6 +88,7 @@ var state = {
     'per_page': {},
     // Data cache; unnecessary except for the need to know executor types.
     'data': {},
+    'pulsing': false,
 };
 
 
@@ -523,12 +524,51 @@ function initSection(dataKey) {
     $(section).append(makePagination(dataKey));
 }
 
+function updateSchedulerCount() {
+    var MESSAGES = [
+        "Norc is not running. No norc_scheduler found!",
+        "Norc is OFF! Where is norc_scheduler?",
+        "Screw you, NORC! You're OFF!",
+        "I miss you Norc! Come back soon.",
+    ]
+    $.get('/data/counts/', {}, function(count) {
+        state.scheduler_count = count;
+        $('#scheduler_count').text(count);
+        if (count == 0) {
+            $('#scheduler_message span').text(
+                MESSAGES[Math.floor(Math.random() * MESSAGES.length)]);
+            $('#scheduler_message').css('display', 'block');
+            if (!state.pulsing) {
+                var pulseOn = function(callback) {
+                    if (state.scheduler_count == 0) {
+                        $('body').animate({
+                            backgroundColor: '#CC0000',
+                        }, 2000, callback);
+                    } else {
+                        state.pulsing = false;
+                    }
+                }
+                var pulseOff = function() {
+                    $('body').animate({
+                        backgroundColor: '#F6FFF9',
+                    }, 1500, pulseOn(pulseOff));
+                }    
+                state.pulsing = true;
+                pulseOn(pulseOff);
+            }
+        } else {
+            $('#scheduler_message').css('display', 'none');
+        }
+    });
+}
+
 $(document).ready(function() {
     // var SECTIONS = ['executors', 'jobs', 'failedtasks'];
     $.each(SECTIONS, function(i, section) {
         initSection(section);
     });
     var reloadAll = function() {
+        
         $.each(SECTIONS, function(i, section) {
             reloadSection(section);
         });
@@ -544,4 +584,6 @@ $(document).ready(function() {
             delete state.autoReloadIID;
         }
     });
+    updateSchedulerCount();
+    setInterval(updateSchedulerCount, 10000);
 });
