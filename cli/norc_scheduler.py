@@ -24,6 +24,10 @@ def main():
     
     (options, args) = parser.parse_args()
     
+    if Scheduler.objects.alive().count() > 0:
+        print "Cannot run more than one scheduler at a time."
+        return
+    
     scheduler = Scheduler.objects.create()
     scheduler.log = make_log(scheduler.log_path,
         echo=options.echo, debug=options.debug)

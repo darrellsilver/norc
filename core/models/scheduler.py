@@ -108,6 +108,9 @@ class Scheduler(Model):
         if self.active or self.heartbeat != None:
             print "Cannot restart a scheduler."
             return
+        if Scheduler.objects.alive().count() > 0:
+            print "Cannot run more than one scheduler at a time."
+            return
         if not hasattr(self, 'log'):
             self.log = make_log(self.log_path)
         if __name__ == '__main__':
