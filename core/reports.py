@@ -11,7 +11,7 @@ external modules from having to query core classes directly.
 from django.contrib.contenttypes.models import ContentType
 
 from norc.core.models import *
-from norc.core.constants import Status, TASK_MODELS
+from norc.core.constants import Status, TASK_MODELS, INSTANCE_MODELS
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.formatting import untitle
 from norc.norc_utils.django_extras import get_object
@@ -159,7 +159,8 @@ class schedulers(BaseReport):
     }
 
 def _queue_failure_rate(obj, **kws):
-    instances = Instance.objects.from_queue(obj)
+    instances = MultiQuerySet(*[i.objects.all() for i in INSTANCE_MODELS])
+    instances = instances.from_queue(obj)
     failed = instances.status_in('failed').count()
     total = instances.count()
     return '%.2f%%' % (100.0 * failed / total) if total > 0 else 'n/a'
@@ -198,13 +199,16 @@ class tasks(BaseReport):
 
 class instances(BaseReport):
     
-    get = lambda id: get_object(Instance, id=id)
-    get_all = lambda: Instance.objects.all()
+    get = _parse_content_ids
+    get_all = lambda: MultiQuerySet(*[i.objects.all()
+        for i in INSTANCE_MODELS])
     since_filter = date_ended_since
     order_by = date_ended_order
     
-    headers = ['ID', 'Type', 'Task', 'Started', 'Ended', 'Status']
+    headers = ['ID#', 'Type', 'Task', 'Started', 'Ended', 'Status']
     data = {
+        'id': lambda obj, **kws: '%s_%s' % (_find_ct(obj), obj.id),
+        'id#': lambda obj, **kws: obj.id,
         'type': lambda obj, **kws: type(obj).__name__,
         'task': lambda i, **kws: i.task.name if hasattr(i, 'task') else 'n/a',
         'status': lambda obj, **kws: Status.NAME[obj.status],

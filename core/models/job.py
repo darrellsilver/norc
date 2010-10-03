@@ -101,9 +101,9 @@ class JobNodeInstance(BaseInstance):
         return os.path.join(self.job_instance.log_path + '-nodes',
             'node-%s' % self.id)
     
-    # @property
-    # def task(self):
-    #     return self.node.task
+    @property
+    def task(self):
+        return self.node.task
     
     def can_run(self):
         """Whether dependencies are met for this instance to run."""

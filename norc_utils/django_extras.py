@@ -73,11 +73,10 @@ class MultiQuerySet(object):
     
     def __call__(self, *args, **kwargs):
         """Call each queryset."""
-        self.querysets = [qs(*args, **kwargs) for qs in self.querysets]
-        return self
+        return MultiQuerySet(*[qs(*args, **kwargs) for qs in self.querysets])
     
     def __getattr__(self, attr, *args):
         """Get the attribute for each queryset."""
-        self.querysets = [getattr(qs, attr, *args) for qs in self.querysets]
-        return self
+        return MultiQuerySet(*[getattr(qs, attr, *args)
+            for qs in self.querysets])
     
