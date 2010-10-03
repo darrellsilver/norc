@@ -119,7 +119,8 @@ def _executor_instance_counter(executor, since, group):
 class executors(BaseReport):
     
     get = lambda id: get_object(Executor, id=id)
-    get_all = lambda: Executor.objects.all()
+    get_all = lambda: Executor.objects.exclude(
+        status__in=Status.GROUPS['succeeded'])
     since_filter = date_ended_since
     order_by = date_ended_order
     
