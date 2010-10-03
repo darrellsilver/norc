@@ -31,8 +31,6 @@ class BaseEnv(object):
     # Norc settings.
     NORC_LOG_DIR = os.path.join(NORC_DIRECTORY, 'log/')
     NORC_TMP_DIR = os.path.join(NORC_DIRECTORY, 'tmp/')
-    # Lets you switch the prefix on the model tables easily.
-    DB_TABLE_PREFIX = 'norc'
     LOG_BACKUP_SYSTEM = None
     
     # Important Django settings.
