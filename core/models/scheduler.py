@@ -154,8 +154,6 @@ class Scheduler(Model):
             # Clean up orphaned schedules and undead schedulers.
             Schedule.objects.orphaned().update(scheduler=None)
             CronSchedule.objects.orphaned().update(scheduler=None)
-            failed = Scheduler.objects.undead()
-            failed.exclude(pk=self.pk).update(active=False)
             
             cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
             simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
