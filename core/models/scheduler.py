@@ -24,7 +24,8 @@ from norc.core.models.task import Instance
 from norc.core.models.schedules import Schedule, CronSchedule
 from norc.core.constants import (SCHEDULER_PERIOD, 
                                  SCHEDULER_LIMIT,
-                                 HEARTBEAT_PERIOD)
+                                 HEARTBEAT_PERIOD,
+                                 HEARTBEAT_FAILED)
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
@@ -52,14 +53,12 @@ class Scheduler(Model):
         """Custom manager/query set for Scheduler."""
         
         def undead(self):
-            """Schedulers that are alive (active) but the heart isn't beating."""
-            cutoff = datetime.utcnow() - \
-                timedelta(seconds=(HEARTBEAT_PERIOD + 1))
+            """Schedulers that are active but the heart isn't beating."""
+            cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
             return self.filter(active=True).filter(heartbeat__lt=cutoff)
 
         def alive(self):
-            cutoff = datetime.utcnow() - \
-                timedelta(seconds=(HEARTBEAT_PERIOD + 1))
+            cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
             return self.filter(active=True).filter(heartbeat__gte=cutoff)
     
     # Whether the Scheduler is currently running.
@@ -94,7 +93,7 @@ class Scheduler(Model):
         
         """
         return self.active and self.heartbeat and self.heartbeat > \
-            datetime.utcnow() - timedelta(seconds=(HEARTBEAT_PERIOD + 1))
+            datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
     
     def heart_run(self):
         while self.active:
@@ -155,7 +154,8 @@ class Scheduler(Model):
             # Clean up orphaned schedules and undead schedulers.
             Schedule.objects.orphaned().update(scheduler=None)
             CronSchedule.objects.orphaned().update(scheduler=None)
-            Scheduler.objects.undead().update(active=False)
+            failed = Scheduler.objects.undead()
+            failed.exclude(pk=self.pk).update(active=False)
             
             cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
             simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]

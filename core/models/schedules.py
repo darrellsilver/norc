@@ -12,7 +12,7 @@ from django.db.models import (Model, Manager, Q,
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import GenericForeignKey
 
-from norc.core.constants import SCHEDULER_PERIOD
+from norc.core.constants import HEARTBEAT_FAILED
 from norc.core.models.task import Instance
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
@@ -28,8 +28,7 @@ class ScheduleManager(Manager):
         return self.unfinished.filter(scheduler__isnull=True)
     
     def orphaned(self):
-        wait = SCHEDULER_PERIOD * 1.5
-        cutoff = datetime.utcnow() - timedelta(seconds=wait)
+        cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
         active = self.unfinished.filter(scheduler__active=True)
         return active.exclude(scheduler__heartbeat__gt=cutoff)
     
