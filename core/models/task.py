@@ -25,6 +25,12 @@ from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import QuerySetManager
 from norc.norc_utils.parsing import parse_since
 
+class NorcInterruptException(BaseException):
+    pass
+
+class NorcTimeoutException(BaseException):
+    pass
+
 class MetaTask(base.ModelBase):
     def __init__(self, name, bases, dct):
         base.ModelBase.__init__(self, name, bases, dct)
@@ -106,7 +112,8 @@ class BaseInstance(Model):
     ended = DateTimeField(null=True)
     
     # The executor of this instance.
-    executor = ForeignKey('core.Executor', null=True, related_name='_%(class)ss')
+    executor = ForeignKey('core.Executor', null=True,
+        related_name='_%(class)ss')
     
     def start(self):
         if not hasattr(self, 'log'):
@@ -130,8 +137,12 @@ class BaseInstance(Model):
         except Exception:
             self.log.error("Task failed with an exception!", trace=True)
             self.status = Status.ERROR
-        except SystemExit:
-            pass
+        except NorcInterruptException:
+            self.log.error("Interrupt signal received!")
+            self.status = Status.INTERRUPTED
+        except NorcTimeoutException:
+            self.log.info("Task timed out!  Ceasing execution.")
+            self.status = Status.TIMEDOUT
         else:
             if success or success == None:
                 self.status = Status.SUCCESS
@@ -149,16 +160,10 @@ class BaseInstance(Model):
         raise NotImplementedError
     
     def kill_handler(self):
-        self.log.error("Stop signal received! Setting status to INTERRUPTED.")
-        self.status = Status.INTERRUPTED
-        self.save()
-        sys.exit(1)
+        raise NorcInterruptException()
     
     def timeout_handler(self):
-        self.log.info("Task timed out!  Ceasing execution.")
-        self.status = Status.TIMEDOUT
-        self.save()
-        sys.exit(1)
+        raise NorcTimeoutException()
     
     @property
     def queue(self):
