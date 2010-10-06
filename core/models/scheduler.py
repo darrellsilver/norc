@@ -29,7 +29,8 @@ from norc.core.constants import (SCHEDULER_PERIOD,
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
-from norc.norc_utils.django_extras import queryset_exists, QuerySetManager
+from norc.norc_utils.django_extras import queryset_exists, get_object
+from norc.norc_utils.django_extras import QuerySetManager
 
 class Scheduler(Model):
     """Scheduling process for handling Schedules.
@@ -83,7 +84,7 @@ class Scheduler(Model):
         self.timer = MultiTimer()
         self.heart = Thread(target=self.heart_run)
         self.heart.daemon = True
-        
+    
     def is_alive(self):
         """Whether the Scheduler is still running.
         
@@ -97,10 +98,12 @@ class Scheduler(Model):
     
     def heart_run(self):
         while self.active:
+            start = time.time()
             self.heartbeat = datetime.utcnow()
             self.active = Scheduler.objects.get(pk=self.pk).active
             self.save()
-            time.sleep(HEARTBEAT_PERIOD)
+            wait = HEARTBEAT_PERIOD - (time.time() - start)
+            if wait > 0: time.sleep(wait)
     
     def start(self):
         """Starts the Scheduler."""
@@ -188,8 +191,12 @@ class Scheduler(Model):
     
     def _enqueue(self, schedule):
         """Called by the timer to add an instance to the queue."""
-        if not queryset_exists(type(schedule).objects.filter(pk=schedule.pk)):
+        schedule = get_object(type(schedule), pk=schedule.pk)
+        if schedule == None:
             self.log.info('%s was removed.' % schedule)
+            return
+        if not schedule.scheduler == self:
+            self.log.info('%s is no longer tied to this scheduler.')
             return
         instance = Instance.objects.create(
             task=schedule.task, schedule=schedule)
@@ -215,7 +222,6 @@ class Scheduler(Model):
             self.stop()
         else:
             self.stop()
-            # sys.exit(1)     # Maybe?
     
     def stop(self):
         """Stops the Scheduler (passively)."""
