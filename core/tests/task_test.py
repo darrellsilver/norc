@@ -18,7 +18,10 @@ class TestCommandTask(TestCase):
             ct = CommandTask.objects.create(name=ct, command=ct)
         instance = Instance.objects.create(task=ct)
         instance.log = log.Log(os.devnull)
-        instance.start()
+        try:
+            instance.start()
+        except SystemExit:
+            pass
         return Instance.objects.get(pk=instance.pk).status
     
     def test_status(self):

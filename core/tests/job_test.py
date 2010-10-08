@@ -19,6 +19,12 @@ class JobTest(TestCase):
             items.append(self.queue.pop())
         return items
     
+    def _start_instance(self, instance):
+        try:
+            instance.start()
+        except SystemExit:
+            pass
+    
     def setUp(self):
         self.queue = testing.make_queue()
         self.tasks = [testing.make_task('JobTask%s' % i) for i in range(6)]
@@ -44,19 +50,19 @@ class JobTest(TestCase):
         self.assertEqual(set([i.item.node for i in self.queue.items.all()]),
             set([self.nodes[0], self.nodes[1]]))
         for i in self.queue_items():
-            i.start()
+            self._start_instance(i)
         self.assertEqual(set([i.item.node for i in self.queue.items.all()]),
             set([self.nodes[2], self.nodes[4]]))
         for i in self.queue_items():
-            i.start()
+            self._start_instance(i)
         self.assertEqual(set([i.item.node for i in self.queue.items.all()]),
             set([self.nodes[3]]))
         for i in self.queue_items():
-            i.start()
+            self._start_instance(i)
         self.assertEqual(set([i.item.node for i in self.queue.items.all()]),
             set([self.nodes[5]]))
         for i in self.queue_items():
-            i.start()
+            self._start_instance(i)
         self.thread.join(2)
         self.assertFalse(self.thread.isAlive())
     

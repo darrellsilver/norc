@@ -80,14 +80,16 @@ class JobNodeInstance(BaseInstance):
     job_instance = ForeignKey(Instance, related_name='nodis')
     
     def start(self):
-        BaseInstance.start(self)
-        ji = self.job_instance
-        if not Status.is_failure(self.status):
-            for sub_dep in self.node.sub_deps.all():
-                sub_node = sub_dep.child
-                ni = sub_node.nis.get(job_instance=ji)
-                if ni.can_run():
-                    self.job_instance.schedule.queue.push(ni)
+        try:
+            BaseInstance.start(self)
+        finally:
+            ji = self.job_instance
+            if not Status.is_failure(self.status):
+                for sub_dep in self.node.sub_deps.all():
+                    sub_node = sub_dep.child
+                    ni = sub_node.nis.get(job_instance=ji)
+                    if ni.can_run():
+                        self.job_instance.schedule.queue.push(ni)
     
     def run(self):
         self.node.task.run()

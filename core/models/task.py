@@ -157,6 +157,7 @@ class BaseInstance(Model):
             self.log.stop_redirect()
             self.log.close()
             backup_log(self.log_path)
+            sys.exit(0 if self.status == Status.SUCCESS else 1)
     
     def run(self):
         raise NotImplementedError
