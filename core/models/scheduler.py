@@ -31,6 +31,7 @@ from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import queryset_exists, get_object
 from norc.norc_utils.django_extras import QuerySetManager
+from norc.norc_utils.backup import backup_log
 
 class Scheduler(Model):
     """Scheduling process for handling Schedules.
@@ -143,11 +144,12 @@ class Scheduler(Model):
                 simple.update(scheduler=None)
             self.log.info('%s exited cleanly.' % self)
         finally:
-            self.log.stop_redirect()
-            self.log.close()
             self.ended = datetime.utcnow()
             self.active = False
             self.save()
+            self.log.stop_redirect()
+            self.log.close()
+            backup_log(self.log_path)
     
     def run(self):
         """Main run loop of the Scheduler."""

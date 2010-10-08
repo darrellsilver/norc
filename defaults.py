@@ -31,7 +31,7 @@ class BaseEnv(object):
     # Norc settings.
     NORC_LOG_DIR = os.path.join(NORC_DIRECTORY, 'log/')
     NORC_TMP_DIR = os.path.join(NORC_DIRECTORY, 'tmp/')
-    LOG_BACKUP_SYSTEM = None
+    BACKUP_SYSTEM = None
     
     # Important Django settings.
     ADMINS = ()

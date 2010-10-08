@@ -24,6 +24,7 @@ from norc.core.constants import Status, TASK_MODELS, INSTANCE_MODELS
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import QuerySetManager
 from norc.norc_utils.parsing import parse_since
+from norc.norc_utils.backup import backup_log
 
 class NorcInterruptException(BaseException):
     pass
@@ -150,11 +151,12 @@ class BaseInstance(Model):
                 self.status = Status.FAILURE
         finally:
             self.ended = datetime.utcnow()
+            self.save()
             self.log.info("Task ended with status %s." %
                 Status.NAME[self.status])
             self.log.stop_redirect()
-            self.save()
             self.log.close()
+            backup_log(self.log_path)
     
     def run(self):
         raise NotImplementedError

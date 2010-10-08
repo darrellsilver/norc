@@ -25,7 +25,9 @@ from norc.core.models.queue import Queue
 from norc.core.constants import (Status,
     CONCURRENCY_LIMIT, HEARTBEAT_PERIOD, INSTANCE_MODELS)
 from norc.norc_utils.django_extras import QuerySetManager, MultiQuerySet
+from norc.norc_utils.parallel import ThreadPool
 from norc.norc_utils.log import make_log
+from norc.norc_utils.backup import backup_log
 from norc import settings
 
 class Executor(Model):
@@ -156,6 +158,8 @@ class Executor(Model):
         if __name__ == '__main__':
             for signum in [signal.SIGINT, signal.SIGTERM]:
                 signal.signal(signum, self.signal_handler)
+        if settings.BACKUP_SYSTEM:
+            self.pool = ThreadPool(5)
         self.log.start_redirect()
         self.log.info("Starting %s..." % self)
         self.heart.start()
@@ -164,11 +168,14 @@ class Executor(Model):
         except Exception:
             self.set_status(Status.ERROR)
             self.log.error('Executor suffered an internal error!', trace=True)
-        self.ended = datetime.utcnow()
-        self.save()
-        self.log.info("%s has shut down." % self)
-        self.log.stop_redirect()
-        self.log.close()
+        finally:
+            self.ended = datetime.utcnow()
+            self.save()
+            self.log.info("%s has shut down." % self)
+            self.log.stop_redirect()
+            self.log.close()
+            backup_log(self.log_path)
+            self.pool.joinAll()
     
     def run(self):
         """Core executor function."""
@@ -207,6 +214,8 @@ class Executor(Model):
                     self.log.info("Instance '%s' ended with status %s." %
                         (i, Status.NAME[i.status]))
                     del self.processes[pid]
+                    if settings.BACKUP_SYSTEM:
+                        self.pool.queueTask(self.backup_instance_log, [i])
     
     def start_instance(self, instance):
         """Starts a given instance in a new process."""
@@ -324,6 +333,9 @@ class Executor(Model):
         self.log.info("Changing state from %s to %s." %
             (Status.NAME[self.status], Status.NAME[status]))
         self.status = status
+    
+    def backup_instance_log(self, instance):
+        backup_log(instance.log_path)
     
     @property
     def log_path(self):

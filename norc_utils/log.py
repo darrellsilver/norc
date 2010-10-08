@@ -6,14 +6,7 @@ import sys
 import datetime
 import traceback
 
-try:
-    from boto.s3.connection import S3Connection
-    from boto.s3.key import Key
-except ImportError:
-    pass
-
-from norc.settings import (LOGGING_DEBUG, NORC_LOG_DIR, LOG_BACKUP_SYSTEM,
-    AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME)
+from norc.settings import (LOGGING_DEBUG, NORC_LOG_DIR)
 
 def timestamp():
     """Returns a string timestamp of the current time."""
@@ -126,50 +119,9 @@ class Log(AbstractLog):
         self.file.close()
     
 
-class NorcLog(Log):
-    
-    def __init__(self, norc_path=None, *args, **kwargs):
-        path = os.path.join(NORC_LOG_DIR, norc_path)
-        Log.__init__(self, path, *args, **kwargs)
-        self.path = path
-        self.norc_path = norc_path
-    
-
-class S3Log(NorcLog):
-    """Outputs logs to S3 in addition to a local file."""
-    
-    @staticmethod
-    def make_s3_key(path):
-        c = S3Connection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-        b = c.get_bucket(AWS_BUCKET_NAME)
-        if not b:
-            b = c.create_bucket(AWS_BUCKET_NAME)
-        k = Key(b)
-        k.key = 'norc_logs/' + path
-        return k
-    
-    def __init__(self, norc_path, *args, **kwargs):
-        NorcLog.__init__(self, norc_path, *args, **kwargs)
-        try:
-            self.key = S3Log.make_s3_key(norc_path)
-        except:
-            self.error('Could not make S3 key:', trace=True)
-    
-    def close(self):
-        self.file.flush()
-        if hasattr(self, 'key'):
-            try:
-                self.key.set_contents_from_filename(self.path)
-            except:
-                self.error('Unable to push log file to S3:', trace=True)
-        NorcLog.close(self)
-
-
-BACKUP_LOGS = {
-    'AmazonS3': S3Log,
-}
-
 def make_log(norc_path, *args, **kwargs):
     """Make a log object with a subpath of the norc log directory."""
-    log_class = BACKUP_LOGS.get(LOG_BACKUP_SYSTEM, NorcLog)
-    return log_class(norc_path, *args, **kwargs)
+    return Log(os.path.join(NORC_LOG_DIR, norc_path), *args, **kwargs)
+    # log_class = BACKUP_LOGS.get(BACKUP_SYSTEM, NorcLog)
+    # return log_class(norc_path, *args, **kwargs)
+
