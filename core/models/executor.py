@@ -216,6 +216,7 @@ class Executor(Model):
                     del self.processes[pid]
                     if settings.BACKUP_SYSTEM:
                         self.pool.queueTask(self.backup_instance_log, [i])
+            self._wait(0.1)
     
     def start_instance(self, instance):
         """Starts a given instance in a new process."""
@@ -230,7 +231,7 @@ class Executor(Model):
         p.instance = instance
         self.processes[p.pid] = p
     
-    def _wait(self):
+    def _wait(self, t=1):
         """Waits on the flag.
         
         For whatever reason, when this is done signals are no longer
@@ -239,7 +240,7 @@ class Executor(Model):
         """
         try:
             self.flag.clear()
-            self.flag.wait(1)
+            self.flag.wait(t)
         except KeyboardInterrupt:
             self.make_request(Executor.REQUEST_STOP)
         except SystemExit:
