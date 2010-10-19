@@ -24,11 +24,13 @@ def main():
         help="Report on schedulers.")
     parser.add_option("-q", "--queues", action="store_true",
         help="Report on queues.")
-    parser.add_option("-t", "--since", action="store",
-        help="Report on queues.")
+    parser.add_option("-t", "--timeframe",
+        help="Filter to only things in this timeframe.")
+    parser.add_option("-n", "--number", default=20, type="int",
+        help="The number of items to display.")
     
     (options, args) = parser.parse_args()
-    since = parse_since(options.since)
+    since = parse_since(options.timeframe)
     
     if not any([options.executors, options.schedulers, options.queues]):
         options.executors = True
@@ -42,7 +44,9 @@ def main():
         data_objects = report.get_all()
         data_objects = report.since_filter(data_objects, since)
         data_objects = report.order_by(data_objects, None)
-        data_list = reports.generate(data_objects, report, dict(since=since))[:20]
+        data_list = reports.generate(data_objects, report, dict(since=since))
+        if options.number > 0:
+            data_list = data_list[:options.number]
         if len(data_list) > 0:
             table = [report.headers] + [[str(o[untitle(h)])
                 for h in report.headers] for o in data_list]
