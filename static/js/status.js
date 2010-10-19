@@ -476,21 +476,23 @@ function retrieveData(chain, id, options, callback) {
         loading = $('<span/>').addClass('loading').append(loading);
         $('#' + chain).find('h2').after(loading);
     }
-    loading.ajaxComplete(function(e, xhr, settings) {
-        if (settings.url.substr(0, path.length) == path) {
-            $(this).remove();
-        }
-    });
-    $.get(path, options, function(data) {
-        // This is currently only used for fixing SQS tasks.
-        if (id) {
-            state.data[chainJoin(
-                getChainRemainder(chain), id)] = data.data;
-        } else {
-            state.data[chain] = data.data;
-        }
-        callback(data, makeDataTable(chain, data.data));
-    });
+    $.ajax({
+        url: path,
+        data: options,
+        success: function(data) {
+            // This is currently only used for fixing SQS tasks.
+            if (id) {
+                state.data[chainJoin(
+                    getChainRemainder(chain), id)] = data.data;
+            } else {
+                state.data[chain] = data.data;
+            }
+            callback(data, makeDataTable(chain, data.data));
+        },
+        complete: function() {
+            loading.remove();
+        },
+    })
 }
 
 function reloadSection(dataKey, options) {
@@ -524,6 +526,27 @@ function initSection(dataKey) {
     $(section).append(makePagination(dataKey));
 }
 
+function startWarningPulse() {
+    if (!state.pulsing) {
+        var pulseOn = function(callback) {
+            if (state.scheduler_count == 0) {
+                $('body').animate({
+                    backgroundColor: '#CC0000',
+                }, 2000, callback);
+            } else {
+                state.pulsing = false;
+            }
+        }
+        var pulseOff = function() {
+            $('body').animate({
+                backgroundColor: '#F6FFF9',
+            }, 1500, pulseOn(pulseOff));
+        }    
+        state.pulsing = true;
+        pulseOn(pulseOff);
+    }
+}
+
 function updateSchedulerCount() {
     var MESSAGES = [
         "Norc is not running. No norc_scheduler found!",
@@ -532,35 +555,28 @@ function updateSchedulerCount() {
         "I miss you Norc! Come back soon.",
         "What the hell Norc?! Wake up!",
         "\"We've lost him!\" \"Not yet we haven't. Clear!\"",
-    ]
-    $.get('/data/counts/', {}, function(count) {
-        state.scheduler_count = count;
-        $('#scheduler_count').text(count);
-        if (count == 0) {
-            $('#scheduler_message span').text(
-                MESSAGES[Math.floor(Math.random() * MESSAGES.length)]);
-            $('#scheduler_message').css('display', 'block');
-            if (!state.pulsing) {
-                var pulseOn = function(callback) {
-                    if (state.scheduler_count == 0) {
-                        $('body').animate({
-                            backgroundColor: '#CC0000',
-                        }, 2000, callback);
-                    } else {
-                        state.pulsing = false;
-                    }
-                }
-                var pulseOff = function() {
-                    $('body').animate({
-                        backgroundColor: '#F6FFF9',
-                    }, 1500, pulseOn(pulseOff));
-                }    
-                state.pulsing = true;
-                pulseOn(pulseOff);
+    ];
+    $.ajax({
+        url: "/data/counts/",
+        success: function(count) {
+            state.scheduler_count = count;
+            $('#scheduler_count').text(count);
+            if (count == 0) {
+                $('#scheduler_message span').text(
+                    MESSAGES[Math.floor(Math.random() * MESSAGES.length)]);
+                $('#scheduler_message').css('display', 'block');
+                startWarningPulse();
+            } else {
+                $('#scheduler_message').css('display', 'none');
             }
-        } else {
-            $('#scheduler_message').css('display', 'none');
-        }
+        },
+        error: function() {
+            $("#scheduler_count").text("E");
+            $("#scheduler_message span")
+                .text("Error contacting the server!");
+            $('#scheduler_message').css('display', 'block');
+            startWarningPulse();
+        },
     });
 }
 
