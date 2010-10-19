@@ -245,11 +245,12 @@ class CronSchedule(BaseSchedule):
     
     def __init__(self, *args, **kwargs):
         BaseSchedule.__init__(self, *args, **kwargs)
-        self.read_encoding()
+        self.set_lists()
         self._next = None
     
-    def read_encoding(self):
-        d = CronSchedule.validate(self.encoding)[1]
+    def set_lists(self, d=None):
+        if not d:
+            d = CronSchedule.validate(self.encoding)[1]
         self.months = d['o']
         self.days = d['d']
         self.daysofweek = d['w']
@@ -257,20 +258,11 @@ class CronSchedule(BaseSchedule):
         self.minutes = d['m']
         self.seconds = d['s']
     
-    def encode(self):
-        """Re-construct the encoding, validate it, save it, and return it."""
-        tup = ()
-        for field in CronSchedule.FIELDS:
-            list_ = getattr(self, field)
-            if list_ == getattr(CronSchedule, field.upper()):
-                tup += ('*',)
-            else:
-                tup += (','.join(map(str, list_)),)
-        encoding = 'o%sd%sw%sh%sm%ss%s' % tup
-        encoding = CronSchedule.validate(encoding)[0]
-        self.encoding = encoding
+    def set_encoding(self, encoding):
+        e, d = CronSchedule.validate(encoding)
+        self.encoding = e
+        self.set_lists(d)
         self.save()
-        return encoding
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
@@ -300,7 +292,7 @@ class CronSchedule(BaseSchedule):
         return self._next
     
     def calculate_next(self, dt=None):
-        self.read_encoding()
+        # self.read_encoding()
         if not dt:
             dt = self.base
         dt = dt.replace(microsecond=0)
@@ -342,16 +334,16 @@ class CronSchedule(BaseSchedule):
             r'o\*d\*w\d+h\d+m\d+s\d+': 'WEEKLY',
             r'o\*d\d+w\*h\d+m\d+s\d+': 'MONTHLY',
         }
-        encoding = self.encode()
         for regex, name in searchs.items():
-            m = re.match(regex, encoding)
+            m = re.match(regex, self.encoding)
             if m:
                 # A check just for HALFHOURLY.
                 mins = map(int, m.groups())
                 if m.groups() and abs(mins[0] - mins[1]) != 30:
                     continue
                 return name
-        return encoding
+        # If no pretty name, just return the encoding.
+        return self.encoding
     
     def __unicode__(self):
         return u'<CronSchedule #%s, %s:%s>' % \
