@@ -193,10 +193,12 @@ class Scheduler(Model):
     
     def _enqueue(self, schedule):
         """Called by the timer to add an instance to the queue."""
-        schedule = get_object(type(schedule), pk=schedule.pk)
-        if schedule == None:
+        updated_schedule = get_object(type(schedule), pk=schedule.pk)
+        if updated_schedule == None:
             self.log.info('%s was removed.' % schedule)
             return
+        schedule = updated_schedule
+        
         if not schedule.scheduler == self:
             self.log.info('%s is no longer tied to this scheduler.')
             return

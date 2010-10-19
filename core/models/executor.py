@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timedelta
 from threading import Thread, Event
 # from multiprocessing import Process
+# Alas, 2.5 doesn't have multiprocessing...
 from subprocess import Popen
 
 from django.db.models import (Model, Manager, query,
@@ -48,30 +49,35 @@ class Executor(Model):
     class QuerySet(query.QuerySet):
         
         def alive(self):
+            """Running executors with a recent heartbeat."""
             cutoff = datetime.utcnow() - \
                 timedelta(seconds=(HEARTBEAT_PERIOD + 1))
             return self.filter(status=Status.RUNNING, heartbeat__gt=cutoff)
 
         def since(self, since):
+            """Date ended since a certain time, or not ended."""
             if type(since) == str:
                 since = parse_since(since)
             return self.exclude(ended__lt=since) if since else self
         
         def status_in(self, statuses):
+            """Filter by status group. Takes a string or iterable."""
             if isinstance(statuses, basestring):
                 statuses = Status.GROUPS.get(statuses)
             return self.filter(status__in=statuses) if statuses else self
         
         def for_queue(self, q):
+            """Executors pulling from the given queue."""
             return self.filter(queue_id=q.id,
                 queue_type=ContentType.objects.get_for_model(q).id)
     
     @property
     def instances(self):
+        """A custom implementation of the Django related manager pattern."""
         return MultiQuerySet(*[i.objects.filter(executor=self.pk)
             for i in INSTANCE_MODELS])
             
-    
+    # All the statuses executors can have.  See constants.py.
     VALID_STATUSES = [
         Status.CREATED,
         Status.RUNNING,
@@ -82,6 +88,7 @@ class Executor(Model):
         Status.KILLED,
     ]
     
+    # Request constants that should probably be moved to constants.py.
     REQUEST_PAUSE = 1
     REQUEST_UNPAUSE = 2
     REQUEST_STOP = 5

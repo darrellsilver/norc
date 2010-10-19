@@ -3,7 +3,6 @@ from django.contrib import admin
 
 from norc.core import models
 
-
 class ExecutorAdmin(admin.ModelAdmin):
     list_display = ['id', 'host', 'pid', 'status', 'request', 
         'heartbeat', 'started', 'ended', 'queue', 'concurrent']
