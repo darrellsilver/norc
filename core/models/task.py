@@ -124,10 +124,10 @@ class BaseInstance(Model):
             return
         if __name__ == '__main__':
             for signum in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
-                signal.signal(signum, lambda n, f: self.kill_handler())
-        if self.timeout > 0:
-            signal.signal(signal.SIGALRM, lambda n, f: self.timeout_handler())
-            signal.alarm(self.timeout)
+                signal.signal(signum, self.kill_handler)
+            if self.timeout > 0:
+                signal.signal(signal.SIGALRM, self.timeout_handler)
+                signal.alarm(self.timeout)
         self.log.info('Starting %s.' % self)
         self.log.start_redirect()
         self.status = Status.RUNNING
@@ -162,10 +162,10 @@ class BaseInstance(Model):
     def run(self):
         raise NotImplementedError
     
-    def kill_handler(self):
+    def kill_handler(self, *args, **kwargs):
         raise NorcInterruptException()
     
-    def timeout_handler(self):
+    def timeout_handler(self, *args, **kwargs):
         raise NorcTimeoutException()
     
     @property
