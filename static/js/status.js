@@ -28,7 +28,7 @@ function pad(n, i) {
 
 function formatDate(date) {
     return  pad(date.getFullYear(), 4) + '/' +
-            pad(date.getMonth(), 2) + '/' +
+            pad(date.getMonth() + 1, 2) + '/' +
             pad(date.getDate(), 2) + ' ' +
             pad(date.getHours(), 2) + ':' +
             pad(date.getMinutes(), 2) + ':' +
