@@ -125,9 +125,9 @@ class BaseInstance(Model):
         if __name__ == '__main__':
             for signum in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
                 signal.signal(signum, self.kill_handler)
-            if self.timeout > 0:
-                signal.signal(signal.SIGALRM, self.timeout_handler)
-                signal.alarm(self.timeout)
+        if self.timeout > 0:
+            signal.signal(signal.SIGALRM, self.timeout_handler)
+            signal.alarm(self.timeout)
         self.log.info('Starting %s.' % self)
         self.log.start_redirect()
         self.status = Status.RUNNING
