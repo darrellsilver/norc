@@ -182,7 +182,8 @@ class Executor(Model):
             self.log.stop_redirect()
             self.log.close()
             backup_log(self.log_path)
-            self.pool.joinAll()
+            if settings.BACKUP_SYSTEM:
+                self.pool.joinAll()
     
     def run(self):
         """Core executor function."""
@@ -263,7 +264,8 @@ class Executor(Model):
     
     def handle_request(self):
         """Called when a request is found."""
-        self.log.info("Request received: %s" % Executor.REQUESTS[self.request])
+        self.log.info("Request received: %s" %
+            Executor.REQUESTS[self.request])
         
         if self.request == Executor.REQUEST_PAUSE:
             self.set_status(Status.PAUSED)
