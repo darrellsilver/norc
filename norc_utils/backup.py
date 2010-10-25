@@ -16,10 +16,16 @@ def s3_backup(fp, target):
     b = c.get_bucket(AWS_BUCKET_NAME)
     if not b:
         b = c.create_bucket(AWS_BUCKET_NAME)
-    k = Key(b)
-    k.key = target
-    k.set_contents_from_file(fp)
-    return True
+    
+    for i in range(0, 3):
+        try:
+            k = Key(b)
+            k.key = target
+            k.set_contents_from_file(fp)
+            return True
+        except:
+            pass
+    return False
 
 BACKUP_SYSTEMS = {
     'AmazonS3': s3_backup,
@@ -32,17 +38,14 @@ def backup_log(log_path):
         return False
     target = os.path.join('norc_logs/', log_path)
     try:
-        return backup_file(fp, target)
+        return _backup_file(fp, target)
     except:
         log = make_log(log_path)
         log.error('Could not back up log file "%s"' % log_path, trace=True)
         return False
 
-def backup_file(fp, target):
+def _backup_file(fp, target):
     if BACKUP_SYSTEM:
-        try:
-            return BACKUP_SYSTEMS[BACKUP_SYSTEM](fp, target)
-        except:
-            return False
+        return BACKUP_SYSTEMS[BACKUP_SYSTEM](fp, target)
     else:
         return False
