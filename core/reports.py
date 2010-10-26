@@ -206,12 +206,13 @@ class instances(BaseReport):
     since_filter = date_ended_since
     order_by = date_ended_order
     
-    headers = ['ID#', 'Type', 'Task', 'Started', 'Ended', 'Status']
+    headers = ['ID#', 'Type', 'Source', 'Started', 'Ended', 'Status']
     data = {
         'id': lambda obj, **kws: '%s_%s' % (_find_ct(obj), obj.id),
         'id#': lambda obj, **kws: obj.id,
         'type': lambda obj, **kws: type(obj).__name__,
-        'task': lambda i, **kws: i.task.name if hasattr(i, 'task') else 'n/a',
+        'source': lambda i, **kws:
+            i.source if hasattr(i, 'source') else 'n/a',
         'status': lambda obj, **kws: Status.NAME[obj.status],
     }
 

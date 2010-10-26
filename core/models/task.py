@@ -156,7 +156,6 @@ class BaseInstance(Model):
                 Status.NAME[self.status])
             self.log.stop_redirect()
             self.log.close()
-            backup_log(self.log_path)
             sys.exit(0 if self.status == Status.SUCCESS else 1)
     
     def run(self):
@@ -222,6 +221,10 @@ class Instance(BaseInstance):
     @property
     def timeout(self):
         return self.task.timeout
+    
+    @property
+    def source(self):
+        return self.task.name
     
     @property
     def log_path(self):

@@ -99,6 +99,10 @@ class JobNodeInstance(BaseInstance):
         return self.node.task.timeout
     
     @property
+    def source(self):
+        return self.node.job.name
+    
+    @property
     def log_path(self):
         return os.path.join(self.job_instance.log_path + '-nodes',
             'node-%s' % self.id)

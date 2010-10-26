@@ -53,7 +53,7 @@ class Executor(Model):
             cutoff = datetime.utcnow() - \
                 timedelta(seconds=(HEARTBEAT_PERIOD + 1))
             return self.filter(status=Status.RUNNING, heartbeat__gt=cutoff)
-
+        
         def since(self, since):
             """Date ended since a certain time, or not ended."""
             if type(since) == str:
@@ -76,7 +76,7 @@ class Executor(Model):
         """A custom implementation of the Django related manager pattern."""
         return MultiQuerySet(*[i.objects.filter(executor=self.pk)
             for i in INSTANCE_MODELS])
-            
+    
     # All the statuses executors can have.  See constants.py.
     VALID_STATUSES = [
         Status.CREATED,
@@ -175,15 +175,19 @@ class Executor(Model):
         except Exception:
             self.set_status(Status.ERROR)
             self.log.error('Executor suffered an internal error!', trace=True)
-        finally:
+        finally:    
+            self.log.info("%s is shutting down..." % self)
             self.ended = datetime.utcnow()
             self.save()
-            self.log.info("%s has shut down." % self)
+            self.log.info('Backing up log file...')
+            backup_log(self.log_path)
+            self.log.info('Log backup complete.')
+            self.log.info('%s has been shut down successfully.' % self)
             self.log.stop_redirect()
             self.log.close()
-            backup_log(self.log_path)
             if settings.BACKUP_SYSTEM:
                 self.pool.joinAll()
+            
     
     def run(self):
         """Core executor function."""
@@ -345,7 +349,11 @@ class Executor(Model):
         self.status = status
     
     def backup_instance_log(self, instance):
-        backup_log(instance.log_path)
+        self.log.info("Attempting upload of log for %s..." % instance)
+        if backup_log(instance.log_path):
+            self.log.info("Completed upload of log for %s." % instance)
+        else:
+            self.log.info("Failed to upload log for %s." % instance)
     
     @property
     def log_path(self):

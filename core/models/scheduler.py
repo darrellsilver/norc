@@ -132,7 +132,6 @@ class Scheduler(Model):
             self.log.error('An unhandled exception occurred within ' +
                 'the run function!', trace=True)
         else:
-            self.log.info('%s is shutting down...' % self)
             self.timer.cancel()
             self.timer.join()
             cron = self.cronschedules.all()
@@ -142,14 +141,17 @@ class Scheduler(Model):
                 self.log.info('Cleaning up %s schedules.' % claimed_count)
                 cron.update(scheduler=None)
                 simple.update(scheduler=None)
-            self.log.info('%s exited cleanly.' % self)
         finally:
+            self.log.info('Shutting down...')
             self.ended = datetime.utcnow()
             self.active = False
             self.save()
+            self.log.info('Backing up log file...')
+            backup_log(self.log_path)
+            self.log.info('Log backup complete.')
+            self.log.info('%s has been shut down successfully.' % self)
             self.log.stop_redirect()
             self.log.close()
-            backup_log(self.log_path)
     
     def run(self):
         """Main run loop of the Scheduler."""
