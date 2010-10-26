@@ -150,6 +150,9 @@ class schedulers(BaseReport):
     get = lambda id: get_object(Scheduler, id=id)
     get_all = lambda: Scheduler.objects.all()
     
+    since_filter = date_ended_since
+    order_by = date_ended_order
+    
     details = {
         'schedules': lambda id, **kws:
             Schedule.objects.filter(scheduler__id=id)

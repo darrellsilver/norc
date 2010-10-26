@@ -76,8 +76,8 @@ def main():
         except Executor.DoesNotExist:
             print "Could not find a Scheduler with id=%s." % obj_id
         else:
-            if Status.is_final(e.status):
-                print "Scheduler #%s is already in a final state." % obj_id
+            if not s.is_alive():
+                print "Scheduler #%s is already dead." % obj_id
             elif request == "stop":
                 s.stop()
                 print "Scheduler #%s has been deactivated." % obj_id
