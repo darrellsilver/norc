@@ -25,7 +25,7 @@ def main():
     parser.add_option("-q", "--queues", action="store_true",
         help="Report on queues.")
     parser.add_option("-t", "--timeframe",
-        help="Filter to only things in this timeframe.")
+        help="Filter to only things in this timeframe (e.g. '10m').")
     parser.add_option("-n", "--number", default=20, type="int",
         help="The number of items to display.")
     
@@ -37,7 +37,7 @@ def main():
     
     print time.strftime('[%Y/%m/%d %H:%M:%S]'),
     if since:
-        print 'from the last %s.' % options.since,
+        print 'from the last %s.' % options.timeframe,
     print ''
     
     def print_report(report):
