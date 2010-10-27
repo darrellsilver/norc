@@ -146,9 +146,12 @@ class Scheduler(Model):
             self.ended = datetime.utcnow()
             self.active = False
             self.save()
-            self.log.info('Backing up log file...')
-            backup_log(self.log_path)
-            self.log.info('Log backup complete.')
+            if settings.BACKUP_SYSTEM:
+                self.log.info('Backing up log file...')
+                if backup_log(self.log_path):
+                    self.log.info('Completed log backup.')
+                else:
+                    self.log.info('Failed to backup log.')
             self.log.info('%s has been shut down successfully.' % self)
             self.log.stop_redirect()
             self.log.close()

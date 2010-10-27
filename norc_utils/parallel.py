@@ -45,7 +45,7 @@ class MultiTimer(Thread):
     
     def add_task(self, delay, func, args=[], kwargs={}):
         if type(delay) == datetime:
-            now = datetime.now()
+            now = datetime.utcnow()
             delay = delay - now if now < delay else 0
         if type(delay) == timedelta:
             delay = total_secs(delay)
