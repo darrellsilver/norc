@@ -100,7 +100,7 @@ class JobNodeInstance(BaseInstance):
     
     @property
     def source(self):
-        return self.node.job.name
+        return self.node.job
     
     @property
     def log_path(self):

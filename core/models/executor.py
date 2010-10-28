@@ -50,8 +50,7 @@ class Executor(Model):
         
         def alive(self):
             """Running executors with a recent heartbeat."""
-            cutoff = datetime.utcnow() - \
-                timedelta(seconds=(HEARTBEAT_PERIOD + 1))
+            cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
             return self.filter(status=Status.RUNNING, heartbeat__gt=cutoff)
         
         def since(self, since):
@@ -134,7 +133,7 @@ class Executor(Model):
     @property
     def alive(self):
         return self.status == Status.RUNNING and self.heartbeat > \
-            datetime.utcnow() - timedelta(seconds=HEARTBEAT_PERIOD + 1)
+            datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
     
     def __init__(self, *args, **kwargs):
         Model.__init__(self, *args, **kwargs)
