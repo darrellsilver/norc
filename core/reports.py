@@ -214,8 +214,8 @@ class instances(BaseReport):
         'id': lambda obj, **kws: '%s_%s' % (_find_ct(obj), obj.id),
         'id#': lambda obj, **kws: obj.id,
         'type': lambda obj, **kws: type(obj).__name__,
-        'source': lambda i, **kws:
-            i.source if hasattr(i, 'source') else 'n/a',
+        'source': lambda i, **kws: i.source or 'n/a',
+            # i.source if hasattr(i, 'source') else 'n/a',
         'status': lambda obj, **kws: Status.NAME[obj.status],
     }
 

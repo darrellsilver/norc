@@ -168,6 +168,10 @@ class BaseInstance(Model):
         raise NorcTimeoutException()
     
     @property
+    def source(self):
+        return None
+    
+    @property
     def queue(self):
         try:
             return self.executor.queue
