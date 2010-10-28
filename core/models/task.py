@@ -202,7 +202,7 @@ class Instance(BaseInstance):
         
         def status_in(self, statuses):
             if isinstance(statuses, basestring):
-                statuses = Status.GROUPS.get(statuses)
+                statuses = Status.GROUPS(statuses)
             return self.filter(status__in=statuses) if statuses else self
         
         def from_queue(self, q):
