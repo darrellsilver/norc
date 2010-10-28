@@ -63,8 +63,34 @@ class Scheduler(Model):
             cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
             return self.filter(active=True).filter(heartbeat__gte=cutoff)
     
+    # All the statuses executors can have.  See constants.py.
+    VALID_STATUSES = [
+        Status.CREATED,
+        Status.RUNNING,
+        Status.PAUSED,
+        Status.STOPPING,
+        Status.ENDED,
+        Status.ERROR,
+        Status.KILLED,
+    ]
+    
+    VALID_REQUESTS = [
+        Request.STOP,
+        Request.KILL,
+        Request.PAUSE,
+        Request.RESUME,
+    ]
+    
     # Whether the Scheduler is currently running.
     active = BooleanField(default=False)
+    
+    # The status of this scheduler.
+    status = PositiveSmallIntegerField(default=Status.CREATED,
+        choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
+    
+    # A state-change request.
+    request = PositiveSmallIntegerField(null=True,
+        choices=[(k, v) for k, v in REQUESTS.iteritems()])
     
     # The datetime of the Scheduler's last heartbeat.  Used in conjunction
     # with the active flag to determine whether a Scheduler is still alive.

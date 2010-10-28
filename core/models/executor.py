@@ -62,7 +62,7 @@ class Executor(Model):
         def status_in(self, statuses):
             """Filter by status group. Takes a string or iterable."""
             if isinstance(statuses, basestring):
-                statuses = Status.GROUPS.get(statuses)
+                statuses = Status.GROUPS(statuses)
             return self.filter(status__in=statuses) if statuses else self
         
         def for_queue(self, q):
@@ -87,17 +87,12 @@ class Executor(Model):
         Status.KILLED,
     ]
     
-    # Request constants that should probably be moved to constants.py.
-    REQUEST_PAUSE = 1
-    REQUEST_UNPAUSE = 2
-    REQUEST_STOP = 5
-    REQUEST_KILL = 6
-    REQUESTS = {        # Map the names.
-        REQUEST_PAUSE: 'PAUSE',
-        REQUEST_UNPAUSE: 'UNPAUSE',
-        REQUEST_STOP: 'STOP',
-        REQUEST_KILL: 'KILL',
-    }
+    VALID_REQUESTS = [
+        Request.STOP,
+        Request.KILL,
+        Request.PAUSE,
+        Request.RESUME,
+    ]
     
     # The host this executor ran on.
     host = CharField(default=lambda: os.uname()[1], max_length=128)
@@ -276,7 +271,7 @@ class Executor(Model):
         if self.request == Executor.REQUEST_PAUSE:
             self.set_status(Status.PAUSED)
         
-        elif self.request == Executor.REQUEST_UNPAUSE:
+        elif self.request == Executor.REQUEST_RESUME:
             if self.status != Status.PAUSED:
                 self.log.info("Must be paused to unpause; clearing request.")
             else:
