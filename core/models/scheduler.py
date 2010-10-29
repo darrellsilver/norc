@@ -18,11 +18,13 @@ from django.db.models.query import QuerySet
 from django.db.models import (Model, Manager,
     BooleanField,
     CharField,
-    DateTimeField)
+    DateTimeField,
+    PositiveSmallIntegerField)
 
 from norc.core.models.task import Instance
 from norc.core.models.schedules import Schedule, CronSchedule
-from norc.core.constants import (SCHEDULER_PERIOD, 
+from norc.core.constants import (Status, Request,
+                                 SCHEDULER_PERIOD, 
                                  SCHEDULER_LIMIT,
                                  HEARTBEAT_PERIOD,
                                  HEARTBEAT_FAILED)
@@ -80,9 +82,6 @@ class Scheduler(Model):
         Request.PAUSE,
         Request.RESUME,
     ]
-    
-    # Whether the Scheduler is currently running.
-    active = BooleanField(default=False)
     
     # The status of this scheduler.
     status = PositiveSmallIntegerField(default=Status.CREATED,
