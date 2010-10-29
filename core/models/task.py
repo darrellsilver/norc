@@ -54,6 +54,11 @@ class Task(Model):
     instances = GenericRelation('Instance',
         content_type_field='task_type', object_id_field='task_id')
     
+    schedules = GenericRelation('Schedule',
+        content_type_field='task_type', object_id_field='task_id')
+    cronschedules = GenericRelation('CronSchedule',
+        content_type_field='task_type', object_id_field='task_id')
+    
     def start(self, instance):
         """A hook function for easily changing the parameters to run().
         

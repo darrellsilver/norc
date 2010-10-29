@@ -20,6 +20,7 @@ from django.db.models import (Model, Manager,
     CharField,
     DateTimeField)
 
+from norc import settings
 from norc.core.models.task import Instance
 from norc.core.models.schedules import Schedule, CronSchedule
 from norc.core.constants import (SCHEDULER_PERIOD, 
