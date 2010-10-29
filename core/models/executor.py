@@ -24,7 +24,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 
 from norc.core.models.queue import Queue
 from norc.core.constants import (Status,
-    CONCURRENCY_LIMIT, HEARTBEAT_PERIOD, INSTANCE_MODELS)
+    CONCURRENCY_LIMIT, HEARTBEAT_PERIOD, HEARTBEAT_FAILED, INSTANCE_MODELS)
 from norc.norc_utils.django_extras import QuerySetManager, MultiQuerySet
 from norc.norc_utils.parallel import ThreadPool
 from norc.norc_utils.log import make_log
