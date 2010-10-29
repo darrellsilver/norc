@@ -1,27 +1,18 @@
 
 import os
 
-try:
-    from boto.s3.connection import S3Connection
-    from boto.s3.key import Key
-except ImportError:
-    pass
-
 from norc.settings import (NORC_LOG_DIR, BACKUP_SYSTEM,
     AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME)
 from norc.norc_utils.log import make_log
 
+if BACKUP_SYSTEM == 'AmazonS3':
+    from norc.norc_utils.aws import set_s3_key
+
+
 def s3_backup(fp, target):
-    c = S3Connection(AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
-    b = c.get_bucket(AWS_BUCKET_NAME)
-    if not b:
-        b = c.create_bucket(AWS_BUCKET_NAME)
-    
     for i in range(0, 3):
         try:
-            k = Key(b)
-            k.key = target
-            k.set_contents_from_file(fp)
+            set_s3_key(target, fp)
             return True
         except:
             pass

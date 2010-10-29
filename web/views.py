@@ -14,6 +14,9 @@ from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.web import JSONObjectEncoder, paginate
 from norc.norc_utils.formatting import untitle
 
+if settings.BACKUP_SYSTEM == "AmazonS3":
+    from norc.norc_utils.aws import get_s3_key
+
 def index(request):
     """Returns the index.html template."""
     return render_to_response('index.html', {
@@ -106,18 +109,13 @@ def get_log(request, content_type, content_id):
         f = open(local_path, 'r')
         log = ''.join(f.readlines())
         f.close()
-    else:
-        from boto.s3.connection import S3Connection
-        from boto.s3.key import Key
-        from boto.exception import S3ResponseError
+    elif settings.BACKUP_SYSTEM == "AmazonS3":
         try:
-            c = S3Connection(settings.AWS_ACCESS_KEY_ID,
-                settings.AWS_SECRET_ACCESS_KEY)
-            key = Key(c.get_bucket(settings.AWS_BUCKET_NAME))
-            key.key = 'norc_logs/' + obj.log_path
-            log = key.get_contents_as_string()
-        except S3ResponseError:
-            log = 'Could not retrieve log file from local machine or S3.'
+            log = get_s3_key("norc_logs/" + obj.log_path)
+        except:
+            log = "Error retrieving log from S3."
+    else:
+        log = "Could not retrieve log file from local machine."
     return render_to_response('log.html', {
         'key': content_type,
         'log': log,

@@ -11,6 +11,9 @@ from norc import settings
 from norc.core.models import Executor, Queue
 from norc.norc_utils.log import make_log
 
+if settings.BACKUP_SYSTEM == "AmazonS3":
+    from norc.norc_utils.aws import get_s3_key
+
 def main():
     usage = "norc_log_viewer <class_name> <id> [-r]"
     
@@ -68,18 +71,12 @@ def main():
             f = open(local_path, 'r')
             log = ''.join(f.readlines())
             f.close()
-        else:
+        elif settings.BACKUP_SYSTEM == "AmazonS3":
             print "Retreiving log from S3..."
-            from boto.s3.connection import S3Connection
-            from boto.s3.key import Key
-            from boto.exception import S3ResponseError
             try:
-                c = S3Connection(settings.AWS_ACCESS_KEY_ID,
-                    settings.AWS_SECRET_ACCESS_KEY)
-                key = Key(c.get_bucket(settings.AWS_BUCKET_NAME))
-                key.key = 'norc_logs/' + obj.log_path
-                log = key.get_contents_as_string()
-            except S3ResponseError:
+                key = 'norc_logs/' + obj.log_path
+                log = get_s3_key(key)
+            except:
                 log = 'Could not retrieve log file from local machine or S3.'
         print log,
     else:
