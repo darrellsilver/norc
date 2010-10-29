@@ -41,14 +41,14 @@ class ExecutorTest(TestCase):
         wait_until(lambda: Status.is_final(self.executor.status), 5)
         self.assertEqual(self.executor.status, Status.KILLED)
     
-    def test_pause_unpause(self):
+    def test_pause_resume(self):
         self.thread.start()
         wait_until(lambda: self.executor.status == Status.RUNNING, 3)
         self.assertEqual(self.executor.status, Status.RUNNING)
         self.executor.make_request(Executor.REQUEST_PAUSE)
         wait_until(lambda: self.executor.status == Status.PAUSED, 5)
         self.assertEqual(self.executor.status, Status.PAUSED)
-        self.executor.make_request(Executor.REQUEST_UNPAUSE)
+        self.executor.make_request(Executor.REQUEST_RESUME)
         wait_until(lambda: self.executor.status == Status.RUNNING, 5)
         self.assertEqual(self.executor.status, Status.RUNNING)
     
