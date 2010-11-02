@@ -31,7 +31,7 @@ from norc.norc_utils.log import make_log
 from norc.norc_utils.backup import backup_log
 from norc import settings
 
-class Executor(Model):
+class Executor(Daemon):
     """Executors are responsible for the running of instances.
     
     Executors have a single queue that they pull instances from.  There
@@ -46,24 +46,7 @@ class Executor(Model):
     
     objects = QuerySetManager()
     
-    class QuerySet(query.QuerySet):
-        
-        def alive(self):
-            """Running executors with a recent heartbeat."""
-            cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
-            return self.filter(status=Status.RUNNING, heartbeat__gt=cutoff)
-        
-        def since(self, since):
-            """Date ended since a certain time, or not ended."""
-            if type(since) == str:
-                since = parse_since(since)
-            return self.exclude(ended__lt=since) if since else self
-        
-        def status_in(self, statuses):
-            """Filter by status group. Takes a string or iterable."""
-            if isinstance(statuses, basestring):
-                statuses = Status.GROUPS(statuses)
-            return self.filter(status__in=statuses) if statuses else self
+    class QuerySet(Daemon.QuerySet):
         
         def for_queue(self, q):
             """Executors pulling from the given queue."""
@@ -94,28 +77,13 @@ class Executor(Model):
         Request.RESUME,
     ]
     
-    # The host this executor ran on.
-    host = CharField(default=lambda: os.uname()[1], max_length=128)
-    
-    # The process ID of the main executor process.
-    pid = IntegerField(default=os.getpid)
-    
     # The status of this executor.
     status = PositiveSmallIntegerField(default=Status.CREATED,
         choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
     
     # A state-change request.
     request = PositiveSmallIntegerField(null=True,
-        choices=[(k, v) for k, v in REQUESTS.iteritems()])
-    
-    # The last heartbeat of the executor.
-    heartbeat = DateTimeField(default=datetime.utcnow)
-    
-    # When the executor was started.
-    started = DateTimeField(default=datetime.utcnow)
-    
-    # When the executor was ended.
-    ended = DateTimeField(null=True, blank=True)
+        choices=[(r, Request.NAME[r]) for r in VALID_REQUESTS])
     
     # The queue this executor draws task instances from.
     queue_type = ForeignKey(ContentType)
@@ -131,89 +99,33 @@ class Executor(Model):
             datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
     
     def __init__(self, *args, **kwargs):
-        Model.__init__(self, *args, **kwargs)
-        self.flag = Event()
+        super(type(self), self).__init__(self, *args, **kwargs)
         self.processes = {}
-        self.heart = Thread(target=self.heart_run)
-        self.heart.daemon = True
-    
-    def heart_run(self):
-        """Method to be called by the heart thread."""
-        while not Status.is_final(self.status):
-            self.heartbeat = datetime.utcnow()
-            self.save(safe=True)
-            time.sleep(HEARTBEAT_PERIOD)
-    
-    def start(self):
-        """Starts the executor.  Mostly just a wrapper for run()."""
-        if self.status != Status.CREATED:
-            print "Can't start a executor that's already been run."
-            return
-        if not hasattr(self, 'id'):
-            self.save()
-        if not hasattr(self, 'log'):
-            self.log = make_log(self.log_path)
-        if settings.DEBUG:
-            self.log.info("WARNING, DEBUG is True, which means Django " +
-                "will gobble memory as it stores all database queries.")
-        if __name__ == '__main__':
-            for signum in [signal.SIGINT, signal.SIGTERM]:
-                signal.signal(signum, self.signal_handler)
-        if settings.BACKUP_SYSTEM:
-            self.pool = ThreadPool(5)
-        self.log.start_redirect()
-        self.log.info("Starting %s..." % self)
-        self.heart.start()
-        try:
-            self.run()
-        except Exception:
-            self.set_status(Status.ERROR)
-            self.log.error('Executor suffered an internal error!', trace=True)
-        finally:    
-            self.log.info("%s is shutting down..." % self)
-            self.ended = datetime.utcnow()
-            self.save()
-            if settings.BACKUP_SYSTEM:
-                self.log.info('Backing up log file...')
-                if backup_log(self.log_path):
-                    self.log.info('Completed log backup.')
-                else:
-                    self.log.info('Failed to backup log.')
-            self.log.info('%s has been shut down successfully.' % self)
-            self.log.stop_redirect()
-            self.log.close()
-            if settings.BACKUP_SYSTEM:
-                self.pool.joinAll()
-            
     
     def run(self):
         """Core executor function."""
-        self.status = Status.RUNNING
-        self.save()
+        if settings.BACKUP_SYSTEM:
+            self.pool = ThreadPool(5)
         self.log.info("%s is now running on host %s." % (self, self.host))
+        
         # Main loop.
-        self.update_request()
-        period = timedelta(seconds=1)
         while not Status.is_final(self.status):
-            if datetime.utcnow() > self.last_request_update + period:
-                self.update_request()
             if self.request:
                 self.handle_request()
-            elif self.status == Status.RUNNING:
-                if len(self.processes) < self.concurrent:
-                    self.log.debug("Popping instance..")
+            if self.status == Status.RUNNING:
+                while len(self.processes) < self.concurrent:
+                    self.log.debug("Popping instance...")
                     instance = self.queue.pop()
-                    self.log.debug("Popped %s" % instance)
                     if instance:
+                        self.log.debug("Popped %s" % instance)
                         self.start_instance(instance)
                     else:
-                        self._wait()
-                else:
-                    self._wait()
+                        self.log.debug("No instance in queue.")
+                        break
             elif self.status == Status.STOPPING and len(self.processes) == 0:
                 self.set_status(Status.ENDED)
                 self.save(safe=True)
-            # Cleanup before iterating.
+            # Clean up completed tasks before iterating.
             for pid, p in self.processes.items()[:]:
                 p.poll()
                 self.log.debug(
@@ -225,7 +137,12 @@ class Executor(Model):
                     del self.processes[pid]
                     if settings.BACKUP_SYSTEM:
                         self.pool.queueTask(self.backup_instance_log, [i])
-            self._wait(0.1)
+            self.wait(EXECUTOR_PERIOD)
+            self.request = Executor.objects.get(pk=self.pk).request
+    
+    def clean_up(self):
+        if settings.BACKUP_SYSTEM:
+            self.pool.joinAll()
     
     def start_instance(self, instance):
         """Starts a given instance in a new process."""
@@ -239,21 +156,6 @@ class Executor(Model):
             (ct.pk, instance.pk), shell=True)
         p.instance = instance
         self.processes[p.pid] = p
-    
-    def _wait(self, t=1):
-        """Waits on the flag.
-        
-        For whatever reason, when this is done signals are no longer
-        handled properly, so we must catch the exceptions explicitly.
-        
-        """
-        try:
-            self.flag.clear()
-            self.flag.wait(t)
-        except KeyboardInterrupt:
-            self.make_request(Executor.REQUEST_STOP)
-        except SystemExit:
-            self.make_request(Executor.REQUEST_KILL)
     
     # This should be used in 2.6, but with subprocess it's not possible.
     # def execute(self, func):
@@ -291,20 +193,6 @@ class Executor(Model):
         self.request = None
         self.save()
     
-    def signal_handler(self, signum, frame):
-        """Handles signal interruption."""
-        sig_name = None
-        # A reverse lookup to find the signal name.
-        for attr in dir(signal):
-            if attr.startswith('SIG') and getattr(signal, attr) == signum:
-                sig_name = attr
-                break
-        self.log.info("Signal '%s' received!" % sig_name)
-        if signum == signal.SIGINT:
-            self.make_request(Executor.REQUEST_STOP)
-        else:
-            self.make_request(Executor.REQUEST_KILL)
-    
     def save(self, *args, **kwargs):
         """Overwrites Model.save().
         
@@ -331,19 +219,6 @@ class Executor(Model):
             self.request = Executor.objects.get(id=self.id).request
             self.last_request_update = datetime.utcnow()
             return self.request
-    
-    def make_request(self, req):
-        """This method is how the request field should always be set."""
-        assert req in Executor.REQUESTS, "Invalid request!"
-        self.request = req
-        self.save()
-        self.flag.set()
-    
-    def set_status(self, status):
-        """Sets the status with a log message.  Does not save."""
-        self.log.info("Changing state from %s to %s." %
-            (Status.NAME[self.status], Status.NAME[status]))
-        self.status = status
     
     def backup_instance_log(self, instance):
         self.log.info("Attempting upload of log for %s..." % instance)
