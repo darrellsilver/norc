@@ -37,17 +37,20 @@ class MetaConstant(type):
     """Generates the NAMES attribute of the Status class."""
     
     def __new__(cls, name, bases, dct):
-        """Magical function to dynamically create NAME and ALL."""
-        NAME = {}
+        """Magical function to dynamically create NAMES and ALL."""
+        NAMES = {}
         ALL = []
         for k, v in dct.iteritems():
             if type(v) == int:
-                NAME[v] = k
+                assert not v in NAMES, "Can't have duplicate values."
+                NAMES[v] = k
                 ALL.append(v)
-        dct['NAME'] = NAME
+        dct['NAMES'] = NAMES
         dct['ALL'] = ALL
         return type.__new__(cls, name, bases, dct)
     
+    def name(cls, item):
+        return cls.NAMES[item]
 
 class Status(object):
     """Class to hold all status constants.
@@ -89,14 +92,14 @@ class Status(object):
         """Whether the given status counts as a failure."""
         return status >= 13
     
-    @classmethod
-    def GROUPS(self, name):
+    @staticmethod
+    def GROUPS(name):
         """Used for accessing groups of Statuses by a string name."""
         return {
-            "active": filter(lambda s: s < 7, self.ALL),
-            "running": [self.RUNNING],
-            "succeeded": filter(lambda s: s >= 7 and s < 13, self.ALL),
-            "failed": filter(lambda s: s > 13, self.ALL),
+            "active": filter(lambda s: s < 7, Status.ALL),
+            "running": [Status.RUNNING],
+            "succeeded": filter(lambda s: s >= 7 and s < 13, Status.ALL),
+            "failed": filter(lambda s: s > 13, Status.ALL),
         }.get(name.lower())
     
 

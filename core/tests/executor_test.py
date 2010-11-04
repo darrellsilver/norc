@@ -68,7 +68,7 @@ class ExecutorTest(TestCase):
     def tearDown(self):
         if not Status.is_final(self._executor.status):
             self._executor.make_request(Request.KILL)
-        self.thread.join(5)
-        self._executor.heart.join(5)
+        self.thread.join(7)
+        self._executor.heart.join(7)
         assert not self.thread.isAlive()
         assert not self._executor.heart.isAlive()

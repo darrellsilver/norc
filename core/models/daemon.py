@@ -90,9 +90,11 @@ class AbstractDaemon(Model):
         if settings.DEBUG:
             self.log.info("WARNING, DEBUG is True, which means Django " +
                 "will gobble memory as it stores all database queries.")
-        if __name__ == '__main__':
-            for signum in [signal.SIGINT, signal.SIGTERM]:
+        try:
+            for signum in (signal.SIGINT, signal.SIGTERM):
                 signal.signal(signum, self.signal_handler)
+        except ValueError:
+            pass
         self.log.start_redirect()
         self.log.info("%s initialized; starting..." % self)
         self.status = Status.RUNNING
@@ -113,6 +115,9 @@ class AbstractDaemon(Model):
                 self.clean_up()
             except:
                 self.log.error("Clean up function failed.", trace=True)
+            if not Status.is_final(self.status):
+                self.set_status(Status.ERROR)
+            self.heart.join()
             self.ended = datetime.utcnow()
             self.save()
             if settings.BACKUP_SYSTEM:
@@ -135,6 +140,7 @@ class AbstractDaemon(Model):
     def signal_handler(self, signum, frame=None):
         """Handles signal interruption."""
         sig_name = None
+        print signum
         # A reverse lookup to find the signal name.
         for attr in dir(signal):
             if attr.startswith('SIG') and getattr(signal, attr) == signum:
@@ -143,8 +149,9 @@ class AbstractDaemon(Model):
         self.log.info("Signal '%s' received!" % (sig_name or signum))
         if signum == signal.SIGINT:
             self.make_request(Request.STOP)
-        elif signum == signal.SIGSTOP:
+        elif signum == signal.SIGTERM:
             self.make_request(Request.KILL)
+        
     
     def wait(self, t=1):
         """Waits on the flag.
@@ -153,13 +160,8 @@ class AbstractDaemon(Model):
         handled properly, so we must catch the exceptions explicitly.
         
         """
-        try:
-            self.flag.clear()
-            self.flag.wait(t)
-        except KeyboardInterrupt:
-            self.make_request(Request.STOP)
-        except SystemExit:
-            self.make_request(Request.KILL)
+        self.flag.clear()
+        self.flag.wait(t)
     
     def is_alive(self):
         """Whether the Daemon is still alive.
@@ -175,20 +177,20 @@ class AbstractDaemon(Model):
     def set_status(self, status):
         """Sets the status with a log message.  Does not save."""
         self.log.info("Changing state from %s to %s." %
-            (Status.NAME[self.status], Status.NAME[status]))
+            (Status.name(self.status), Status.name(status)))
         self.status = status
     
     def make_request(self, request):
         """This method is how the request field should always be set."""
-        if not request in self.VALID_REQUESTS:
-            print "Invalid request: \"%s\" (%s)" % \
-                (Request.NAME.get(request), request)
-            return False
-        else:
+        assert request in self.VALID_REQUESTS, "Invalid request: " + \
+            "\"%s\" (%s)" % (Request.name(request), request)
+        if not Status.is_final(self.status):
             self.request = request
             self.save()
             self.flag.set()
             return True
+        else:
+            return False
     
     def save(self, *args, **kwargs):
         """Overwrites Model.save().

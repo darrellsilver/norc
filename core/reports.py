@@ -139,7 +139,7 @@ class executors(BaseReport):
             obj.instances.since(since).status_in('succeeded').count(),
         'failed': lambda obj, since, **kws:
             obj.instances.since(since).status_in('failed').count(),
-        'status': lambda obj, **kws: Status.NAME[obj.status],
+        'status': lambda obj, **kws: Status.name(obj.status),
         'ended': date_ended_getter,
         'alive': lambda obj, **kws: str(obj.is_alive()),
     }
@@ -164,7 +164,7 @@ class schedulers(BaseReport):
             obj.schedules.count() + obj.cronschedules.count(),
         'ended': date_ended_getter,    
         'alive': lambda obj, **kws: str(obj.is_alive()),
-        'status': lambda obj, **kws: Status.NAME[obj.status],
+        'status': lambda obj, **kws: Status.name(obj.status),
     }
 
 def _queue_failure_rate(obj, **kws):
@@ -221,7 +221,7 @@ class instances(BaseReport):
         'type': lambda obj, **kws: type(obj).__name__,
         'source': lambda i, **kws: i.source or 'n/a',
             # i.source if hasattr(i, 'source') else 'n/a',
-        'status': lambda obj, **kws: Status.NAME[obj.status],
+        'status': lambda obj, **kws: Status.name(obj.status),
     }
 
 class task_classes(BaseReport):

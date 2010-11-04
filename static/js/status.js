@@ -8,14 +8,13 @@
     Constants
 ****************/
 
-String.format = function() {
-  var s = arguments[0];
-  for (var i = 0; i < arguments.length - 1; i++) {       
-    var reg = new RegExp("\\{" + i + "\\}", "gm");             
-    s = s.replace(reg, arguments[i + 1]);
-  }
-
-  return s;
+String.prototype.format = function() {
+    var s = this; //arguments[0];
+    for (var i = 0; i < arguments.length; i++) {       
+        var reg = new RegExp("\\{" + (i + 1) + "\\}", "gm");             
+        s = s.replace(reg, arguments[i]);
+    }
+    return s;
 }
 
 function pad(n, i) {
@@ -78,7 +77,7 @@ var state = {
     // The last timeframe selection.
     'since': {
         'executors': '10m',
-        'failedtasks': 'all',
+        'schedulers': '10m',
     },
     // Paging data; next page and previous page numbers.
     'prevPage': {},
@@ -103,8 +102,9 @@ var state = {
  * @return      The formatted string.
  */
 function toTitle(str) {
-    return str.split('_').map(function(word) {
-        return String.concat(word.charAt(0).toUpperCase(), word.substr(1));
+    console.log(str);
+    return str.toLowerCase().split('_').map(function(word) {
+        return word.charAt(0).toUpperCase() + word.substr(1);
     }).join(' ');
 }
 
@@ -172,17 +172,21 @@ function insertNewRow(rowAbove, contents, slide) {
     Core Functions
 *********************/
 
-function makeExecutorControls(id) {
+function makeControls(dataKey, id) {
     var div = $('<div/>').addClass('slideout');
     var ul = $('<ul/>');
-    $.each(['pause', 'stop', 'kill', 'salvage', 'delete'], function(i, v) {
+    $.each(VALID_REQUESTS[dataKey], function(i, v) {
+        v = v.toLowerCase();
         var li = $('<li/>').text(v);
         li.click(function() {
-            var reply = prompt('Are you sure you want to try to ' +
-                v + ' executor ' + id + '?  If so, type "' + v + '" below.');
+            // var reply = prompt('Are you sure you want to try to ' + v + " " +
+            //     dataKey.slice(0, -1) + " " + id + '?  If so, type "' + v + '" below.');
+            var reply = prompt(
+                ("Are you sure you want to try to {1} {2} {3}? " +
+                    "If so, type \"{1}\" below.").format(v, dataKey.slice(0, -1), id));
             if (reply == v) {
-                var path = '/control/executor/' + id + '/';
-                $.post(path, {'do': v}, function(data) {
+                var path = '/control/' + dataKey + '/' + id + '/';
+                $.post(path, {'request': v}, function(data) {
                     if (data == true) {
                         reloadSection('executors');
                     }
@@ -222,21 +226,6 @@ var TABLE_CUSTOMIZATION = {
                 row.data('overruled', true);
             }, function() {
                 row.data('overruled', false);
-            });
-        } else if (header == 'status' && IS_SUPERUSER) {
-            cell.addClass('clickable');
-            var controls = makeExecutorControls(id);
-            cell.hover(function() {
-                row.data('overruled', true);
-                var ul = controls.find('ul');
-                cell.append(controls);
-                ul.animate({width: 'hide'}, 0);
-                ul.animate({width: 'show'}, 300);
-            }, function() {
-                row.data('overruled', false);
-                controls.find('ul').animate({width: 'hide'}, 0, function() {
-                    controls.detach();
-                });
             });
         }
     },
@@ -296,6 +285,22 @@ function makeDataTable(chain, data) {
                             'logs/' + HAS_LOGS[dataKey] + '/' + id,
                             HAS_LOGS[dataKey] + '-' + id + '-log',
                             'menubar=no, innerWidth=700, innerHeight=700')
+                    });
+                }
+                if (dataKey in VALID_REQUESTS) {
+                    cell.addClass('clickable');
+                    var controls = makeControls(dataKey, id);
+                    cell.hover(function() {
+                        row.data('overruled', true);
+                        var ul = controls.find('ul');
+                        cell.append(controls);
+                        ul.animate({width: 'hide'}, 0);
+                        ul.animate({width: 'show'}, 300);
+                    }, function() {
+                        row.data('overruled', false);
+                        controls.find('ul').animate({width: 'hide'}, 0,
+                            function() { controls.detach(); }
+                        );
                     });
                 }
             }

@@ -9,6 +9,7 @@ from django.db.models.query import QuerySet
 
 from norc import settings
 from norc.core import reports
+from norc.core.constants import Request
 from norc.core.models import Scheduler, Executor
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.web import JSONObjectEncoder, paginate
@@ -24,6 +25,10 @@ def index(request):
         'is_superuser': request.user.is_superuser,
         'reports': reports.all,
         'sections': settings.STATUS_TABLES,
+        "requests": {
+            "executors": map(Request.name, Executor.VALID_REQUESTS),
+            "schedulers": map(Request.name, Scheduler.VALID_REQUESTS),
+        },
     })
 
 def get_counts(request):
@@ -67,39 +72,17 @@ def get_data(request, content_type, content_id=None, detail_type=None):
     json = simplejson.dumps(json_data, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")
 
-executor_control = dict(
-    kill=lambda d: d.set_status(NorcDaemonStatus.STATUS_KILLREQUESTED),
-    stop=lambda d: d.set_status(NorcDaemonStatus.STATUS_STOPREQUESTED),
-    pause=lambda d: d.set_status(NorcDaemonStatus.STATUS_PAUSEREQUESTED),
-    delete=lambda d: d.set_status(NorcDaemonStatus.STATUS_DELETED),
-    salvage=lambda d: d.set_status(NorcDaemonStatus.STATUS_RUNNING),
-)
-
-requests = ['kill', 'stop', 'pause']
-force = ['delete', 'salvage']
-allowed_status_changes = {
-    'RUNNING': ['kill', 'stop', 'pause', 'delete'],
-    'STARTING': ['delete'],
-    'RUNNING': requests,
-    'PAUSED': ['kill', 'stop', 'delete', 'salvage'],
-    'PAUSEREQUESTED': force,
-    'STOPREQUESTED': force,
-    'KILLREQUESTED': force,
-    'BEING_STOPPED': force,
-    'BEING_KILLED': force,
-}
-
-def control(request, content_key, content_id):
+def control(request, content_type, content_id):
     success = False
-    if content_key == 'executor' and request.user.is_superuser:
-        executor = report.nds(content_id)
-        do = request.POST.get('do')
-        if do and do in allowed_status_changes.get(executor.status, []):
-            executor_control[do](executor)
-            success = True
+    if request.user.is_superuser:
+        obj = reports.all[content_type].get(content_id)
+        req = request.POST.get('request')
+        success = obj.make_request(getattr(Request, req.upper()))
     return http.HttpResponse(simplejson.dumps(success), mimetype="json")
 
-def get_log(request, content_type, content_id):
+def get_log(request, content_type, content_id):    
+    if not content_type in reports.all:
+        raise ValueError("Invalid content type '%s'." % content_type)
     report = reports.all[content_type]
     obj = report.get(content_id)
     header_data = \

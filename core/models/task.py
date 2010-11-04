@@ -106,7 +106,7 @@ class AbstractInstance(Model):
     
     # The status of the execution.
     status = PositiveSmallIntegerField(default=Status.CREATED,
-        choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
+        choices=[(s, Status.name(s)) for s in VALID_STATUSES])
     
     # When the instance was added to a queue.
     enqueued = DateTimeField(default=datetime.utcnow)
@@ -158,7 +158,7 @@ class AbstractInstance(Model):
             self.ended = datetime.utcnow()
             self.save()
             self.log.info("Task ended with status %s." %
-                Status.NAME[self.status])
+                Status.name(self.status))
             self.log.stop_redirect()
             self.log.close()
             sys.exit(0 if self.status == Status.SUCCESS else 1)

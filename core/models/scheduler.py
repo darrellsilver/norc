@@ -59,7 +59,7 @@ class Scheduler(AbstractDaemon):
             """Schedulers that are active but the heart isn't beating."""
             cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
             return self.status_in("active").filter(heartbeat__lt=cutoff)
-
+    
     # All the statuses Schedulers can have.  See constants.py.
     VALID_STATUSES = [
         Status.CREATED,
@@ -79,16 +79,16 @@ class Scheduler(AbstractDaemon):
     
     # The status of this scheduler.
     status = PositiveSmallIntegerField(default=Status.CREATED,
-        choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
+        choices=[(s, Status.name(s)) for s in VALID_STATUSES])
     
     # A state-change request.
     request = PositiveSmallIntegerField(null=True,
-        choices=[(r, Request.NAME[r]) for r in VALID_REQUESTS])
+        choices=[(r, Request.name(r)) for r in VALID_REQUESTS])
     
     def __init__(self, *args, **kwargs):
         AbstractDaemon.__init__(self, *args, **kwargs)
         self.timer = MultiTimer()
-
+    
     def start(self):
         """Starts the Scheduler."""
         # Temporary check until multiple schedulers is supported fully.
@@ -138,7 +138,7 @@ class Scheduler(AbstractDaemon):
     
     def handle_request(self):
         """Called when a request is found."""
-        self.log.info("Request received: %s" % Request.NAME[self.request])
+        self.log.info("Request received: %s" % Request.name(self.request))
         
         if self.request == Request.PAUSE:
             self.set_status(Status.PAUSED)

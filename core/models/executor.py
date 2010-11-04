@@ -80,11 +80,11 @@ class Executor(AbstractDaemon):
     
     # The status of this executor.
     status = PositiveSmallIntegerField(default=Status.CREATED,
-        choices=[(s, Status.NAME[s]) for s in VALID_STATUSES])
+        choices=[(s, Status.name(s)) for s in VALID_STATUSES])
     
     # A state-change request.
     request = PositiveSmallIntegerField(null=True,
-        choices=[(r, Request.NAME[r]) for r in VALID_REQUESTS])
+        choices=[(r, Request.name(r)) for r in VALID_REQUESTS])
     
     # The queue this executor draws task instances from.
     queue_type = ForeignKey(ContentType)
@@ -134,7 +134,7 @@ class Executor(AbstractDaemon):
                 if not p.returncode == None:
                     i = type(p.instance).objects.get(pk=p.instance.pk)
                     self.log.info("Instance '%s' ended with status %s." %
-                        (i, Status.NAME[i.status]))
+                        (i, Status.name(i.status)))
                     del self.processes[pid]
                     if settings.BACKUP_SYSTEM:
                         self.pool.queueTask(self.backup_instance_log, [i])
@@ -168,7 +168,7 @@ class Executor(AbstractDaemon):
     
     def handle_request(self):
         """Called when a request is found."""
-        self.log.info("Request received: %s" % Request.NAME[self.request])
+        self.log.info("Request received: %s" % Request.name(self.request))
         
         if self.request == Request.PAUSE:
             self.set_status(Status.PAUSED)
