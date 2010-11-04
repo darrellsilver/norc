@@ -32,6 +32,8 @@ class BaseEnv(object):
     NORC_LOG_DIR = os.path.join(NORC_DIRECTORY, 'log/')
     NORC_TMP_DIR = os.path.join(NORC_DIRECTORY, 'tmp/')
     BACKUP_SYSTEM = None
+    # See core/reports.py for options.
+    STATUS_TABLES = ['executors', 'queues', 'schedulers', 'tasks']
     
     # Important Django settings.
     ADMINS = ()

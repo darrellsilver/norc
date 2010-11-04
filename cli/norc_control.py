@@ -28,8 +28,8 @@ def main():
         help="Send a kill request.")
     parser.add_option("-p", "--pause", action="store_true", default=False,
         help="Send a pause request.")
-    parser.add_option("-u", "--unpause", action="store_true", default=False,
-        help="Send an unpause request.")
+    parser.add_option("-u", "--resume", action="store_true", default=False,
+        help="Send an resume request.")
     parser.add_option("-f", "--force", action="store_true", default=False,
         help="Force the request to be made..")
     
@@ -43,7 +43,7 @@ def main():
     except ValueError:
         bad_args("Invalid id '%s'; must be an integer." % args[1])
     
-    requests = ['stop', 'kill', 'pause', 'unpause']
+    requests = ['stop', 'kill', 'pause', 'resume']
     requests = filter(lambda a: getattr(options, a), requests)
     if len(requests) != 1:
         bad_args("Must request one action at a time.")
@@ -59,7 +59,7 @@ def main():
                 "stop": Executor.REQUEST_STOP,
                 "kill": Executor.REQUEST_KILL,
                 "pause": Executor.REQUEST_PAUSE,
-                "unpause": Executor.REQUEST_UNPAUSE,
+                "resume": Executor.REQUEST_RESUME,
             }[request]
             if Status.is_final(e.status) and not options.force:
                 print "Executor #%s is already in a final state." % obj_id

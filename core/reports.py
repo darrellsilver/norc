@@ -120,7 +120,7 @@ class executors(BaseReport):
     
     get = lambda id: get_object(Executor, id=id)
     get_all = lambda: Executor.objects.exclude(
-        status__in=Status.GROUPS['succeeded'])
+        status__in=Status.GROUPS('succeeded'))
     since_filter = date_ended_since
     order_by = date_ended_order
     
@@ -129,7 +129,7 @@ class executors(BaseReport):
             executors.get(id).instances.since(since).status_in(status),
     }
     headers = ['ID', 'Queue', 'Queue Type', 'Host', 'PID', 'Running',
-        'Succeeded', 'Failed', 'Started', 'Ended', 'Alive', 'Status']
+        'Succeeded', 'Failed', 'Started', 'Ended', "Alive", 'Status']
     data = {
         'queue': lambda obj, **kws: obj.queue.name,
         'queue_type': lambda obj, **kws: obj.queue.__class__.__name__,
@@ -141,7 +141,7 @@ class executors(BaseReport):
             obj.instances.since(since).status_in('failed').count(),
         'status': lambda obj, **kws: Status.NAME[obj.status],
         'ended': date_ended_getter,
-        'alive': lambda obj, **kws: str(obj.alive),
+        'alive': lambda obj, **kws: str(obj.is_alive()),
     }
     
 
@@ -157,9 +157,14 @@ class schedulers(BaseReport):
         'schedules': lambda id, **kws:
             Schedule.objects.filter(scheduler__id=id)
     }
-    headers = ['ID', 'Active', 'Host', 'Heartbeat']
+    headers = ['ID', 'Host', "PID", "Claimed", 'Started', 'Ended',
+        "Alive", "Status"]
     data = {
-        'active': lambda obj, **kws: str(bool(obj.active)),
+        "claimed": lambda obj, **kws:
+            obj.schedules.count() + obj.cronschedules.count(),
+        'ended': date_ended_getter,    
+        'alive': lambda obj, **kws: str(obj.is_alive()),
+        'status': lambda obj, **kws: Status.NAME[obj.status],
     }
 
 def _queue_failure_rate(obj, **kws):

@@ -1,5 +1,27 @@
 
 
+Norc Release v2.1
+=================
+
+## Features
+  - Scheduler now has a status and supports requests.
+  - Schedules now have a deleted flag, making data deletion unnecessary.
+  - New setting: STATUS_TABLES.  Custom-define what tables show up in
+    the front end!
+
+## Tweaks:
+  - BaseInstance and BaseSchedule are now AbstractInstance and
+    AbstractSchedule, respectively.
+  - New base class AbstractDaemon for commonalities between Executor
+    and Scheduler.
+
+
+Norc Release v2.0
+=================
+
+## Features:
+  - Full rewrite of Norc.  See design documentation, if it ever gets written.
+
 
 Norc Release v1.1.2
 ===================

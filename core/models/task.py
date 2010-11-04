@@ -84,7 +84,7 @@ class MetaInstance(base.ModelBase):
         if not self._meta.abstract:
             INSTANCE_MODELS.append(self)
 
-class BaseInstance(Model):
+class AbstractInstance(Model):
     """One instance (run) of a Task."""
     
     __metaclass__ = MetaInstance
@@ -189,7 +189,7 @@ class BaseInstance(Model):
     __repr__ = __unicode__
     
 
-class Instance(BaseInstance):
+class Instance(AbstractInstance):
     """Normal Instance implementation for Tasks."""
     
     class Meta:
@@ -207,7 +207,7 @@ class Instance(BaseInstance):
         
         def status_in(self, statuses):
             if isinstance(statuses, basestring):
-                statuses = Status.GROUPS.get(statuses)
+                statuses = Status.GROUPS(statuses)
             return self.filter(status__in=statuses) if statuses else self
         
         def from_queue(self, q):

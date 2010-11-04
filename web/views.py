@@ -23,7 +23,7 @@ def index(request):
         'sqs': 'norc.sqs' in settings.INSTALLED_APPS,
         'is_superuser': request.user.is_superuser,
         'reports': reports.all,
-        'sections': ['executors', 'queues', 'tasks'],
+        'sections': settings.STATUS_TABLES,
     })
 
 def get_counts(request):

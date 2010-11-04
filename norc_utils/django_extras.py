@@ -1,6 +1,8 @@
 
 """Utilities that extend Django functionality."""
 
+import itertools
+
 from django.db.models import Manager
 
 # Replaced in Django 1.2 by QuerySet.exists()
@@ -70,6 +72,9 @@ class MultiQuerySet(object):
                     offset = 0
                     stop = total_len - len(items)
                     continue
+    
+    def __iter__(self):
+        return itertools.chain(*self.querysets)
     
     def __call__(self, *args, **kwargs):
         """Call each queryset."""

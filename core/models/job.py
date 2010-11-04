@@ -11,7 +11,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc.core.constants import Status
-from norc.core.models.task import Task, BaseInstance, Instance
+from norc.core.models.task import Task, AbstractInstance, Instance
 from norc.norc_utils.django_extras import queryset_exists, QuerySetManager
 
 class Job(Task):
@@ -62,7 +62,7 @@ class JobNode(Model):
     __repr__ = __unicode__
     
 
-class JobNodeInstance(BaseInstance):
+class JobNodeInstance(AbstractInstance):
     """An instance of a node executed within a job."""
     
     class Meta:
@@ -81,7 +81,7 @@ class JobNodeInstance(BaseInstance):
     
     def start(self):
         try:
-            BaseInstance.start(self)
+            AbstractInstance.start(self)
         finally:
             ji = self.job_instance
             if not Status.is_failure(self.status):

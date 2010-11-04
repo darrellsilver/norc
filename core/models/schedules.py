@@ -1,6 +1,7 @@
 
 import re
 import random
+import time
 from datetime import datetime, timedelta
 
 from django.db.models import (Model, Manager, Q,
@@ -9,38 +10,38 @@ from django.db.models import (Model, Manager, Q,
     DateTimeField,
     PositiveIntegerField,
     ForeignKey)
+from django.db.models.query import QuerySet
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import GenericForeignKey
 
 from norc.core.constants import HEARTBEAT_FAILED
 from norc.core.models.task import Instance
 from norc.norc_utils import search
+from norc.norc_utils.django_extras import QuerySetManager
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
 
-class ScheduleManager(Manager):
-    
-    @property
-    def unfinished(self):
-        return self.filter(Q(remaining__gt=0) | Q(repetitions=0))
-    
-    def unclaimed(self):
-        return self.unfinished.filter(scheduler__isnull=True)
-    
-    def orphaned(self):
-        cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
-        active = self.unfinished.filter(scheduler__active=True)
-        return active.exclude(scheduler__heartbeat__gt=cutoff)
-    
 
-class BaseSchedule(Model):
+class AbstractSchedule(Model):
     """A schedule of executions for a specific task."""
-    
-    objects = ScheduleManager()
     
     class Meta:
         app_label = 'core'
         abstract = True
+    
+    class QuerySet(QuerySet):
+    
+        @property
+        def unfinished(self):
+            return self.filter(deleted=False).filter(
+                Q(remaining__gt=0) | Q(repetitions=0))
+        
+        def unclaimed(self):
+            return self.unfinished.filter(scheduler__isnull=True)
+        
+        def orphaned(self):
+            cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
+            return self.unfinished.exclude(scheduler__heartbeat__gt=cutoff)
     
     # The Task this is a schedule for.
     task_type = ForeignKey(ContentType, related_name='%(class)ss')
@@ -68,6 +69,10 @@ class BaseSchedule(Model):
     # When this schedule was added.
     added = DateTimeField(default=datetime.utcnow)
     
+    changed = BooleanField(default=False)
+    
+    deleted = BooleanField(default=False)
+    
     @property
     def instances(self):
         """Custom implemented to avoid cascade-deleting instances."""
@@ -83,12 +88,19 @@ class BaseSchedule(Model):
         """Checks whether all runs of the Schedule have been completed."""
         return self.remaining == 0 and self.repetitions > 0
     
+    def __eq__(self, other):
+        return type(self) == type(other) and self.pk == other.pk
 
-class Schedule(BaseSchedule):
+class Schedule(AbstractSchedule):
     
     class Meta:
         app_label = 'core'
         db_table = 'norc_schedule'
+    
+    objects = QuerySetManager()
+    
+    class QuerySet(AbstractSchedule.QuerySet):
+        pass
     
     # Next execution.
     next = DateTimeField(null=True)
@@ -146,11 +158,16 @@ def _make_weekly():
 def _make_monthly():
     return 'o*d%sw*h%sm%ss%s' % (ri(1, 28), ri(0, 23), ri(0, 59), ri(0, 59))
 
-class CronSchedule(BaseSchedule):
+class CronSchedule(AbstractSchedule):
     
     class Meta:
         app_label = 'core'
         db_table = 'norc_cronschedule'
+    
+    objects = QuerySetManager()
+    
+    class QuerySet(AbstractSchedule.QuerySet):
+        pass
     
     # The datetime that the next execution time is based off of.
     base = DateTimeField(default=datetime.utcnow)
@@ -244,7 +261,7 @@ class CronSchedule(BaseSchedule):
         return new_encoding, results
     
     def __init__(self, *args, **kwargs):
-        BaseSchedule.__init__(self, *args, **kwargs)
+        AbstractSchedule.__init__(self, *args, **kwargs)
         self.set_lists()
         self._next = None
     
@@ -262,6 +279,7 @@ class CronSchedule(BaseSchedule):
         e, d = CronSchedule.validate(encoding)
         self.encoding = e
         self.set_lists(d)
+        self.changed = True
         self.save()
     
     def enqueued(self):
