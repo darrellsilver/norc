@@ -79,28 +79,37 @@ class AbstractDaemon(Model):
     
     def start(self):
         """Starts the daemon.  Does initialization then calls run()."""
+        
         if self.status != Status.CREATED:
             print "Can't start a %s that's already been run." \
                 % type(self).__name__
             return
+        
         if not hasattr(self, 'id'):
             self.save()
         if not hasattr(self, 'log'):
             self.log = make_log(self.log_path)
+        
         if settings.DEBUG:
             self.log.info("WARNING, DEBUG is True, which means Django " +
                 "will gobble memory as it stores all database queries.")
+        
+        # This try block is needed because the unit tests run daemons
+        # in threads, which breaks signals.
         try:
             for signum in (signal.SIGINT, signal.SIGTERM):
                 signal.signal(signum, self.signal_handler)
         except ValueError:
             pass
+        
         self.log.start_redirect()
         self.log.info("%s initialized; starting..." % self)
+        
         self.status = Status.RUNNING
         self.heartbeat = self.started = datetime.utcnow()
         self.save()
         self.heart.start()
+        
         try:
             self.run()
         except Exception:
@@ -129,7 +138,6 @@ class AbstractDaemon(Model):
             self.log.info('%s has been shut down successfully.' % self)
             self.log.stop_redirect()
             self.log.close()
-            sys.exit(0)
     
     def run(self):
         raise NotImplementedError
