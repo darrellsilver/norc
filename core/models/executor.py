@@ -23,15 +23,16 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc.core.models.queue import Queue
-from norc.core.constants import (Status,
-    CONCURRENCY_LIMIT, HEARTBEAT_PERIOD, HEARTBEAT_FAILED, INSTANCE_MODELS)
+from norc.core.models.daemon import AbstractDaemon
+from norc.core.constants import (Status, Request, CONCURRENCY_LIMIT,
+    EXECUTOR_PERIOD, HEARTBEAT_PERIOD, HEARTBEAT_FAILED, INSTANCE_MODELS)
 from norc.norc_utils.django_extras import QuerySetManager, MultiQuerySet
 from norc.norc_utils.parallel import ThreadPool
 from norc.norc_utils.log import make_log
 from norc.norc_utils.backup import backup_log
 from norc import settings
 
-class Executor(Daemon):
+class Executor(AbstractDaemon):
     """Executors are responsible for the running of instances.
     
     Executors have a single queue that they pull instances from.  There
@@ -46,7 +47,7 @@ class Executor(Daemon):
     
     objects = QuerySetManager()
     
-    class QuerySet(Daemon.QuerySet):
+    class QuerySet(AbstractDaemon.QuerySet):
         
         def for_queue(self, q):
             """Executors pulling from the given queue."""
@@ -99,7 +100,7 @@ class Executor(Daemon):
             datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
     
     def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(self, *args, **kwargs)
+        AbstractDaemon.__init__(self, *args, **kwargs)
         self.processes = {}
     
     def run(self):
@@ -131,7 +132,7 @@ class Executor(Daemon):
                 self.log.debug(
                     "Checking pid %s: return code %s." % (pid, p.returncode))
                 if not p.returncode == None:
-                    i = p.instance.__class__.objects.get(pk=p.instance.pk)
+                    i = type(p.instance).objects.get(pk=p.instance.pk)
                     self.log.info("Instance '%s' ended with status %s." %
                         (i, Status.NAME[i.status]))
                     del self.processes[pid]
@@ -167,22 +168,21 @@ class Executor(Daemon):
     
     def handle_request(self):
         """Called when a request is found."""
-        self.log.info("Request received: %s" %
-            Executor.REQUESTS[self.request])
+        self.log.info("Request received: %s" % Request.NAME[self.request])
         
-        if self.request == Executor.REQUEST_PAUSE:
+        if self.request == Request.PAUSE:
             self.set_status(Status.PAUSED)
         
-        elif self.request == Executor.REQUEST_RESUME:
+        elif self.request == Request.RESUME:
             if self.status != Status.PAUSED:
                 self.log.info("Must be paused to resume; clearing request.")
             else:
                 self.set_status(Status.RUNNING)
         
-        elif self.request == Executor.REQUEST_STOP:
+        elif self.request == Request.STOP:
             self.set_status(Status.STOPPING)
         
-        elif self.request == Executor.REQUEST_KILL:
+        elif self.request == Request.KILL:
             # for p in self.processes.values():
             #     p.terminate()
             for pid, p in self.processes.iteritems():

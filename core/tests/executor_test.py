@@ -7,7 +7,7 @@ from threading import Thread
 from django.test import TestCase
 
 from norc.core.models import Executor, DBQueue, CommandTask, Instance
-from norc.core.constants import Status
+from norc.core.constants import Status, Request
 from norc.norc_utils import wait_until, log
 
 class ExecutorTest(TestCase):
@@ -29,7 +29,7 @@ class ExecutorTest(TestCase):
         self.thread.start()
         wait_until(lambda: self.executor.status == Status.RUNNING, 3)
         self.assertEqual(self.executor.status, Status.RUNNING)
-        self.executor.make_request(Executor.REQUEST_STOP)
+        self.executor.make_request(Request.STOP)
         wait_until(lambda: Status.is_final(self.executor.status), 5)
         self.assertEqual(self.executor.status, Status.ENDED)
         
@@ -37,7 +37,7 @@ class ExecutorTest(TestCase):
         self.thread.start()
         wait_until(lambda: self.executor.status == Status.RUNNING, 3)
         self.assertEqual(self.executor.status, Status.RUNNING)
-        self.executor.make_request(Executor.REQUEST_KILL)
+        self.executor.make_request(Request.KILL)
         wait_until(lambda: Status.is_final(self.executor.status), 5)
         self.assertEqual(self.executor.status, Status.KILLED)
     
@@ -45,10 +45,10 @@ class ExecutorTest(TestCase):
         self.thread.start()
         wait_until(lambda: self.executor.status == Status.RUNNING, 3)
         self.assertEqual(self.executor.status, Status.RUNNING)
-        self.executor.make_request(Executor.REQUEST_PAUSE)
+        self.executor.make_request(Request.PAUSE)
         wait_until(lambda: self.executor.status == Status.PAUSED, 5)
         self.assertEqual(self.executor.status, Status.PAUSED)
-        self.executor.make_request(Executor.REQUEST_RESUME)
+        self.executor.make_request(Request.RESUME)
         wait_until(lambda: self.executor.status == Status.RUNNING, 5)
         self.assertEqual(self.executor.status, Status.RUNNING)
     
@@ -66,8 +66,8 @@ class ExecutorTest(TestCase):
     #     self.assertEqual(instance().status, Status.SUCCESS)
     
     def tearDown(self):
-        if self._executor.status == Status.RUNNING:
-            self._executor.make_request(Executor.REQUEST_KILL)
+        if not Status.is_final(self._executor.status):
+            self._executor.make_request(Request.KILL)
         self.thread.join(5)
         self._executor.heart.join(5)
         assert not self.thread.isAlive()

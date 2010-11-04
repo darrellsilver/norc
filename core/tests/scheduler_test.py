@@ -1,14 +1,14 @@
 
 """Test schedule handling cases in the SchedulableTask class."""
 
-import os
+import os, sys
 from threading import Thread
 from datetime import timedelta, datetime
 
 from django.test import TestCase
 
 from norc.core.models import Scheduler, Schedule, CronSchedule
-from norc.core.constants import Status
+from norc.core.constants import Status, Request
 from norc.norc_utils import wait_until, log
 from norc.norc_utils.testing import make_queue, make_task
 
@@ -26,7 +26,8 @@ class SchedulerTest(TestCase):
         wait_until(lambda: self.scheduler.is_alive(), 3)
     
     def test_stop(self):
-        self.scheduler.stop()
+        self.scheduler.make_request(Request.STOP)
+        self._scheduler.flag.set()
         wait_until(lambda: not self.scheduler.is_alive(), 3)
     
     def test_schedule(self):
@@ -59,7 +60,7 @@ class SchedulerTest(TestCase):
         self.assertRaises(Exception,
             lambda: wait_until(lambda: s.instances.count() > 3, 3))
     
-    def test_make_up(self):  
+    def test_make_up(self):
         task = make_task()
         queue = make_queue()
         s = Schedule.create(task, queue, 1, 10, -10, True)
@@ -73,7 +74,7 @@ class SchedulerTest(TestCase):
         task = make_task()
         queue = make_queue()
         now = datetime.utcnow()
-        s = CronSchedule(encoding='o*d*w*h*m*s%s' % (now.second - 1),
+        s = CronSchedule(encoding='o*d*w*h*m*s%s' % ((now.second - 1) % 60),
             task=task, queue=queue, repetitions=0, remaining=0, make_up=False)
         s.base = now - timedelta(seconds=2)
         s.save()
@@ -88,6 +89,19 @@ class SchedulerTest(TestCase):
         self._scheduler.flag.set()
         wait_until(lambda: s.instances.count() == 6, 1)
     
+    def test_reload(self):
+        task = make_task()
+        queue = make_queue()
+        now = datetime.utcnow()
+        s = CronSchedule.create(task, queue, 'o*d*w*h*m*s%s' %
+            ((now.second - 1) % 60), 1)
+        self._scheduler.flag.set()
+        wait_until(lambda: self.scheduler.cronschedules.count() == 1, 5)
+        CronSchedule.objects.get(pk=s.pk).set_encoding('o*d*w*h*m*s*')
+        self.scheduler.make_request(Request.RELOAD)
+        self._scheduler.flag.set()
+        wait_until(lambda: s.instances.count() == 1, 5)
+    
     #def test_stress(self):
     #    task = make_task()
     #    queue = make_queue()
@@ -97,8 +111,8 @@ class SchedulerTest(TestCase):
     #    wait_until(lambda: self._scheduler.cronschedules.count() == 5000, 60)
     
     def tearDown(self):
-        if self._scheduler.active:
-            self._scheduler.stop()
+        if not Status.is_final(self._scheduler.status):
+            self._scheduler.make_request(Request.KILL)
         self.thread.join(15)
         assert not self.thread.isAlive()
         assert not self._scheduler.timer.isAlive()

@@ -79,7 +79,7 @@ class MetaInstance(base.ModelBase):
         if not self._meta.abstract:
             INSTANCE_MODELS.append(self)
 
-class BaseInstance(Model):
+class AbstractInstance(Model):
     """One instance (run) of a Task."""
     
     __metaclass__ = MetaInstance
@@ -184,7 +184,7 @@ class BaseInstance(Model):
     __repr__ = __unicode__
     
 
-class Instance(BaseInstance):
+class Instance(AbstractInstance):
     """Normal Instance implementation for Tasks."""
     
     class Meta:

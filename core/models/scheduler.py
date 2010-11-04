@@ -23,20 +23,17 @@ from django.db.models import (Model, Manager,
 
 from norc.core.models.task import Instance
 from norc.core.models.schedules import Schedule, CronSchedule
-from norc.core.models.daemon import Daemon
+from norc.core.models.daemon import AbstractDaemon
 from norc.core.constants import (Status, Request,
-                                 SCHEDULER_PERIOD, 
-                                 SCHEDULER_LIMIT,
-                                 HEARTBEAT_PERIOD,
-                                 HEARTBEAT_FAILED)
+    SCHEDULER_PERIOD, SCHEDULER_LIMIT, HEARTBEAT_PERIOD, HEARTBEAT_FAILED)
 from norc.norc_utils import search
 from norc.norc_utils.parallel import MultiTimer
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import queryset_exists, get_object
-from norc.norc_utils.django_extras import QuerySetManager
+from norc.norc_utils.django_extras import QuerySetManager, MultiQuerySet
 from norc.norc_utils.backup import backup_log
 
-class Scheduler(Daemon):
+class Scheduler(AbstractDaemon):
     """Scheduling process for handling Schedules.
     
     Takes unclaimed Schedules from the database and adds their next
@@ -54,24 +51,19 @@ class Scheduler(Daemon):
     
     objects = QuerySetManager()
     
-    class QuerySet(Daemon.QuerySet):
+    class QuerySet(AbstractDaemon.QuerySet):
         """Custom manager/query set for Scheduler."""
         
         def undead(self):
             """Schedulers that are active but the heart isn't beating."""
             cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
-            return self.filter(active=True).filter(heartbeat__lt=cutoff)
+            return self.status_in("active").filter(heartbeat__lt=cutoff)
 
-        def alive(self):
-            cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
-            return self.filter(active=True).filter(heartbeat__gte=cutoff)
-    
-    # All the statuses executors can have.  See constants.py.
+    # All the statuses Schedulers can have.  See constants.py.
     VALID_STATUSES = [
         Status.CREATED,
         Status.RUNNING,
         Status.PAUSED,
-        Status.STOPPING,
         Status.ENDED,
         Status.ERROR,
     ]
@@ -81,6 +73,7 @@ class Scheduler(Daemon):
         Request.KILL,
         Request.PAUSE,
         Request.RESUME,
+        Request.RELOAD,
     ]
     
     # The status of this scheduler.
@@ -92,7 +85,7 @@ class Scheduler(Daemon):
         choices=[(r, Request.NAME[r]) for r in VALID_REQUESTS])
     
     def __init__(self, *args, **kwargs):
-        super(type(self), self).__init__(self, *args, **kwargs)
+        AbstractDaemon.__init__(self, *args, **kwargs)
         self.timer = MultiTimer()
 
     def start(self):
@@ -101,29 +94,30 @@ class Scheduler(Daemon):
         if Scheduler.objects.alive().count() > 0:
             print "Cannot run more than one scheduler at a time."
             return
-        super(type(self), self).start(self)
+        AbstractDaemon.start(self)
     
     def run(self):
         """Main run loop of the Scheduler."""
         self.timer.start()
         
         while not Status.is_final(self.status):
-            self.flag.clear()
-            
-            # Clean up orphaned schedules and undead schedulers.
-            Schedule.objects.orphaned().update(scheduler=None)
-            CronSchedule.objects.orphaned().update(scheduler=None)
-            
-            cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
-            simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
-            for schedule in itertools.chain(cron, simple):
-                self.log.info('Claiming %s.' % schedule)
-                schedule.scheduler = self
-                schedule.save()
-                self.add(schedule)
+            if self.request:
+                self.handle_request()
+            if self.status == Status.RUNNING:
+                # Clean up orphaned schedules and undead schedulers.
+                Schedule.objects.orphaned().update(scheduler=None)
+                CronSchedule.objects.orphaned().update(scheduler=None)
+                
+                cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
+                simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
+                for schedule in itertools.chain(cron, simple):
+                    self.log.info('Claiming %s.' % schedule)
+                    schedule.scheduler = self
+                    schedule.save()
+                    self.add(schedule)
             
             self.wait()
-            self.active = Scheduler.objects.get(pk=self.pk).active
+            self.request = Scheduler.objects.get(pk=self.pk).request
         
         cron = self.cronschedules.all()
         simple = self.schedules.all()
@@ -133,6 +127,10 @@ class Scheduler(Daemon):
             cron.update(scheduler=None)
             simple.update(scheduler=None)
     
+    def wait(self):
+        """Waits on the flag."""
+        AbstractDaemon.wait(self, SCHEDULER_PERIOD)
+    
     def clean_up(self):
         self.timer.cancel()
         self.timer.join()
@@ -141,32 +139,34 @@ class Scheduler(Daemon):
         """Called when a request is found."""
         self.log.info("Request received: %s" % Request.NAME[self.request])
         
-        if self.request == Executor.REQUEST_PAUSE:
+        if self.request == Request.PAUSE:
             self.set_status(Status.PAUSED)
         
-        elif self.request == Executor.REQUEST_RESUME:
+        elif self.request == Request.RESUME:
             if self.status != Status.PAUSED:
                 self.log.info("Must be paused to resume; clearing request.")
             else:
                 self.set_status(Status.RUNNING)
         
-        elif self.request == Executor.REQUEST_STOP:
-            self.set_status(Status.STOPPING)
+        elif self.request in (Request.STOP, Request.KILL):
+            self.set_status(Status.ENDED)
         
-        elif self.request == Executor.REQUEST_KILL:
-            # for p in self.processes.values():
-            #     p.terminate()
-            for pid, p in self.processes.iteritems():
-                self.log.info("Killing process for %s." % p.instance)
-                os.kill(pid, signal.SIGTERM)
-            self.set_status(Status.KILLED)
+        elif self.request == Request.RELOAD:
+            changed = MultiQuerySet(Schedule, CronSchedule)
+            changed = changed.objects.unfinished.filter(
+                changed=True, scheduler=self)
+            for item in self.timer.tasks:
+                s = item[2][0]
+                if s in changed:
+                    self.log.info("Removing outdated: %s" % s)
+                    self.timer.tasks.remove(item)
+                s = type(s).objects.get(pk=s.pk)
+            for s in changed:
+                self.log.info("Adding updated: %s" % s)
+                self.add(s)
         
         self.request = None
         self.save()
-    
-    def wait(self):
-        """Waits on the flag."""
-        super(type(self), self).wait(self, SCHEDULER_PERIOD)
     
     def add(self, schedule):
         """Adds the schedule to the timer."""
@@ -177,13 +177,13 @@ class Scheduler(Daemon):
     def _enqueue(self, schedule):
         """Called by the timer to add an instance to the queue."""
         updated_schedule = get_object(type(schedule), pk=schedule.pk)
-        if updated_schedule == None:
+        if updated_schedule == None or updated_schedule.deleted:
             self.log.info('%s was removed.' % schedule)
             return
         schedule = updated_schedule
         
         if not schedule.scheduler == self:
-            self.log.info('%s is no longer tied to this scheduler.')
+            self.log.info("%s is no longer tied to this scheduler.")
             return
         instance = Instance.objects.create(
             task=schedule.task, schedule=schedule)

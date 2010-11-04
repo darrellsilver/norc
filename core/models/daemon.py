@@ -1,20 +1,21 @@
 
 import os
+import sys
 import signal
+import time
 from datetime import datetime, timedelta
 from threading import Thread, Event
 
 from django.db.models.query import QuerySet
 from django.db.models import Model, CharField, DateTimeField, IntegerField
 
+from norc import settings
 from norc.core.constants import (Status, Request,
     HEARTBEAT_PERIOD, HEARTBEAT_FAILED)
 from norc.norc_utils.log import make_log
-from norc.norc_utils.django_extras import QuerySetManager
 from norc.norc_utils.backup import backup_log
 
-
-class Daemon(Model):
+class AbstractDaemon(Model):
     
     class Meta:
         app_label = "core"
@@ -25,7 +26,8 @@ class Daemon(Model):
         def alive(self):
             """Running executors with a recent heartbeat."""
             cutoff = datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
-            return self.status_in("active").filter(heartbeat__gt=cutoff)
+            return self.status_in("active").filter(
+                heartbeat__isnull=False).filter(heartbeat__gt=cutoff)
         
         def since(self, since):
             """Date ended since a certain time, or not ended."""
@@ -56,6 +58,7 @@ class Daemon(Model):
     ended = DateTimeField(null=True, blank=True)
     
     def __init__(self, *args, **kwargs):
+        Model.__init__(self, *args, **kwargs)
         self.flag = Event()
         self.heart = Thread(target=self.heart_run)
         self.heart.daemon = True
@@ -106,7 +109,10 @@ class Daemon(Model):
                 self.set_status(Status.ENDED)
         finally:    
             self.log.info("Shutting down...")
-            self.clean_up()
+            try:
+                self.clean_up()
+            except:
+                self.log.error("Clean up function failed.", trace=True)
             self.ended = datetime.utcnow()
             self.save()
             if settings.BACKUP_SYSTEM:
@@ -118,6 +124,7 @@ class Daemon(Model):
             self.log.info('%s has been shut down successfully.' % self)
             self.log.stop_redirect()
             self.log.close()
+            sys.exit(0)
     
     def run(self):
         raise NotImplementedError
@@ -161,7 +168,8 @@ class Daemon(Model):
         last heartbeat was within the last HEARTBEAT_FAILED seconds.
         
         """
-        return not Status.is_final(self.status) and self.heartbeat > \
+        return not Status.is_final(self.status) \
+            and self.heartbeat and self.heartbeat > \
             datetime.utcnow() - timedelta(seconds=HEARTBEAT_FAILED)
     
     def set_status(self, status):
@@ -195,5 +203,5 @@ class Daemon(Model):
                 self.request = self.objects.get(id=self.id).request
             except Exception:
                 pass
-        Model.save(self, *args, **kwargs)
+        return Model.save(self, *args, **kwargs)
     
