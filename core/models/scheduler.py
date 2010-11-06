@@ -140,21 +140,27 @@ class Scheduler(AbstractDaemon):
     
     def handle_request(self):
         """Called when a request is found."""
-        self.log.info("Request received: %s" % Request.name(self.request))
         
-        if self.request == Request.PAUSE:
+        # Clear request immediately.
+        request = self.request
+        self.request = None
+        self.save()
+        
+        self.log.info("Request received: %s" % Request.name(request))
+        
+        if request == Request.PAUSE:
             self.set_status(Status.PAUSED)
         
-        elif self.request == Request.RESUME:
+        elif request == Request.RESUME:
             if self.status != Status.PAUSED:
                 self.log.info("Must be paused to resume; clearing request.")
             else:
                 self.set_status(Status.RUNNING)
         
-        elif self.request in (Request.STOP, Request.KILL):
+        elif request in (Request.STOP, Request.KILL):
             self.set_status(Status.ENDED)
         
-        elif self.request == Request.RELOAD:
+        elif request == Request.RELOAD:
             changed = MultiQuerySet(Schedule, CronSchedule)
             changed = changed.objects.unfinished.filter(
                 changed=True, scheduler=self)
@@ -168,9 +174,6 @@ class Scheduler(AbstractDaemon):
                 self.log.info("Adding updated: %s" % s)
                 self.add(s)
             changed.update(changed=False)
-        
-        self.request = None
-        self.save()
     
     def add(self, schedule):
         """Adds the schedule to the timer."""

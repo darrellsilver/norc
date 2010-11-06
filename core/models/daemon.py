@@ -165,7 +165,6 @@ class AbstractDaemon(Model):
             self.make_request(Request.STOP)
         elif signum == signal.SIGTERM:
             self.make_request(Request.KILL)
-        
     
     def wait(self, t=1):
         """Waits on the flag.
