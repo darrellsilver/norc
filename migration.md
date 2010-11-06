@@ -12,8 +12,7 @@ v2.0 -> v2.1
     (BooleanField) columns.
   - Deleting of schedules should now be done using the .soft_delete() method.
 
-SQL Statements
---------------
+### SQL Statements
 __Norc must be completely stopped before making these changes.__
 
     ALTER TABLE norc_scheduler DROP COLUMN active;
