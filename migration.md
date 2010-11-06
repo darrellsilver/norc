@@ -22,3 +22,5 @@ __Norc must be completely stopped before making these changes.__
     UPDATE norc_scheduler SET status=8;
     ALTER TABLE norc_schedule ADD COLUMN changed TINYINT(1) NOT NULL AFTER added;
     ALTER TABLE norc_schedule ADD COLUMN deleted TINYINT(1) NOT NULL AFTER changed;
+    ALTER TABLE norc_cronschedule ADD COLUMN changed TINYINT(1) NOT NULL AFTER added;
+    ALTER TABLE norc_cronschedule ADD COLUMN deleted TINYINT(1) NOT NULL AFTER changed;
