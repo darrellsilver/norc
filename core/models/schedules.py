@@ -90,6 +90,11 @@ class AbstractSchedule(Model):
         """Checks whether all runs of the Schedule have been completed."""
         return self.remaining == 0 and self.repetitions > 0
     
+    def soft_delete(self):
+        """Marks the schedule as deleted in the DB without erasing data."""
+        self.deleted = True
+        self.save()
+    
     def __eq__(self, other):
         return type(self) == type(other) and self.pk == other.pk
 
