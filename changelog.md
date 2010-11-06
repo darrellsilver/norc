@@ -1,7 +1,8 @@
 
-
 Norc Release v2.1
 =================
+
+__SCHEMA CHANGES__, please see migration.md.
 
 ## Features
   - Scheduler now has a status and supports requests.
@@ -14,6 +15,13 @@ Norc Release v2.1
     AbstractSchedule, respectively.
   - New base class AbstractDaemon for commonalities between Executor
     and Scheduler.
+  - Log backing of instance logs is now done by a thread pool inside
+    the Executor for that instance.
+
+## Bug Fixes:
+  - Front end controls for Executors and Schedulers now work again.
+  - Fixed broken query for orphaned schedules.
+  - Fixed signal registering in both Executor and Scheduler.
 
 
 Norc Release v2.0
@@ -28,7 +36,7 @@ Norc Release v1.1.2
 
 ## Tweaks:
   - Fixed (or at least greatly improved) the horrible slowness of the
-    daemons table in the frontend by switching from len(queryset) to
+    daemons table in the front end by switching from len(queryset) to
     queryset.count().
 
 ## Bug Fixes:

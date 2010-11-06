@@ -10,30 +10,28 @@ if BACKUP_SYSTEM == 'AmazonS3':
 
 
 def s3_backup(fp, target):
-    for i in range(0, 3):
+    NUM_TRIES = 3
+    for i in range(NUM_TRIES):
         try:
             set_s3_key(target, fp)
             return True
         except:
-            pass
+            if i == NUM_TRIES - 1:
+                raise
     return False
 
 BACKUP_SYSTEMS = {
     'AmazonS3': s3_backup,
 }
 
-def backup_log(log_path):
+def backup_log(rel_log_path):
+    log_path = os.path.join(NORC_LOG_DIR, rel_log_path)
+    log_file = open(log_path, 'rb')
+    target = os.path.join('norc_logs/', rel_log_path)
     try:
-        fp = open(os.path.join(NORC_LOG_DIR, log_path), 'r')
-    except IOError:
-        return False
-    target = os.path.join('norc_logs/', log_path)
-    try:
-        return _backup_file(fp, target)
-    except:
-        log = make_log(log_path)
-        log.error('Could not back up log file "%s"' % log_path, trace=True)
-        return False
+        return _backup_file(log_file, target)
+    finally:
+        log_file.close()
 
 def _backup_file(fp, target):
     if BACKUP_SYSTEM:

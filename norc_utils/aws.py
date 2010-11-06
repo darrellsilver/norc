@@ -1,4 +1,6 @@
 
+import zlib
+
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
@@ -18,16 +20,20 @@ def get_s3_bucket(name=AWS_BUCKET_NAME):
 def set_s3_key(key, contents):
     k = Key(get_s3_bucket())
     k.key = key
-    if isinstance(contents, basestring):
-        k.set_contents_from_string(contents)
-    else:
-        k.set_contents_from_file(contents)
+    if not isinstance(contents, basestring):
+        contents = contents.read()
+    k.set_contents_from_string(zlib.compress(contents, 9))
 
 def get_s3_key(key, target=None):
     k = Key(get_s3_bucket())
     k.key = key
+    contents = k.get_contents_as_string()
+    try:
+        contents = zlib.decompress(contents)
+    except zlib.error:
+        pass
     if target:
-        k.get_contents_to_filename(target)
+        target.write(contents)
     else:
-        return k.get_contents_as_string()
+        return contents
 

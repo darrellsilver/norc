@@ -104,6 +104,7 @@ class Scheduler(AbstractDaemon):
         while not Status.is_final(self.status):
             if self.request:
                 self.handle_request()
+            
             if self.status == Status.RUNNING:
                 # Clean up orphaned schedules and undead schedulers.
                 Schedule.objects.orphaned().update(scheduler=None)
@@ -117,8 +118,9 @@ class Scheduler(AbstractDaemon):
                     schedule.save()
                     self.add(schedule)
             
-            self.wait()
-            self.request = Scheduler.objects.get(pk=self.pk).request
+            if not Status.is_final(self.status):
+                self.wait()
+                self.request = Scheduler.objects.get(pk=self.pk).request
         
         cron = self.cronschedules.all()
         simple = self.schedules.all()
@@ -165,6 +167,7 @@ class Scheduler(AbstractDaemon):
             for s in changed:
                 self.log.info("Adding updated: %s" % s)
                 self.add(s)
+            changed.update(changed=False)
         
         self.request = None
         self.save()

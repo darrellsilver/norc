@@ -127,9 +127,11 @@ class AbstractInstance(Model):
         if self.status != Status.CREATED:
             self.log.error("Can't start an instance more than once.")
             return
-        if __name__ == '__main__':
-            for signum in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
+        try:
+            for signum in [signal.SIGINT, signal.SIGTERM]:
                 signal.signal(signum, self.kill_handler)
+        except ValueError:
+            pass
         if self.timeout > 0:
             signal.signal(signal.SIGALRM, self.timeout_handler)
             signal.alarm(self.timeout)

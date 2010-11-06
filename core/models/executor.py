@@ -106,13 +106,14 @@ class Executor(AbstractDaemon):
     def run(self):
         """Core executor function."""
         if settings.BACKUP_SYSTEM:
-            self.pool = ThreadPool(5)
+            self.pool = ThreadPool(self.concurrent * 2)
         self.log.info("%s is now running on host %s." % (self, self.host))
         
         # Main loop.
         while not Status.is_final(self.status):
             if self.request:
                 self.handle_request()
+            
             if self.status == Status.RUNNING:
                 while len(self.processes) < self.concurrent:
                     self.log.debug("Popping instance...")
@@ -123,9 +124,11 @@ class Executor(AbstractDaemon):
                     else:
                         self.log.debug("No instance in queue.")
                         break
+            
             elif self.status == Status.STOPPING and len(self.processes) == 0:
                 self.set_status(Status.ENDED)
                 self.save(safe=True)
+            
             # Clean up completed tasks before iterating.
             for pid, p in self.processes.items()[:]:
                 p.poll()
@@ -138,8 +141,10 @@ class Executor(AbstractDaemon):
                     del self.processes[pid]
                     if settings.BACKUP_SYSTEM:
                         self.pool.queueTask(self.backup_instance_log, [i])
-            self.wait(EXECUTOR_PERIOD)
-            self.request = Executor.objects.get(pk=self.pk).request
+            
+            if not Status.is_final(self.status):
+                self.wait(EXECUTOR_PERIOD)
+                self.request = Executor.objects.get(pk=self.pk).request
     
     def clean_up(self):
         if settings.BACKUP_SYSTEM:

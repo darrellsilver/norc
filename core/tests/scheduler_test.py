@@ -100,7 +100,7 @@ class SchedulerTest(TestCase):
         CronSchedule.objects.get(pk=s.pk).set_encoding('o*d*w*h*m*s*')
         self.scheduler.make_request(Request.RELOAD)
         self._scheduler.flag.set()
-        wait_until(lambda: s.instances.count() == 1, 5)
+        wait_until(lambda: s.instances.count() == 1, 10)
     
     #def test_stress(self):
     #    task = make_task()

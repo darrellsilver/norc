@@ -69,8 +69,10 @@ class AbstractSchedule(Model):
     # When this schedule was added.
     added = DateTimeField(default=datetime.utcnow)
     
+    # Whether this schedule has been changed and needs to be reloaded.
     changed = BooleanField(default=False)
     
+    # Marks a schedule as deleted and to be ignored.
     deleted = BooleanField(default=False)
     
     @property

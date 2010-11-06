@@ -62,6 +62,7 @@ class AbstractDaemon(Model):
         self.flag = Event()
         self.heart = Thread(target=self.heart_run)
         self.heart.daemon = True
+        self.heart.flag = Event()
     
     def heart_run(self):
         """Method to be run by the heart thread."""
@@ -75,7 +76,8 @@ class AbstractDaemon(Model):
             # than HEARTBEAT_PERIOD to complete.
             wait = HEARTBEAT_PERIOD - (time.time() - start)
             if wait > 0:
-                time.sleep(wait)
+                self.heart.flag.wait(wait)
+                self.heart.flag.clear()
     
     def start(self):
         """Starts the daemon.  Does initialization then calls run()."""
@@ -126,15 +128,19 @@ class AbstractDaemon(Model):
                 self.log.error("Clean up function failed.", trace=True)
             if not Status.is_final(self.status):
                 self.set_status(Status.ERROR)
+            self.heart.flag.set()
             self.heart.join()
             self.ended = datetime.utcnow()
             self.save()
             if settings.BACKUP_SYSTEM:
                 self.log.info('Backing up log file...')
-                if backup_log(self.log_path):
-                    self.log.info('Completed log backup.')
-                else:
-                    self.log.info('Failed to backup log.')
+                try:
+                    if backup_log(self.log_path):
+                        self.log.info('Completed log backup.')
+                    else:
+                        self.log.error('Failed to backup log.')
+                except:
+                    self.log.error('Failed to backup log.', trace=True)
             self.log.info('%s has been shut down successfully.' % self)
             self.log.stop_redirect()
             self.log.close()

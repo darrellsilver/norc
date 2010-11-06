@@ -127,4 +127,4 @@ def make_log(norc_path, *args, **kwargs):
     return Log(os.path.join(NORC_LOG_DIR, norc_path), *args, **kwargs)
     # log_class = BACKUP_LOGS.get(BACKUP_SYSTEM, NorcLog)
     # return log_class(norc_path, *args, **kwargs)
-
+    
