@@ -151,7 +151,7 @@ class schedulers(BaseReport):
     get_all = lambda: Scheduler.objects.all()
     
     since_filter = date_ended_since
-    order_by = date_ended_order
+    order_by = lambda data, o: data.order_by(o if o else '-started')
     
     details = {
         'schedules': lambda id, **kws:

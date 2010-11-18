@@ -67,6 +67,7 @@ def main():
     
     if hasattr(obj, "log_path"):
         local_path = os.path.join(settings.NORC_LOG_DIR, obj.log_path)
+        log = None
         if os.path.isfile(local_path) and not options.remote:
             f = open(local_path, 'r')
             log = ''.join(f.readlines())

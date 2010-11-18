@@ -6,9 +6,13 @@ __SCHEMA CHANGES__, please see migration.md.
 
 ## Features
   - Scheduler now has a status and supports requests.
+  - Support for changing a schedule after it's been made.
   - Schedules now have a deleted flag, making data deletion unnecessary.
   - New setting: STATUS_TABLES.  Custom-define what tables show up in
     the front end!
+  - New command line utility "norc_control" for sending request to
+    Executors and Schedulers.
+  - S3 log backups are now compressed prior to uploading.
 
 ## Tweaks:
   - BaseInstance and BaseSchedule are now AbstractInstance and

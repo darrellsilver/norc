@@ -107,8 +107,8 @@ class Scheduler(AbstractDaemon):
             
             if self.status == Status.RUNNING:
                 # Clean up orphaned schedules and undead schedulers.
-                Schedule.objects.orphaned().update(scheduler=None)
-                CronSchedule.objects.orphaned().update(scheduler=None)
+                # Schedule.objects.orphaned().update(scheduler=None)
+                # CronSchedule.objects.orphaned().update(scheduler=None)
                 
                 cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
                 simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
