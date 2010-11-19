@@ -34,6 +34,7 @@ class BaseEnv(object):
     BACKUP_SYSTEM = None
     # See core/reports.py for options.
     STATUS_TABLES = ['executors', 'queues', 'schedulers', 'tasks']
+    EXTERNAL_CLASSES = [];
     
     # Important Django settings.
     ADMINS = ()
