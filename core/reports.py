@@ -16,6 +16,15 @@ from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.formatting import untitle
 from norc.norc_utils.django_extras import get_object
 
+from norc import settings    
+
+for path in settings.EXTERNAL_CLASSES:
+    split = path.split(".")
+    try:
+        __import__(split[:-1], fromlist=[split[-1]])
+    except ImportError:
+        print "Failed to import %s." % path
+
 all = {}
 
 def generate(data_set, report, params):
