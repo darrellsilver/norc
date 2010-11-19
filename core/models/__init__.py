@@ -12,8 +12,9 @@ from norc import settings
 
 # map(__import__, settings.EXTERNAL_CLASSES)
 
-for s in settings.EXTERNAL_CLASSES:
+for path in settings.EXTERNAL_CLASSES:
+    split = path.split()
     try:
-        __import__(s)
+        __import__(split[:-1], fromlist=[split[-1]])
     except:
         print "Failed to import %s." % s
