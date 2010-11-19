@@ -21,7 +21,7 @@ from norc import settings
 for path in settings.EXTERNAL_CLASSES:
     split = path.split(".")
     try:
-        __import__(split[:-1], fromlist=[split[-1]])
+        __import__(".".join(split[:-1]), fromlist=[split[-1]])
     except ImportError:
         print "Failed to import %s." % path
 
