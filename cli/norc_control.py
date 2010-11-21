@@ -9,7 +9,7 @@ Presently, this means sending requests to Schedulers and Executors.
 import sys
 from optparse import OptionParser
 
-from norc.core.constants import Status
+from norc.core.constants import Status, Request
 from norc.core.models import Executor, Scheduler
 
 def main():
@@ -30,6 +30,8 @@ def main():
         help="Send a pause request.")
     parser.add_option("-u", "--resume", action="store_true", default=False,
         help="Send an resume request.")
+    parser.add_option("-r", "--reload", action="store_true", default=False,
+        help="Send an reload request to a Scheduler.")
     parser.add_option("-f", "--force", action="store_true", default=False,
         help="Force the request to be made..")
     
@@ -43,48 +45,37 @@ def main():
     except ValueError:
         bad_args("Invalid id '%s'; must be an integer." % args[1])
     
-    requests = ['stop', 'kill', 'pause', 'resume']
-    requests = filter(lambda a: getattr(options, a), requests)
+    # requests = ['stop', 'kill', 'pause', 'resume']
+    requests = filter(lambda a: getattr(options, a.lower()),
+        Request.NAMES.values())
     if len(requests) != 1:
-        bad_args("Must request one action at a time.")
+        bad_args("Must only request one action at a time.")
     request = requests[0]
     
+    cls = None
     if args[0] in ("e", "executor"):
-        try:
-            e = Executor.objects.get(id=obj_id)
-        except Executor.DoesNotExist:
-            print "Could not find an Executor with id=%s" % obj_id
-        else:
-            req = {
-                "stop": Executor.REQUEST_STOP,
-                "kill": Executor.REQUEST_KILL,
-                "pause": Executor.REQUEST_PAUSE,
-                "resume": Executor.REQUEST_RESUME,
-            }[request]
-            if Status.is_final(e.status) and not options.force:
-                print "Executor #%s is already in a final state." % obj_id
-            elif e.request == None or options.force:
-                e.make_request(req)
-                print "Executor #%s was sent a %s request." % \
-                    (args[1], request.upper())
-            else:
-                print "Executor #%s already has request %s." % \
-                    (args[1], Executor.REQUEST[e.request])
+        cls = Executor
     elif args[0] in ["s", "scheduler"]:
-        try:
-            s = Scheduler.objects.get(id=obj_id)
-        except Executor.DoesNotExist:
-            print "Could not find a Scheduler with id=%s." % obj_id
-        else:
-            if not s.is_alive():
-                print "Scheduler #%s is already dead." % obj_id
-            elif request == "stop":
-                s.stop()
-                print "Scheduler #%s has been deactivated." % obj_id
-            else:
-                print "Invalid request; Schedulers can only be stopped."
+        cls = Scheduler
     else:
         print "Invalid keyword '%s'." % args[0]
+    
+    if cls:
+        name = cls.__name__
+        try:
+            d = cls.objects.get(id=obj_id)
+        except cls.DoesNotExist:
+            print "Could not find a(n) %s with id=%s" % (name, obj_id)
+        else:
+            req = getattr(Request, request.upper())
+            if Status.is_final(d.status) and not options.force:
+                print "%s #%s is already in a final state." % (name, obj_id)
+            elif d.request == None or options.force:
+                d.make_request(req)
+                print "%s was sent a %s request." % (d, request.upper())
+            else:
+                print "%s already has request %s." % \
+                    (d, Request.name(d.request))
     
 if __name__ == '__main__':
     main()
