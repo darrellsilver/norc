@@ -61,7 +61,8 @@ def get_data(request, content_type, content_id=None, detail_type=None):
         data_key = content_type
         data_set = report(content_id)
     report = reports.all[data_key]
-    if type(data_set) == QuerySet:
+    if isinstance(data_set, QuerySet):
+        print data_key
         data_set = report.since_filter(data_set, params['since'])
         data_set = report.order_by(data_set, params.get('order'))
     page, page_data = paginate(request, data_set)
