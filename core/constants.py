@@ -50,7 +50,7 @@ class MetaConstant(type):
         return type.__new__(cls, name, bases, dct)
     
     def name(cls, item):
-        return cls.NAMES[item]
+        return cls.NAMES.get(item)
 
 class Status(object):
     """Class to hold all status constants.
