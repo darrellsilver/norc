@@ -176,12 +176,12 @@ class schedulers(BaseReport):
         'status': lambda obj, **kws: Status.name(obj.status),
     }
 
-def _queue_failure_rate(obj, **kws):
-    instances = MultiQuerySet(*[i.objects.all() for i in INSTANCE_MODELS])
-    instances = instances.from_queue(obj)
-    failed = instances.status_in('failed').count()
-    total = instances.count()
-    return '%.2f%%' % (100.0 * failed / total) if total > 0 else 'n/a'
+# def _queue_failure_rate(obj, **kws):
+#     instances = MultiQuerySet(*[i.objects.all() for i in INSTANCE_MODELS])
+#     instances = instances.from_queue(obj)
+#     failed = instances.status_in('failed').count()
+#     total = instances.count()
+#     return '%.2f%%' % (100.0 * failed / total) if total > 0 else 'n/a'
 
 class queues(BaseReport):
     
@@ -189,13 +189,13 @@ class queues(BaseReport):
     get_all = Queue.all_queues
     order_by = lambda data, o: sorted(data, key=lambda v: v.name)
     
-    headers = ['Name', 'Type', 'Items', 'Executors', 'Failure Rate']
+    headers = ['Name', 'Type', 'Items', 'Executors']
     data = {
         'type': lambda obj, **kws: type(obj).__name__,
         'items': lambda obj, **kws: obj.count(),
         'executors': lambda obj, **kws:
             Executor.objects.for_queue(obj).alive().count(),
-        'failure_rate': _queue_failure_rate,
+        # 'failure_rate': _queue_failure_rate,
     }
 
 class tasks(BaseReport):
