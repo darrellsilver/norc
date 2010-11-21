@@ -81,10 +81,7 @@ class Log(AbstractLog):
         AbstractLog.__init__(self, debug)
         if not isinstance(log_file, file):
             if not os.path.isdir(os.path.dirname(log_file)):
-                try:
-                    os.makedirs(os.path.dirname(log_file))
-                except OSError:
-                    pass
+                os.makedirs(os.path.dirname(log_file))
             log_file = open(log_file, 'a')
         self.file = log_file
         self.echo = echo
