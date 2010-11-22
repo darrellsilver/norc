@@ -214,9 +214,6 @@ class AbstractDaemon(Model):
         
         """
         if kwargs.pop('safe', False):
-            try:
-                self.request = self.objects.get(id=self.id).request
-            except Exception:
-                pass
+            self.request = type(self).objects.get(id=self.id).request
         return Model.save(self, *args, **kwargs)
     
