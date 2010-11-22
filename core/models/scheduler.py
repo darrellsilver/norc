@@ -157,8 +157,11 @@ class Scheduler(AbstractDaemon):
             else:
                 self.set_status(Status.RUNNING)
         
-        elif request in (Request.STOP, Request.KILL):
+        elif request == Request.STOP:
             self.set_status(Status.ENDED)
+        
+        elif request == Request.KILL:
+            self.set_status(Status.KILLED)
         
         elif request == Request.RELOAD:
             changed = MultiQuerySet(Schedule, CronSchedule)
