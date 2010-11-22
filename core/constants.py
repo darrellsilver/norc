@@ -100,6 +100,7 @@ class Status(object):
             "running": [Status.RUNNING],
             "succeeded": filter(lambda s: s >= 7 and s < 13, Status.ALL),
             "failed": filter(lambda s: s > 13, Status.ALL),
+            "final": filter(lambda s: s >= 7, Status.ALL),
         }.get(name.lower())
     
 

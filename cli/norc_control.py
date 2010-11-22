@@ -7,19 +7,37 @@ Presently, this means sending requests to Schedulers and Executors.
 """
 
 import sys
+import time
 from optparse import OptionParser
 
 from norc.core.constants import Status, Request
 from norc.core.models import Executor, Scheduler
-from norc.norc_utils.django_extras import MultiQuerySet
+from norc.norc_utils.django_extras import update_obj, MultiQuerySet
 
 EXECUTOR_KEYWORDS = ["e", "executor"]
 SCHEDULER_KEYWORDS = ["s", "scheduler"]
 HOST_KEYWORDS = ["h", "host"]
 
+REQ_TO_STAT = {
+    Request.STOP: Status.ENDED,
+    Request.KILL: Status.KILLED,
+    Request.PAUSE: Status.PAUSED,
+    Request.RESUME: Status.RUNNING,
+}
+
+def _wait(ds, req):
+    print "Waiting for request(s) to take effect..."
+    status = REQ_TO_STAT.get(req)
+    if status:
+        fin = lambda: all(map(lambda d: update_obj(d).status == status, ds))
+    else:
+        fin = lambda: all(map(lambda d: update_obj(d).request == None, ds))
+    while not fin():
+        time.sleep(0.5)
+
 def main():
-    usage = "norc_control [e | executor | s | scheduler] <id> " + \
-        "--[stop | kill | pause | resume]"
+    usage = "norc_control [executor | scheduler | host] <id | host> " + \
+        "--[stop | kill | pause | resume | reload] [--wait]"
     
     def bad_args(message):
         print message
@@ -45,21 +63,15 @@ def main():
     options, args = parser.parse_args()
     
     if len(args) != 2:
-        bad_args("A process type and id are required.")
+        bad_args("Invalid number of arguments.")
     
     # requests = ['stop', 'kill', 'pause', 'resume']
     requests = filter(lambda a: getattr(options, a.lower()),
         Request.NAMES.values())
     if len(requests) != 1:
-        bad_args("Must only request one action at a time.")
+        bad_args("Must request exactly one action.")
     request = requests[0]
-    req = getattr(Request, request.upper())
-    
-    if args[0] in EXECUTOR_KEYWORDS + SCHEDULER_KEYWORDS:
-        try:
-            obj_id = int(args[1])
-        except ValueError:
-            bad_args("Invalid id '%s'; must be an integer." % args[1])
+    req = getattr(Request, request)
     
     cls = None
     if args[0] in EXECUTOR_KEYWORDS:
@@ -68,26 +80,24 @@ def main():
         cls = Scheduler
     elif args[0] in HOST_KEYWORDS:
         daemons = MultiQuerySet(Executor, Scheduler).objects.all()
-        daemons = daemons.filter(host=args[1])
+        daemons = daemons.filter(host=args[1]).status_in("active")
+        if not options.force:
+            daemons = daemons.filter(request=None)
         for d in daemons:
-            if options.force or (not Status.is_final(d.status) and
-                                d.request == None):
-                if req in d.VALID_REQUESTS:
-                    d.make_request(req)
-                    print "%s was sent a %s request." % (d, request.upper())
+            if req in d.VALID_REQUESTS:
+                d.make_request(req)
+                print "%s was sent a %s request." % (d, request)
         if options.wait:
-            fin = lambda: all(map(lambda d:
-                Status.is_final(d.status), daemons))
-            while not fin:
-                time.sleep(0.1)
-            
-        
-        
+            _wait(daemons, req)
     else:
         print "Invalid keyword '%s'." % args[0]
     
     if cls:
         name = cls.__name__
+        try:
+            obj_id = int(args[1])
+        except ValueError:
+            bad_args("Invalid id '%s'; must be an integer." % args[1])
         try:
             d = cls.objects.get(id=obj_id)
         except cls.DoesNotExist:
@@ -97,7 +107,9 @@ def main():
                 print "%s #%s is already in a final state." % (name, obj_id)
             elif d.request == None or options.force:
                 d.make_request(req)
-                print "%s was sent a %s request." % (d, request.upper())
+                print "%s was sent a %s request." % (d, request)
+                if options.wait:
+                    _wait([d], req)
             else:
                 print "%s already has request %s." % \
                     (d, Request.name(d.request))

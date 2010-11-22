@@ -27,6 +27,9 @@ def get_object(model, **kwargs):
     except model.DoesNotExist:
         return None
 
+def update_obj(obj):
+    return type(obj).objects.get(pk=obj.pk)
+
 class QuerySetManager(Manager):
     """
     
