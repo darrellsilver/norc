@@ -70,11 +70,11 @@ def main():
         daemons = MultiQuerySet(Executor, Scheduler).objects.all()
         daemons = daemons.filter(host=args[1])
         for d in daemons:
-            # print d
             if options.force or (not Status.is_final(d.status) and
                                 d.request == None):
-                d.make_request(req)
-                print "%s was sent a %s request." % (d, request.upper())
+                if req in d.VALID_REQUESTS:
+                    d.make_request(req)
+                    print "%s was sent a %s request." % (d, request.upper())
         if options.wait:
             fin = lambda: all(map(lambda d:
                 Status.is_final(d.status), daemons))
