@@ -44,9 +44,6 @@ var STYLE_BY_COLUMN = {
     'rightAlign': ['running', 'success', 'errored', 'pid', 'num_items'],
 };
 
-// The data keys for which statuses should be colored.
-var HAS_STATUS_COLOR = ['tasks', 'sqstasks', 'failedtasks'];
-
 var HAS_LOGS = {
     'executors': 'executors',
     'instances': 'instances',
@@ -57,15 +54,15 @@ var HAS_LOGS = {
 
 // Map of statuses to their style classes.
 var STATUS_CSS_CLASSES = {
-    SUCCESS : 'status_good',
-    RUNNING : 'status_good',
-    CONTINUE : 'status_warning',
-    RETRY : 'status_warning',
-    SKIPPED : 'status_warning',
-    TIMEDOUT : 'status_error',
-    ERROR : 'status_error',
-    ENDED : 'status_good',
-    DELETED : 'status_error',
+    SUCCESS: 'status_good',
+    RUNNING: 'status_good',
+    CONTINUE: 'status_warning',
+    RETRY: 'status_warning',
+    SKIPPED: 'status_warning',
+    TIMEDOUT: 'status_error',
+    ERROR: 'status_error',
+    ENDED: 'status_good',
+    DELETED: 'status_error',
 };
 
 var TIME_OPTIONS = ['10m', '30m', '1h', '3h', '12h', '1d', '7d', 'all'];
@@ -275,19 +272,31 @@ function makeDataTable(chain, data) {
                 TABLE_CUSTOMIZATION[dataKey](chain, id, header, cell, row);
             }
             if (header == 'status') {
-                if (isIn(dataKey, HAS_STATUS_COLOR)) {
-                    cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
+                var color = rowData["status_color"];
+                if (color) {
+                    cell.addClass(color);
+                    if (color == "status_error" && "heartbeat" in rowData) {
+                        cell.append(" (" + rowData.heartbeat + ")");
+                    }
                 }
+                //if (isIn(dataKey, HAS_STATUS_COLOR)) {
+                //    cell.addClass(STATUS_CSS_CLASSES[rowData['status']]);
+                // }
                 if (dataKey in HAS_LOGS) {
                     cell.addClass('clickable')
+                    cell.hover(function() {
+                        row.data('overruled', true);
+                    }, function() {
+                        row.data('overruled', false);
+                    });
                     cell.click(function() {
                         window.open(
                             'logs/' + HAS_LOGS[dataKey] + '/' + id,
                             HAS_LOGS[dataKey] + '-' + id + '-log',
-                            'menubar=no, innerWidth=700, innerHeight=700')
+                            'menubar=no, innerWidth=700, innerHeight=700');
                     });
                 }
-                if (dataKey in VALID_REQUESTS) {
+                if (IS_SUPERUSER && dataKey in VALID_REQUESTS) {
                     cell.addClass('clickable');
                     var controls = makeControls(dataKey, id);
                     cell.hover(function() {

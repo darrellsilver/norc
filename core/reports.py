@@ -27,12 +27,28 @@ for path in settings.EXTERNAL_CLASSES:
 
 all = {}
 
+def make_status_color(status, alive):
+    if status in map(Status.name, Status.GROUPS("failed")):
+        return "status_error"
+    elif status in map(Status.name, Status.GROUPS("succeeded")):
+        return "status_good"
+    elif status == "RUNNING":
+        if not alive or (alive and alive == "True"):
+            return "status_good"
+        else:
+            return "status_error"
+    else:
+        return "status_error"
+
 def generate(data_set, report, params):
     ret_list = []
     for obj in data_set:
         obj_data = {}
         for key, func in report.data.iteritems():
             obj_data[key] = func(obj, **params)
+        if "status" in obj_data:
+            obj_data["status_color"] = make_status_color(
+                obj_data["status"], obj_data.get("alive"))
         ret_list.append(obj_data)
     return ret_list
 
@@ -138,7 +154,7 @@ class executors(BaseReport):
             executors.get(id).instances.since(since).status_in(status),
     }
     headers = ['ID', 'Queue', 'Queue Type', 'Host', 'PID', 'Running',
-        'Succeeded', 'Failed', 'Started', 'Ended', "Alive", 'Status']
+        'Succeeded', 'Failed', 'Started', 'Ended', 'Status']
     data = {
         'queue': lambda obj, **kws: obj.queue.name,
         'queue_type': lambda obj, **kws: obj.queue.__class__.__name__,
@@ -150,6 +166,7 @@ class executors(BaseReport):
             obj.instances.since(since).status_in('failed').count(),
         'status': lambda obj, **kws: Status.name(obj.status),
         'ended': date_ended_getter,
+        'heartbeat': lambda obj, **kws: obj.heartbeat,
         'alive': lambda obj, **kws: str(obj.is_alive()),
     }
     
@@ -166,8 +183,7 @@ class schedulers(BaseReport):
         'schedules': lambda id, **kws:
             Schedule.objects.filter(scheduler__id=id)
     }
-    headers = ['ID', 'Host', "PID", "Claimed", 'Started', 'Ended',
-        "Alive", "Status"]
+    headers = ['ID', 'Host', "PID", "Claimed", 'Started', 'Ended', "Status"]
     data = {
         "claimed": lambda obj, **kws:
             obj.schedules.count() + obj.cronschedules.count(),
