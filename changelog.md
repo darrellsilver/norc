@@ -1,4 +1,26 @@
 
+
+
+
+Norc Release v2.1.1
+===================
+
+## Features
+  - Added host-wide functionality to norc_control, as well as a wait option.
+
+## Tweaks:
+  - The queue failure rate column has been removed due to slowness.
+  - The Alive column has been removed and merged into the Status column
+    as a color-coding.
+
+## Bug Fixes:
+  - Updated norc_control to work with new request design.
+  - Fixed timeframe selection in the web interface.
+  - Fixed a bug with saving in AbstractDaemon was allowing requests
+    to be overwritten.
+  - Added missing SQL commands to the migration doc.
+
+
 Norc Release v2.1
 =================
 
