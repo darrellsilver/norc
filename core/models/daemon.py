@@ -195,8 +195,8 @@ class AbstractDaemon(Model):
     
     def make_request(self, request):
         """This method is how the request field should always be set."""
-        assert request in self.VALID_REQUESTS, "Invalid request: " + \
-            "\"%s\" (%s)" % (Request.name(request), request)
+        if not request in self.VALID_REQUESTS:
+            return False
         if not Status.is_final(self.status):
             self.request = request
             self.save()

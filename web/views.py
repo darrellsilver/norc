@@ -8,8 +8,8 @@ from django.utils import simplejson
 from django.db.models.query import QuerySet
 
 from norc import settings
-from norc.core import reports
-from norc.core.constants import Request
+from norc.core import reports, controls
+from norc.core.constants import Status, Request
 from norc.core.models import Scheduler, Executor
 from norc.norc_utils.parsing import parse_since
 from norc.norc_utils.web import JSONObjectEncoder, paginate
@@ -26,8 +26,8 @@ def index(request):
         'reports': reports.all,
         'sections': settings.STATUS_TABLES,
         "requests": {
-            "executors": map(Request.name, Executor.VALID_REQUESTS),
-            "schedulers": map(Request.name, Scheduler.VALID_REQUESTS),
+            "executors": map(Request.name, Executor.VALID_REQUESTS) + ["handle"],
+            "schedulers": map(Request.name, Scheduler.VALID_REQUESTS) + ["handle"],
         },
     })
 
@@ -78,7 +78,10 @@ def control(request, content_type, content_id):
     if request.user.is_superuser:
         obj = reports.all[content_type].get(content_id)
         req = request.POST.get('request')
-        success = obj.make_request(getattr(Request, req.upper()))
+        if req == "handle":
+            success = controls.handle(obj)
+        else:
+            success = obj.make_request(getattr(Request, req.upper()))
     return http.HttpResponse(simplejson.dumps(success), mimetype="json")
 
 def get_log(request, content_type, content_id):    

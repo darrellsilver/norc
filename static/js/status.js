@@ -186,6 +186,8 @@ function makeControls(dataKey, id) {
                 $.post(path, {'request': v}, function(data) {
                     if (data == true) {
                         reloadSection('executors');
+                    } else {
+                        alert("Error!");
                     }
                 });
             }

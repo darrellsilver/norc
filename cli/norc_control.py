@@ -10,6 +10,7 @@ import sys
 import time
 from optparse import OptionParser
 
+from norc.core import controls
 from norc.core.constants import Status, Request
 from norc.core.models import Executor, Scheduler
 from norc.norc_utils.django_extras import update_obj, MultiQuerySet
@@ -55,6 +56,8 @@ def main():
         help="Send an resume request.")
     parser.add_option("-r", "--reload", action="store_true", default=False,
         help="Send an reload request to a Scheduler.")
+    parser.add_option("-h", "--handle", action="store_true", default=False,
+        help="Change the object's status to HANDLED.")
     parser.add_option("-f", "--force", action="store_true", default=False,
         help="Force the request to be made..")
     parser.add_option("-w", "--wait", action="store_true", default=False,
@@ -65,13 +68,14 @@ def main():
     if len(args) != 2:
         bad_args("Invalid number of arguments.")
     
-    # requests = ['stop', 'kill', 'pause', 'resume']
+    
     requests = filter(lambda a: getattr(options, a.lower()),
         Request.NAMES.values())
-    if len(requests) != 1:
+    if len(requests) != 1 or (len(requests) == 1 and options.handle):
         bad_args("Must request exactly one action.")
-    request = requests[0]
-    req = getattr(Request, request)
+    if not options.handle:
+        request = requests[0]
+        req = getattr(Request, request)
     
     cls = None
     if args[0] in EXECUTOR_KEYWORDS:
@@ -79,6 +83,8 @@ def main():
     elif args[0] in SCHEDULER_KEYWORDS:
         cls = Scheduler
     elif args[0] in HOST_KEYWORDS:
+        if options.handle:
+            bad_args("Can't perform handle operation on multiple daemons.")
         daemons = MultiQuerySet(Executor, Scheduler).objects.all()
         daemons = daemons.filter(host=args[1]).status_in("active")
         if not options.force:
@@ -90,7 +96,7 @@ def main():
         if options.wait:
             _wait(daemons, req)
     else:
-        print "Invalid keyword '%s'." % args[0]
+        bad_args("Invalid keyword '%s'." % args[0])
     
     if cls:
         name = cls.__name__
@@ -103,8 +109,13 @@ def main():
         except cls.DoesNotExist:
             print "Could not find a(n) %s with id=%s" % (name, obj_id)
         else:
-            if Status.is_final(d.status) and not options.force:
-                print "%s #%s is already in a final state." % (name, obj_id)
+            if options.handle:
+                if controls.handle(d):
+                    print "The error state of %s was marked as handled." % d
+                else:
+                    print "%s isn't in an error state." % d
+            elif Status.is_final(d.status) and not options.force:
+                print "%s is already in a final state." % d
             elif d.request == None or options.force:
                 d.make_request(req)
                 print "%s was sent a %s request." % (d, request)
