@@ -88,6 +88,7 @@ class Scheduler(AbstractDaemon):
     def __init__(self, *args, **kwargs):
         AbstractDaemon.__init__(self, *args, **kwargs)
         self.timer = MultiTimer()
+        self.set = set()
     
     def start(self):
         """Starts the Scheduler."""
@@ -126,7 +127,7 @@ class Scheduler(AbstractDaemon):
         simple = self.schedules.all()
         claimed_count = cron.count() + simple.count()
         if claimed_count > 0:
-            self.log.info('Cleaning up %s schedules.' % claimed_count)
+            self.log.info("Cleaning up %s schedules." % claimed_count)
             cron.update(scheduler=None)
             simple.update(scheduler=None)
     
@@ -172,6 +173,7 @@ class Scheduler(AbstractDaemon):
                 if s in changed:
                     self.log.info("Removing outdated: %s" % s)
                     self.timer.tasks.remove(item)
+                    self.set.remove(s)
                 s = type(s).objects.get(pk=s.pk)
             for s in changed:
                 self.log.info("Adding updated: %s" % s)
@@ -180,20 +182,28 @@ class Scheduler(AbstractDaemon):
     
     def add(self, schedule):
         """Adds the schedule to the timer."""
+        if schedule in self.set:
+            self.log.error("%s has already been added to this Scheduler." %
+                schedule)
+            return
         self.log.debug('Adding %s to timer for %s.' %
             (schedule, schedule.next))
         self.timer.add_task(schedule.next, self._enqueue, [schedule])
+        self.set.add(schedule)
     
     def _enqueue(self, schedule):
         """Called by the timer to add an instance to the queue."""
         updated_schedule = get_object(type(schedule), pk=schedule.pk)
+        self.set.remove(schedule)
         if updated_schedule == None or updated_schedule.deleted:
             self.log.info('%s was removed.' % schedule)
             return
         schedule = updated_schedule
         
         if not schedule.scheduler == self:
-            self.log.info("%s is no longer tied to this scheduler.")
+            self.log.info("%s is no longer tied to this Scheduler." %
+                schedule)
+            # self.set.remove(schedule)
             return
         instance = Instance.objects.create(
             task=schedule.task, schedule=schedule)

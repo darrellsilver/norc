@@ -20,7 +20,7 @@ class SchedulerTest(TestCase):
     
     def setUp(self):
         self._scheduler = Scheduler.objects.create()
-        self._scheduler.log = log.Log(os.devnull)
+        self._scheduler.log = log.Log(os.devnull, echo=True)
         self.thread = Thread(target=self._scheduler.start)
         self.thread.start()
         wait_until(lambda: self.scheduler.is_alive(), 3)
@@ -101,6 +101,19 @@ class SchedulerTest(TestCase):
         self.scheduler.make_request(Request.RELOAD)
         self._scheduler.flag.set()
         wait_until(lambda: s.instances.count() == 1, 10)
+    
+    def test_duplicate(self):
+        task = make_task()
+        queue = make_queue()
+        s = Schedule.create(task, queue, 1, 2, start=2)
+        self._scheduler.flag.set()
+        wait_until(lambda: self.scheduler.schedules.count() == 1, 2)
+        s = Schedule.objects.get(pk=s.pk)
+        s.scheduler = None
+        s.save()
+        self._scheduler.flag.set()
+        wait_until(lambda: s.instances.count() == 2, 5)
+        
     
     #def test_stress(self):
     #    task = make_task()
