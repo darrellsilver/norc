@@ -1,5 +1,15 @@
 
+Norc Release v2.2
+=================
 
+## Features
+  - Added "handle" option to norc_control and the front end that sets
+    status to HANDLED and sets the end date.
+  - Ability to set a memory limit for tasks.
+
+## Tweaks
+  - Added a set to Scheduler to ensure that duplicate schedules never get
+    claimed.
 
 
 Norc Release v2.1.1
