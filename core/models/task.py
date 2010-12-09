@@ -121,7 +121,12 @@ class AbstractInstance(Model):
     executor = ForeignKey('core.Executor', null=True,
         related_name='_%(class)ss')
     
+    revision = ForeignKey('core.Revision', null=True,
+        related_name='_%(class)ss')
+    
     def start(self):
+        """Performs initialization before calling run()."""
+        
         if not hasattr(self, 'log'):
             self.log = make_log(self.log_path)
         if self.status != Status.CREATED:
@@ -166,6 +171,7 @@ class AbstractInstance(Model):
             sys.exit(0 if self.status == Status.SUCCESS else 1)
     
     def run(self):
+        """Runs the instance."""
         raise NotImplementedError
     
     def kill_handler(self, *args, **kwargs):
@@ -173,6 +179,10 @@ class AbstractInstance(Model):
     
     def timeout_handler(self, *args, **kwargs):
         raise NorcTimeoutException()
+    
+    def get_revision(self):
+        """Hook to provide revision tracking functionality."""
+        return None
     
     @property
     def source(self):
