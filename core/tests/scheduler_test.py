@@ -20,7 +20,7 @@ class SchedulerTest(TestCase):
     
     def setUp(self):
         self._scheduler = Scheduler.objects.create()
-        self._scheduler.log = log.Log(os.devnull, echo=True)
+        self._scheduler.log = log.Log(os.devnull)
         self.thread = Thread(target=self._scheduler.start)
         self.thread.start()
         wait_until(lambda: self.scheduler.is_alive(), 3)
