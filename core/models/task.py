@@ -47,7 +47,7 @@ class Task(Model):
         app_label = 'core'
         abstract = True
     
-    name = CharField(max_length=128, unique=True)
+    name = CharField(max_length=128, unique=True, null=True)
     description = CharField(max_length=512, blank=True, default='')
     date_added = DateTimeField(default=datetime.utcnow)
     timeout = PositiveIntegerField(default=0)
@@ -74,7 +74,7 @@ class Task(Model):
         raise NotImplementedError
     
     def __unicode__(self):
-        return u"%s %s" % (type(self).__name__, self.name)
+        return u"%s %s" % (type(self).__name__, self.name or "#" + self.id)
     
     __repr__ = __unicode__
 
