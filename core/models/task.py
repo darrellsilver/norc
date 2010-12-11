@@ -93,6 +93,18 @@ class AbstractInstance(Model):
         app_label = 'core'
         abstract = True
     
+    class QuerySet(query.QuerySet):
+        
+        def since(self, since):
+            if type(since) == str:
+                since = parse_since(since)
+            return self.exclude(ended__lt=since) if since else self
+        
+        def status_in(self, statuses):
+            if isinstance(statuses, basestring):
+                statuses = Status.GROUPS(statuses)
+            return self.filter(status__in=statuses) if statuses else self
+    
     VALID_STATUSES = [
         Status.CREATED,
         Status.RUNNING,
@@ -200,17 +212,7 @@ class Instance(AbstractInstance):
     
     objects = QuerySetManager()
     
-    class QuerySet(query.QuerySet):
-        
-        def since(self, since):
-            if type(since) == str:
-                since = parse_since(since)
-            return self.exclude(ended__lt=since) if since else self
-        
-        def status_in(self, statuses):
-            if isinstance(statuses, basestring):
-                statuses = Status.GROUPS(statuses)
-            return self.filter(status__in=statuses) if statuses else self
+    class QuerySet(AbstractInstance.QuerySet):
         
         def from_queue(self, q):
             return self.filter(executor__queue_id=q.id,
