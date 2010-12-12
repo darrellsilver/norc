@@ -73,8 +73,12 @@ class Task(Model):
         """The actual work of the Task should be done in this function."""
         raise NotImplementedError
     
+    def get_name(self):
+        return self.name or ("#%s" % self.id if self.id
+            else False) or "<nameless>")
+    
     def __unicode__(self):
-        return u"%s %s" % (type(self).__name__, self.name or "#" + self.id)
+        return u"%s %s" % (type(self).__name__, self.get_name())
     
     __repr__ = __unicode__
 
@@ -237,12 +241,12 @@ class Instance(AbstractInstance):
     
     @property
     def source(self):
-        return self.task.name
+        return self.task.get_name()
     
     @property
     def log_path(self):
         return 'tasks/%s/%s/%s-%s' % (self.task.__class__.__name__,
-            self.task.name, self.task.name, self.id)
+            self.task.get_name(), self.task.get_name(), self.id)
     
     def __unicode__(self):
         return u'<Instance #%s of %s>' % (self.id, self.task)
