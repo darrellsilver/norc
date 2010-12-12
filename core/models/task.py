@@ -75,7 +75,7 @@ class Task(Model):
     
     def get_name(self):
         return self.name or ("#%s" % self.id if self.id
-            else False) or "<nameless>")
+            else False) or "<nameless>"
     
     def __unicode__(self):
         return u"%s %s" % (type(self).__name__, self.get_name())
