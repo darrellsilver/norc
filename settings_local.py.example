@@ -15,12 +15,15 @@ class DemoEnv(BaseEnv):
     DATABASE_USER = 'demo'
     DATABASE_PASSWORD = 'norc'
     
-    # You can add the sqs module like this:
-    # INSTALLED_APPS = BaseEnv.INSTALLED_APPS + ('norc.sqs',)
-    
     # Make this string unique and random, and don't share it with anybody.
     SECRET_KEY = ''
     
-    # Amazon AWS login info.  Only needed if you're using the SQS module.
-    AWS_ACCESS_KEY_ID = ''
-    AWS_SECRET_ACCESS_KEY = ''
+    # You can add the sqs module like this:
+    # INSTALLED_APPS = BaseEnv.INSTALLED_APPS + ('norc.sqs',)
+    
+    # Amazon AWS login info.  Only needed if you're using the SQS module or
+    # Amazon S3 backups.
+    # AWS_ACCESS_KEY_ID = ''
+    # AWS_SECRET_ACCESS_KEY = ''
+    # AWS_BUCKET_NAME = ''
+    # BACKUP_SYSTEM = ''        # Set to 'AmazonS3' to enable S3 log backups.
