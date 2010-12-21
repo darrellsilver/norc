@@ -1,13 +1,4 @@
 
-# ATTN: THIS IS SUPER OUT OF DATE #
-
-TODO:
-    django must be in python path
-    setting up an environment
-    making a log directory
-    set the norc environment shell variable
-    
-
 # Installing Norc
 
 The goal of this walkthrough is to set up the basic Norc environment, and run a sample Task.  Much of the power of Norc is in its extensibility beyond simple Task management, so the more hack-happy you are, the better!
