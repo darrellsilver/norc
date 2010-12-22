@@ -21,7 +21,7 @@ class ExecutorTest(TestCase):
         """Create the executor and thread objects."""
         self.queue = DBQueue.objects.create(name='test')
         self._executor = Executor.objects.create(queue=self.queue, concurrent=4)
-        self._executor.log = log.Log(os.devnull, echo=True)
+        self._executor.log = log.Log(os.devnull)
         self.thread = Thread(target=self._executor.start)
     
     def test_start_stop(self):    
