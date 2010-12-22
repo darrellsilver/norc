@@ -3,6 +3,7 @@
 
 import datetime, time
 
+from django.db.models.base import ModelBase
 from django.db.models import (Model, Manager,
     BooleanField,
     CharField,
@@ -15,8 +16,7 @@ from django.contrib.contenttypes.generic import (GenericRelation,
 
 from norc.core import TimedoutException
 from norc.norc_utils.django_extras import queryset_exists
-
-from django.db.models.base import ModelBase
+from norc.core.models.task import AbstractInstance
 
 class MetaQueue(ModelBase):
     """This metaclass is used to create a list of Queue implementations."""
@@ -53,6 +53,10 @@ class Queue(Model):
         return reduce(lambda a, b: a + b,
             [[q for q in QueueClass.objects.all()]
                 for QueueClass in MetaQueue.IMPLEMENTATIONS])
+    
+    @staticmethod
+    def validate(item):
+        assert isinstance(item, AbstractInstance), "Invalid queue item."
     
     # TODO: Unique names for queues should be enforced somehow around here.
     # def __init__(self, *args, **kwargs):
@@ -113,6 +117,7 @@ class DBQueue(Queue):
     
     def push(self, item):
         """Adds an item to the queue."""
+        Queue.validate(item)
         DBQueueItem.objects.create(dbqueue=self, item=item)
     
     def count(self):
