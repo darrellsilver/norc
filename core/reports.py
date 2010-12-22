@@ -226,6 +226,7 @@ class tasks(BaseReport):
     data = {
         'id': lambda obj, **kws: '%s_%s' %
             (ContentType.objects.get_for_model(obj).id, obj.id),
+        'name': lambda obj, **kws: obj.get_name(),
         'type': lambda obj, **kws: type(obj).__name__,
         'added': lambda obj, **kws: obj.date_added,
         'instances': lambda obj, **kws: obj.instances.count(),

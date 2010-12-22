@@ -33,3 +33,7 @@ class TestCommandTask(TestCase):
             CommandTask.objects.create(
                 name='Timeout', command='sleep 5', timeout=1)))
     
+    def test_nameless(self):
+        "Tests that a task can be nameless."
+        t = CommandTask.objects.create(command="echo 'Nameless!'")
+        self.assertEqual(Status.SUCCESS, self.run_task(t))

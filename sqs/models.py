@@ -40,6 +40,7 @@ class SQSQueue(Queue):
             return SQSQueue.get_item(*pickle.loads(message.get_body()))
     
     def push(self, item):
+        Queue.validate(item)
         content_type = ContentType.objects.get_for_model(item)
         body = (content_type.pk, item.pk)
         message = self.queue.new_message(pickle.dumps(body))

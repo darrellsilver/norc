@@ -113,7 +113,6 @@ class SchedulerTest(TestCase):
         s.save()
         self._scheduler.flag.set()
         wait_until(lambda: s.instances.count() == 2, 5)
-        
     
     #def test_stress(self):
     #    task = make_task()

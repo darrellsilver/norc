@@ -47,7 +47,7 @@ class Task(Model):
         app_label = 'core'
         abstract = True
     
-    name = CharField(max_length=128, unique=True)
+    name = CharField(max_length=128, unique=True, null=True)
     description = CharField(max_length=512, blank=True, default='')
     date_added = DateTimeField(default=datetime.utcnow)
     timeout = PositiveIntegerField(default=0)
@@ -73,8 +73,12 @@ class Task(Model):
         """The actual work of the Task should be done in this function."""
         raise NotImplementedError
     
+    def get_name(self):
+        return self.name or ("#%s" % self.id if self.id
+            else False) or "<nameless>"
+    
     def __unicode__(self):
-        return u"%s %s" % (type(self).__name__, self.name)
+        return u"%s %s" % (type(self).__name__, self.get_name())
     
     __repr__ = __unicode__
 
@@ -92,6 +96,18 @@ class AbstractInstance(Model):
     class Meta:
         app_label = 'core'
         abstract = True
+    
+    class QuerySet(query.QuerySet):
+        
+        def since(self, since):
+            if type(since) == str:
+                since = parse_since(since)
+            return self.exclude(ended__lt=since) if since else self
+        
+        def status_in(self, statuses):
+            if isinstance(statuses, basestring):
+                statuses = Status.GROUPS(statuses)
+            return self.filter(status__in=statuses) if statuses else self
     
     VALID_STATUSES = [
         Status.CREATED,
@@ -210,17 +226,7 @@ class Instance(AbstractInstance):
     
     objects = QuerySetManager()
     
-    class QuerySet(query.QuerySet):
-        
-        def since(self, since):
-            if type(since) == str:
-                since = parse_since(since)
-            return self.exclude(ended__lt=since) if since else self
-        
-        def status_in(self, statuses):
-            if isinstance(statuses, basestring):
-                statuses = Status.GROUPS(statuses)
-            return self.filter(status__in=statuses) if statuses else self
+    class QuerySet(AbstractInstance.QuerySet):
         
         def from_queue(self, q):
             return self.filter(executor__queue_id=q.id,
@@ -245,12 +251,12 @@ class Instance(AbstractInstance):
     
     @property
     def source(self):
-        return self.task.name
+        return self.task.get_name()
     
     @property
     def log_path(self):
         return 'tasks/%s/%s/%s-%s' % (self.task.__class__.__name__,
-            self.task.name, self.task.name, self.id)
+            self.task.get_name(), self.task.get_name(), self.id)
     
     def __unicode__(self):
         return u'<Instance #%s of %s>' % (self.id, self.task)
