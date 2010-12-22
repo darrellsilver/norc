@@ -1,4 +1,23 @@
 
+v2.1 -> v2.2
+============
+
+  - Task "name" field is now nullable.
+  - New table norc_revisions
+### SQL Statements
+__Norc must be completely stopped before making these changes.__
+
+This must be run for the table of each task implementation:
+
+    ALTER TABLE norc_commandtask MODIFY name VARCHAR(128);
+    CREATE TABLE `norc_revision` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `info` varchar(64) NOT NULL,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `info` (`info`)
+    );
+
+
 v2.0 -> v2.1
 ============
 
