@@ -9,6 +9,10 @@ class Revision(Model):
     
     info = CharField(max_length=64, unique=True)
     
+    @staticmethod
+    def create(info):
+        return Revision.objects.create(info=info)
+    
     def __str__(self):
         return "Revision [%s]" % self.info
     

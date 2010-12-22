@@ -6,23 +6,25 @@ import time
 
 from django.test import TestCase
 
-from norc.core.models import CommandTask, Instance
+from norc.core.models import CommandTask, Instance, Revision
 from norc.core.constants import Status
 from norc.norc_utils import log
 
-class TestCommandTask(TestCase):
+class TestTask(TestCase):
     """Tests for Norc tasks."""
     
-    def run_task(self, ct):
-        if type(ct) == str:
-            ct = CommandTask.objects.create(name=ct, command=ct)
-        instance = Instance.objects.create(task=ct)
+    def run_task(self, task):
+        if type(task) == str:
+            task = CommandTask.objects.create(name=task, command=task)
+        return self.run_instance(Instance.objects.create(task=task)).status
+    
+    def run_instance(self, instance):
         instance.log = log.Log(os.devnull)
         try:
             instance.start()
         except SystemExit:
             pass
-        return Instance.objects.get(pk=instance.pk).status
+        return Instance.objects.get(pk=instance.pk)
     
     def test_status(self):
         """Tests that a task can run successfully."""
@@ -37,3 +39,10 @@ class TestCommandTask(TestCase):
         "Tests that a task can be nameless."
         t = CommandTask.objects.create(command="echo 'Nameless!'")
         self.assertEqual(Status.SUCCESS, self.run_task(t))
+
+    def test_revisions(self):
+        r = Revision.objects.create(info="rev")
+        t = CommandTask.objects.create(command="ls")
+        i = Instance.objects.create(task=t)
+        i.get_revision = lambda: r
+        self.assertEqual(r, self.run_instance(i).revision)

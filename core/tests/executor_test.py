@@ -21,7 +21,7 @@ class ExecutorTest(TestCase):
         """Create the executor and thread objects."""
         self.queue = DBQueue.objects.create(name='test')
         self._executor = Executor.objects.create(queue=self.queue, concurrent=4)
-        self._executor.log = log.Log(os.devnull)
+        self._executor.log = log.Log(os.devnull, echo=True)
         self.thread = Thread(target=self._executor.start)
     
     def test_start_stop(self):    
@@ -67,7 +67,7 @@ class ExecutorTest(TestCase):
     
     def tearDown(self):
         if not Status.is_final(self._executor.status):
-            self._executor.make_request(Request.KILL)
+            print self._executor.make_request(Request.KILL)
         self.thread.join(7)
         self._executor.heart.join(7)
         assert not self.thread.isAlive()

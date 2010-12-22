@@ -77,6 +77,9 @@ class Task(Model):
         return self.name or ("#%s" % self.id if self.id
             else False) or "<nameless>"
     
+    def get_revision(self):
+        return None
+    
     def __unicode__(self):
         return u"%s %s" % (type(self).__name__, self.get_name())
     
@@ -159,6 +162,10 @@ class AbstractInstance(Model):
         self.log.info('Starting %s.' % self)
         self.log.start_redirect()
         self.status = Status.RUNNING
+        try:
+            self.revision = self.get_revision()
+        except:
+            self.log.error("Error getting revision information.", trace=True)
         self.started = datetime.utcnow()
         self.save()
         try:
@@ -257,6 +264,10 @@ class Instance(AbstractInstance):
     def log_path(self):
         return 'tasks/%s/%s/%s-%s' % (self.task.__class__.__name__,
             self.task.get_name(), self.task.get_name(), self.id)
+    
+    def get_revision(self):
+        """Hook to provide revision tracking functionality."""
+        return self.task.get_revision()
     
     def __unicode__(self):
         return u'<Instance #%s of %s>' % (self.id, self.task)
