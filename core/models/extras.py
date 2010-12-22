@@ -6,6 +6,7 @@ class Revision(Model):
     
     class Meta:
         app_label = 'core'
+        db_table = 'norc_revision'
     
     info = CharField(max_length=64, unique=True)
     
