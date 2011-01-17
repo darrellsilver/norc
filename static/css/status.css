@@ -22,6 +22,10 @@ div.section {
 }
 #timestuff {
     float:right;
+    text-align:right;
+}
+#timestamp {
+    font-weight: bold;
 }
 #scheduler_monitor {
     text-align: center;

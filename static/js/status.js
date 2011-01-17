@@ -26,12 +26,13 @@ function pad(n, i) {
 }
 
 function formatDate(date) {
-    return  pad(date.getFullYear(), 4) + '/' +
-            pad(date.getMonth() + 1, 2) + '/' +
-            pad(date.getDate(), 2) + ' ' +
-            pad(date.getHours(), 2) + ':' +
-            pad(date.getMinutes(), 2) + ':' +
-            pad(date.getSeconds(), 2)
+    return  pad(date.getUTCFullYear(), 4) + '/' +
+            pad(date.getUTCMonth() + 1, 2) + '/' +
+            pad(date.getUTCDate(), 2) + ' ' +
+            pad(date.getUTCHours(), 2) + ':' +
+            pad(date.getUTCMinutes(), 2) + ':' +
+            pad(date.getUTCSeconds(), 2) +
+            " UTC"
 }
 
 var DETAIL_KEYS = {
@@ -604,7 +605,7 @@ $(document).ready(function() {
         $.each(SECTIONS, function(i, section) {
             reloadSection(section);
         });
-        $('#timestamp').text('Last updated at: ' + formatDate(new Date()));
+        $('#timestamp').text(formatDate(new Date()));
     };
     reloadAll()
     $('#auto-reload input').attr('checked', false).click(function() {
