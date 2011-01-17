@@ -5,7 +5,7 @@
 import sys
 from optparse import OptionParser
 
-from norc.core.models import Executor, Queue
+from norc.core.models import Executor, Queue, DBQueue
 from norc.norc_utils.log import make_log
 
 def main():
@@ -19,13 +19,15 @@ def main():
     parser = OptionParser(usage)
     parser.add_option("-c", "--concurrent", type='int',
         help="How many instances can be run concurrently.")
+    parser.add_option("-q", "--create_queue", action="store_true",
+        default=False, help="Force creation of a DBQueue with this name.")
     parser.add_option("-e", "--echo", action="store_true", default=False,
         help="Echo log messages to stdout.")
     parser.add_option("-d", "--debug", action="store_true", default=False,
         help="Enable debug messages.")
     
     (options, args) = parser.parse_args()
-
+    
     if len(args) != 1:
         bad_args("A single queue name is required.")
     
@@ -34,7 +36,10 @@ def main():
     
     queue = Queue.get(args[0])
     if not queue:
-        bad_args("Invalid queue name '%s'." % args[0])
+        if options.create_queue:
+            queue = DBQueue.objects.create(name=args[0])
+        else:
+            bad_args("Invalid queue name '%s'." % args[0])
     
     executor = Executor.objects.create(queue=queue, concurrent=options.concurrent)
     executor.log = make_log(executor.log_path,
