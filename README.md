@@ -3,7 +3,10 @@
 
 # Norc
 
-Norc is a task management and scheduling system that replaces the Unix cron utility.  Its goal is to allow tasks to be created, managed and tracked in a flexible, user-friendly way.  Norc was first developed by [Darrell Silver](http://darrellsilver.com/) for use as the scheduling system for [Perpetually](http://www.perpetually.com/), the web archiving company.  It was open-sourced in October, 2009 at [NYC Python](http://www.nycpython.org/) at the suggestion of [David Christian](http://twitter.com/duganesque).  It has since undergone a major overhaul at the hands of Max Bogue, under Perpetually's employ.
+Norc is a task management and scheduling system that replaces the Unix cron utility.  Its goal is to allow tasks to be created, managed and tracked in a flexible, user-friendly way.  Norc was first developed by [Darrell Silver](http://darrellsilver.com/) for use as the scheduling system for [Perpetually](http://www.perpetually.com/), the web archiving company.  It is currently used in production, and was open-sourced in October, 2009 at [NYC Python](http://www.nycpython.org/) at the suggestion of [David Christian](http://twitter.com/duganesque).  It has since undergone a major overhaul at the hands of Max Bogue, under Perpetually's employ.
+
+Norc was first developed by [Darrell Silver](http://darrellsilver.com/) as the archiving scheduling system for [Perpetually.com's](http://www.perpetually.com/) archiving system, and is currently in production.   [Perpetually.com](http://www.perpetually.com/) lets you capture and archive any web site with a single click. It's the history of the internet made useful.  A core feature of [Perpetually's](http://www.perpetually.com/) offering is repeated, scheduled archives, a task for which Norc has proven a good fit.
+
 
 ## Features
 
@@ -83,12 +86,8 @@ Displays similar status tables as the web front end.
 
 Can be used to easily retrieve logs, both locally and from a remote backup location (e.g., Amazon S3).
 
------
 
-Norc was first developed by [Darrell Silver](http://darrellsilver.com/) as the archiving scheduling system for [Perpetually.com's](http://www.perpetually.com/) archiving system, and is currently in production.   [Perpetually.com](http://www.perpetually.com/) lets you capture and archive any web site with a single click. It's the history of the internet made useful.  A core feature of [Perpetually's](http://www.perpetually.com/) offering is repeated, scheduled archives, a task for which Norc has proven a good fit.
+## Installation ##
 
-
-### Install & Example:
-
-See ./INSTALL.md
+See ./INSTALL.md for a walkthrough.
 
