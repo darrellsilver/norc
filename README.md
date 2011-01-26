@@ -18,12 +18,6 @@ Norc was first developed by [Darrell Silver](http://darrellsilver.com/) as the a
  * Because all state is stored in a DB, it can be **administered through a web interface**.  In addition to Django's administration tools, Norc provides a powerful web reporting layer.
 
 
-### What Norc is Good at & What it's Not
-
-
-* At [Perpetually](http://www.perpetually.com/), we use Norc to kick off each scheduled crawl for each user, as well as several system administration Tasks.  When these Tasks run, all it does is put URLs into a queueing service for processing by any available worker.  Crawls can grow to several thousand URLs, and this process makes efficient use of Norc, which provides flexible editing and auditing, as well as queues, which offer excellent scalability and repeatability, but less run-time control.
-
-
 ## Design & Terminology ##
 
 Norc is written entirely in Python/Django.  It has been tested and rolled out by Perpetually, running on OS X and Linux, using MySQL, Python 2.5/2.6 and Django-1.1.
