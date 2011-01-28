@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 """A command-line script to run a Norc scheduler."""
 
