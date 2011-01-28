@@ -2,34 +2,28 @@
 """The Norc Executor (norcd) is defined here."""
 
 import os
-import sys
 import signal
 import time
 from datetime import datetime, timedelta
-from threading import Thread, Event
+from threading import Thread
 # from multiprocessing import Process
 # Alas, 2.5 doesn't have multiprocessing...
 from subprocess import Popen
 import resource
 
-from django.db.models import (Model, Manager, query,
-    CharField,
-    DateTimeField,
+from django.db.models import (
     IntegerField,
     PositiveIntegerField,
     PositiveSmallIntegerField,
     ForeignKey)
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.generic import (GenericRelation,
-                                                 GenericForeignKey)
+from django.contrib.contenttypes.generic import (GenericForeignKey)
 
-from norc.core.models.queue import Queue
 from norc.core.models.daemon import AbstractDaemon
-from norc.core.constants import (Status, Request, CONCURRENCY_LIMIT,
-    EXECUTOR_PERIOD, HEARTBEAT_PERIOD, HEARTBEAT_FAILED, INSTANCE_MODELS)
+from norc.core.constants import (Status, Request,
+    EXECUTOR_PERIOD, HEARTBEAT_FAILED, INSTANCE_MODELS)
 from norc.norc_utils.django_extras import QuerySetManager, MultiQuerySet
 from norc.norc_utils.parallel import ThreadPool
-from norc.norc_utils.log import make_log
 from norc.norc_utils.backup import backup_log
 from norc import settings
 

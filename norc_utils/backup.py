@@ -3,7 +3,6 @@ import os
 
 from norc.settings import (NORC_LOG_DIR, BACKUP_SYSTEM,
     AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET_NAME)
-from norc.norc_utils.log import make_log
 
 if BACKUP_SYSTEM == 'AmazonS3':
     from norc.norc_utils.aws import set_s3_key
