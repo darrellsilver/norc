@@ -2,3 +2,6 @@
 settings_local.py
 *~
 hide/
+.idea
+.DS_Store
+log/tasks
