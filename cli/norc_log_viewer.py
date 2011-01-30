@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 """A command-line script to retrieve a Norc log file."""
 

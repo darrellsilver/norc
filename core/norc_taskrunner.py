@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 """Script to run a Norc instance for 2.5 compatibility."""
 

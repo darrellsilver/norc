@@ -1,6 +1,5 @@
 
 import os
-import sys
 import signal
 import time
 from datetime import datetime, timedelta

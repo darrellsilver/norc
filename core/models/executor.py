@@ -2,33 +2,28 @@
 """The Norc Executor (norcd) is defined here."""
 
 import os
-import sys
 import signal
 import time
 from datetime import datetime, timedelta
-from threading import Thread, Event
+from threading import Thread
 # from multiprocessing import Process
 # Alas, 2.5 doesn't have multiprocessing...
 from subprocess import Popen
+import resource
 
-from django.db.models import (Model, Manager, query,
-    CharField,
-    DateTimeField,
+from django.db.models import (
     IntegerField,
     PositiveIntegerField,
     PositiveSmallIntegerField,
     ForeignKey)
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.generic import (GenericRelation,
-                                                 GenericForeignKey)
+from django.contrib.contenttypes.generic import (GenericForeignKey)
 
-from norc.core.models.queue import Queue
 from norc.core.models.daemon import AbstractDaemon
-from norc.core.constants import (Status, Request, CONCURRENCY_LIMIT,
-    EXECUTOR_PERIOD, HEARTBEAT_PERIOD, HEARTBEAT_FAILED, INSTANCE_MODELS)
+from norc.core.constants import (Status, Request,
+    EXECUTOR_PERIOD, HEARTBEAT_FAILED, INSTANCE_MODELS)
 from norc.norc_utils.django_extras import QuerySetManager, MultiQuerySet
 from norc.norc_utils.parallel import ThreadPool
-from norc.norc_utils.log import make_log
 from norc.norc_utils.backup import backup_log
 from norc import settings
 
@@ -109,6 +104,11 @@ class Executor(AbstractDaemon):
             self.pool = ThreadPool(self.concurrent * 2)
         self.log.info("%s is now running on host %s." % (self, self.host))
         
+        if self.log.debug_on:
+            self.resource_reporter = Thread(target=self.report_resources)
+            self.resource_reporter.daemon = True
+            self.resource_reporter.start()
+        
         # Main loop.
         while not Status.is_final(self.status):
             if self.request:
@@ -116,13 +116,13 @@ class Executor(AbstractDaemon):
             
             if self.status == Status.RUNNING:
                 while len(self.processes) < self.concurrent:
-                    self.log.debug("Popping instance...")
+                    # self.log.debug("Popping instance...")
                     instance = self.queue.pop()
                     if instance:
-                        self.log.debug("Popped %s" % instance)
+                        # self.log.debug("Popped %s" % instance)
                         self.start_instance(instance)
                     else:
-                        self.log.debug("No instance in queue.")
+                        # self.log.debug("No instance in queue.")
                         break
             
             elif self.status == Status.STOPPING and len(self.processes) == 0:
@@ -132,8 +132,8 @@ class Executor(AbstractDaemon):
             # Clean up completed tasks before iterating.
             for pid, p in self.processes.items()[:]:
                 p.poll()
-                self.log.debug(
-                    "Checking pid %s: return code %s." % (pid, p.returncode))
+                # self.log.debug(
+                #     "Checking pid %s: return code %s." % (pid, p.returncode))
                 if not p.returncode == None:
                     i = type(p.instance).objects.get(pk=p.instance.pk)
                     self.log.info("Instance '%s' ended with status %s." %
@@ -149,6 +149,14 @@ class Executor(AbstractDaemon):
     def clean_up(self):
         if settings.BACKUP_SYSTEM:
             self.pool.joinAll()
+    
+    def report_resources(self):
+        while not Status.is_final(self.status):
+            time.sleep(10)
+            rself = resource.getrusage(resource.RUSAGE_SELF)
+            self.log.debug(rself)
+            rchildren = resource.getrusage(resource.RUSAGE_CHILDREN)
+            self.log.debug(rchildren)
     
     def start_instance(self, instance):
         """Starts a given instance in a new process."""

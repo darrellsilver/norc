@@ -8,6 +8,13 @@ settings from those other files.
 """
 
 import os
+import sys
+
+try:
+    import norc
+except ImportError, e:
+    print 'ImportError:', e
+    sys.exit(1)
 
 from norc.settings_local import *
 from norc.defaults import Envs

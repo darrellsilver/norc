@@ -20,6 +20,6 @@ __Queue__: An abstract concept of a distributed queueing system to disperse inst
 
 __Executor__: A process which continually pops instances off a specific queue and starts them.
 
-Note: Norc requires at least one Scheduler and at least one Executor to be running in order to function.  Multiple Executors are key to scaling the system for heavy workloads.
+Note: Norc requires at least one Scheduler total and at least one Executor per queue to be running in order to function.  Multiple Executors are key to scaling the system for heavy workloads.
 
 A __Task__ has at least one __Schedule__ which is used by a __Scheduler__ to create __Instances__ which go in a __Queue__ and are then popped and executed by __Executors__.

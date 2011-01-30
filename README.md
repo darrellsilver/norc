@@ -1,162 +1,84 @@
-
-# ATTN: THIS IS SUPER OUT OF DATE #
-
 # Norc
 
-Norc is a Task Management System that replaces Unix cron.  Its goal is to allow Tasks to be created, managed and audited in a flexible, user-friendly way.  Norc was first developed by [Darrell Silver](http://darrellsilver.com/) for use as the scheduling system for [Perpetually.com](http://www.perpetually.com/), the web archiving company.  It was open-sourced in October, 2009 at [NYC Python](http://www.nycpython.org/) at the suggestion of [David Christian](http://twitter.com/duganesque).
+Norc is a task management and scheduling system that replaces the Unix cron utility.  Its goal is to allow tasks to be created, managed and tracked in a flexible, user-friendly way.  Norc was first developed by [Darrell Silver](http://darrellsilver.com/) for use as the scheduling system for [Perpetually](http://www.perpetually.com/), the web archiving company.  It is currently used in production, and was open-sourced in October, 2009 at [NYC Python](http://www.nycpython.org/) at the suggestion of [David Christian](http://twitter.com/duganesque).  It has since undergone a major overhaul at the hands of Max Bogue, under Perpetually's employ.
 
-### Features
+Norc was first developed by [Darrell Silver](http://darrellsilver.com/) as the archiving scheduling system for [Perpetually.com's](http://www.perpetually.com/) archiving system, and is currently in production.   [Perpetually.com](http://www.perpetually.com/) lets you capture and archive any web site with a single click. It's the history of the internet made useful.  A core feature of [Perpetually's](http://www.perpetually.com/) offering is repeated, scheduled archives, a task for which Norc has proven a good fit.
 
- * Define **Task dependencies**, ensuring that Task 'C' only runs after 'A' and 'B' have completed successfully.
- * Throttle limited resource with **resource management**, preventing processes from overloading a database, or other service.
- * Receive **email notification** when a Task fails. Full status is stored in the DB, allowing analysis of Task run times and success rates.
- * All output for Tasks is managed in **normalized logs**.
+
+## Features
+
+ * Define **groups of Tasks** as Jobs with **Task dependencies**, ensuring that Task 'C' only runs after 'A' and 'B' have completed successfully.
+ * All output for Tasks is managed in **normalized logs**, with support for uploading to an **external location** (Amazon S3 support built in).
  * **Schedule** Tasks, just like Cron. 
- * Run Tasks on **any number of hosts**.  Task state is shared in a single DB, making Norc as scalable as its underlying database.
- * Set **timeouts** and **nice** values for any Task, catching errors and prevent runaway processing.
- * Because Task state is stored in a DB, it can be **administered through a web interface**.  These tools are currently limited to Django's administration tools and some custom command-line tools.
- * We built a plugin for **Amazon's SQS** that allows us to use all the auditing of Tasks, but using SQS as the source of Tasks to run.
+ * Run Tasks on **any number of hosts**.  Task state is shared in a single DB, making Norc as **scalable** as its underlying database.
+ * Set **timeouts** for any Task, catching errors and prevent runaway processing.
+ * Because all state is stored in a DB, it can be **administered through a web interface**.  In addition to Django's administration tools, Norc provides a powerful web reporting layer.
 
 
-### What Norc is Good at & What it's Not
+## Design & Terminology ##
 
-* Norc is not SQS or RabbitMQ or Celery.  These systems are excellent at processing thousands or millions of the same Task, allowing background processing of repetitive actions.  Norc is better at handling arbitrary, diverse Tasks.  
-* If you're encoding video that users upload, you're better off with a queueing system.  If you're currently using wrapper scripts, or want more transparency in complex, discreet processes, Norc can prove an excellent fit.
-* At [Perpetually](http://www.perpetually.com/), we use Norc to kick off each scheduled crawl for each user, as well as several system administration Tasks.  When these Tasks run, all it does is put URLs into a queueing service for processing by any available worker.  Crawls can grow to several thousand URLs, and this process makes efficient use of Norc, which provides flexible editing and auditing, as well as queues, which offer excellent scalability and repeatability, but less run-time control.
+Norc is written entirely in Python/Django.  It has been tested and rolled out by Perpetually, running on OS X and Linux, using MySQL, Python 2.5/2.6 and Django-1.1.
 
+Each of these concepts are represented by Django models, mapping to a table in the database unless they are abstract.  Subclasses of the abstract models will produce their own tables.
 
-### Architecture & Terminology Overview
-
-Norc is written entirely in Python/Django.  It has been tested and rolled for Perpetually.com, running on OS X and Linux, using MySQL, Python 2.4, 2.5, 2.6 and Django-1.0.
+See ./glossary.md for a quick overview of the Norc design.
 
 
-#### Tasks:
+### Tasks ###
 
-A Task is a runnable unit of work. It is exactly analogous to a Unix 'cronjob'.  In Norc, Tasks are implemented by subclassing either the Task or ScheduleableTask interfaces.  There are several pre-built subclasses in Norc that cover common use cases:
-
- * **RunCommand**: allows running a single command.
- * **ScheduledRunCommand**: allows running a single command on a schedule
-
-These classes are Django models, and as such each map to a table in the databse. All these base interfaces and subclasses are defined norc.core.models.py
-
-Subclasses of Task & SchedulableTask must implement a few methods, and can safely override others:
-
- * **run()**: Mandatory: Action taken when this Task is run. Main processing happens here.
- * **get_library_name()**: Mandatory: The string path to this Task class name. This shouldn't be necessary, but it currently is.
- * **has_timeout()**: Mandatory boolean; True if this Task should timeout. False otherwise.
- * **get_timeout()**: Mandatory integer (seconds); return the number of seconds before this Task times out.  Must be defined if has_timeout() returns True.
- * **is_due_to_run()**: Boolean; defaults to True but can be overridden.  SchedulableTask has its own time-based implementation of this method.
- * **alert_on_failure()**: Boolean; defaults to True.
-
-Most Tasks are designed to be run multiple times, such as on a daily our hourly basis. However, Norc provides flexibility on this:
-
- * **PERSISTENT**: Run each time it is due_to_run().  This applies to most tasks.
- * **EPHEMERAL**: Run once, and never again.  This is similar to an @ job, and is often paired with PERSISTENT Iterations (see below).
-
-Task Statuses define the status of a single run of a single Task.  They are the the equivalent of exit statuses.  They are
-
- * **SKIPPED**: Task has been skipped; it ran and failed or did not run before being skipped
- * **RUNNING**: Task is running now.. OMG exciting!
- * **ERROR**: Task ran but ended in error
- * **TIMEDOUT**: Task timed out while running, and was killed by the Norc daemon that launched it.
- * **CONTINUE**: Task ran and failed. Child Tasks will still run allowed to run as though this Task succeeded.  This is the equivalent of if the dependency between this Task and its child was of type 'FLOW' (see details below).
- * **RETRY**: Task has been asked to be retried, but has yet to run again.
- * **SUCCESS**: Task ran successfully. Yay!
+A Norc Task is an **abstract description** of work to be done.  A Task class is implemented by subclassing norc.core.models.Task, and objects of that class represent different variations of that abstract type of work.  For example, Norc comes with the CommandTask class, of which specific objects represent different shell commands to execute.
 
 
-#### Jobs:
+### Jobs ###
 
- * Each Task in Norc belongs to exactly 1 Job.  Dependencies between Tasks can only be defined within a single Job.
- * Jobs may be started on a schedule, such as midnight.  Norc uses a Job (TMS_ADMIN) to start all Jobs in Norc.
-
-
-#### Iterations:
-
-Each run of each Job does so as a distinct Iteration.  Iterations have three possible statuses: 
-
- * **RUNNING** (Tasks will be run as they become available)
- * **PAUSED** (The iteration has not completed but new Tasks will not be started)
- * **DONE** (No more tasks will be run for this job).
-
-**Iteration Types** defines whether an Iteration is 
-
-   * **EPHEMERAL**: The Iteration should run as long as Tasks in that Job for that iteration are incomplete.  Once all Tasks are complete (see Task Statuses below for details), the Iteration is marked as 'DONE'.  This is best used for a series of Tasks that run once a day, such as a data download Task followed by a data processes Task.  This is the most common type of Iteration.
-   * **PERSISTENT**: The Iteration will remain running indefinitely, starting Tasks as they become available.  This is best used for Tasks that run once, such as EPHEMERAL Tasks.
+A Job is an extension of a Norc task.  It contains JobNodes (which wrap other Tasks) and Dependencies (Node A must run after Node B, and uses those to execute the tasks in proper sequence.
 
 
-#### Resources & Resource Relationships:
+### Instances ###
 
- * Norc allows usage of shared resources to be throttled, preventing too many Tasks from accessing a single resource, such as a web site or database with limited available connections.  Tasks can only be run in any Region that offers sufficient resources available at run time.
- * In addition to throttling limited resources, Resources are often used to target certain environments.  For example, if you have Tasks that can only run on Linux, then you should define a 'Linux' Resource, define a TaskResourceRelationship between this Task and 'Linux'.  This Task will then never run on any non-Linux host (see section on Daemons & Regions for how this works).
- * By default, each Task consumes 1 DATABASE_CONNECTION Resource.
+An Instance in Norc represents an **execution** of some work.  This generally means a run of a Task, but in some cases other subclasses of AbstractInstance are handy (for example, JobNodeInstances allow for the custom behavior that drives Jobs).  Instances store data about the execution, including start/end times, status, and the Executor that ran them.
 
 
-#### Daemons:
+### Schedules ###
 
- * Daemons in Norc (called NorcDaemons for no good reason) are responsible for kicking off all Tasks in Norc.  A daemon is a unix process running on a specific host running as tmsd.py.
-
-
-#### Regions:
-
- * Regions are islands of Resource availability.  Each Daemon runs within a single Region.
+In order for a Task to run, a schedule must be made to tell Norc when to run it.  There are two schedule classes: a simple Schedule which allows any number of repetitions with a set period between them, and a more complex CronSchedule which allows the user to choose the months, days, weekdays, hours, minutes, and seconds on which the Task should run.  More than one schedule may be created for a single Task.
 
 
-#### Dependency Types:
+### Scheduler ###
 
-Tasks in the same Job can define Dependencies that create a parent -> child relationship between Tasks.  Child Tasks will only run once all their Parent's have satisfactorily completed.
-
-Typically a child Task only runs once its parents have completed successfully, but this can be altered using Dependency Types:
- * **DEP_TYPE_STRICT**: Child Tasks only run when the parent has completed successfully.  This is the most common type of dependency.
- * **DEP_TYPE_FLOW**: Child Tasks run as soon as the parent has completed, regardless of the parent's exit status.
+A process that reads schedules and uses them to create and enqueue instances at the appropriate time.  Norc **requires** at least one Scheduler to be running in order to function.  Schedulers can be run using the norc_scheduler script.
 
 
-### Interacting & Monitoring:
+### Queues ###
 
-Norc could support a web front end that allows full administration of the entire system, but none currently exists. Instead, Norc makes use of Django's excellent Admin interface.
-
-#### tmsdctl.py:
-
- * Allows stopping, killing, viewing of all Daemons in Norc.  It also allows an overview of Tasks run by each Daemon.  
- * This sample from [perpetually.com](http://www.perpetually.com/) shows two daemons running on two distinct hosts in two distinct regions:
-
-        $ tmsdctl 
-        Status as of 10/27/2009 19:47:27
-        6 INTERESTING tms daemon(s):
-        ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
-        409     Norc     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
-        413     Norc     perp3     perp3         15159         2      2283       0   RUNNING   2009-10-24 19:01:26       -
-
- * This sample from [perpetually.com](http://www.perpetually.com/) shows a snippet of details for daemon ID 409.  We see the status of just four Tasks in this daemon:
-
-        $ tmsdctl --det 410
-        Status as of 10/27/2009 19:50:00
-        1 INTERESTING tms daemon(s):
-        ID     Type     Region    Host          PID     Running   Success   Error    Status               Started   Ended
-        409     Norc     perp1     perpetually   14031         6       120       3   RUNNING   2009-10-24 18:52:52       -
-        
-        Norc Daemon perp1:410 (RUNNING) manages 3 task(s):
-        
-        Task ID      Status               Started                 Ended
-        7546134    TIMEDOUT   2009-10-25 00:05:30   2009-10-25 00:20:30
-        7546188       ERROR   2009-10-25 00:08:55   2009-10-25 00:10:05
-        7546048       ERROR   2009-10-25 00:09:48   2009-10-25 00:09:48
-        7546205     RUNNING   2009-10-27 00:18:54   2009-10-25 00:18:55
-        ...
+Queues double as the way that instances are prioritized in Norc and as the means for distributing them to Executors.  Queues are an abstract concept; Norc comes with two implementations, DBQueue (the default) and SQSQueue.
 
 
-### Code Base & Development Status:
+### Executors ###
 
-Norc is stable, but there are known issues & limitations:
-
- * Log files are currently stored only on the host on which the Task ran.  This limits their accessibility, and could be remedied through pushing them to S3, or other central service. They're just text files.
- * Processes instead of threading Tasks
- * No configurable environments
-
-Norc was first developed by [Darrell Silver](http://darrellsilver.com/) as the archiving scheduling system for [Perpetually.com's](http://www.perpetually.com/) archiving system, and is currently in production.   [Perpetually.com](http://www.perpetually.com/) lets you capture and archive any web site with a single click. It's the history of the internet made useful.  A core feature of [Perpetually's](http://www.perpetually.com/) offering is repeated, scheduled archives, a Task for which Norc has proven a good fit.
+The workhorse of the Norc design flow, an Executor is a process that is designated for a specific queue, pulls instances from that queue, and then runs them.  Scalability of processing power for Norc is achieved by changing the number of Executors running for a given queue.  Since distribution is achieved through the queue implementation, Executors for a queue can be run on any number of different machines.  The norc_executor script is provided for starting Executors.
 
 
-### Install & Example:
+## Interacting & Monitoring ##
 
-See ./INSTALL.md
+Norc has a web front end that allows for easy monitoring of the system, as well as controlling of Executors and Schedulers.  Paired with the Django admin interface, this creates a powerful web-based toolset.  In the future, the two should be merged to create an admin interface that conforms to Norc's design somewhat better.
 
+On top of the web front end, there are various command line tools for interacting with Norc.
+
+### norc_control ###
+
+Allows stopping, killing, pausing and resuming for any single Executor or Scheduler at a time, or on a host-wide basis.
+
+### norc_reporter ###
+
+Displays similar status tables as the web front end.
+
+### norc_log_viewer ###
+
+Can be used to easily retrieve logs, both locally and from a remote backup location (e.g., Amazon S3).
+
+
+## Installation ##
+
+See ./INSTALL.md for a walkthrough.
 
