@@ -7,9 +7,20 @@ v2.1 -> v2.2
 ### SQL Statements
 __Norc must be completely stopped before making these changes.__
 
-This must be run for the table of each task implementation:
+This must be run for each task implementation:
 
     ALTER TABLE norc_commandtask MODIFY name VARCHAR(128);
+    ALTER TABLE norc_job MODIFY name VARCHAR(128);
+    ...
+
+This must be run for each instance implementation:
+    
+    ALTER TABLE norc_instance ADD COLUMN revision_id INT(11) DEFAULT NULL;
+    ALTER TABLE norc_jobnodeinstance ADD COLUMN revision_id INT(11) DEFAULT NULL;
+    ...
+
+Create the revision table:
+
     CREATE TABLE `norc_revision` (
       `id` int(11) NOT NULL AUTO_INCREMENT,
       `info` varchar(64) NOT NULL,

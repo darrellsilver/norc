@@ -14,6 +14,7 @@ from norc.core.constants import (Status, Request,
     HEARTBEAT_PERIOD, HEARTBEAT_FAILED)
 from norc.norc_utils.log import make_log
 from norc.norc_utils.backup import backup_log
+from norc.norc_utils.parsing import parse_since
 
 class AbstractDaemon(Model):
     
