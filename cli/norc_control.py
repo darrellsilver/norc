@@ -56,7 +56,7 @@ def main():
         help="Send an resume request.")
     parser.add_option("-r", "--reload", action="store_true", default=False,
         help="Send an reload request to a Scheduler.")
-    parser.add_option("-h", "--handle", action="store_true", default=False,
+    parser.add_option("--handle", action="store_true", default=False,
         help="Change the object's status to HANDLED.")
     parser.add_option("-f", "--force", action="store_true", default=False,
         help="Force the request to be made..")
