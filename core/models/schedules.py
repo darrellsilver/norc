@@ -282,7 +282,7 @@ class CronSchedule(AbstractSchedule):
         self.minutes = d['m']
         self.seconds = d['s']
     
-    def set_encoding(self, encoding):
+    def reschedule(self, encoding):
         e, d = CronSchedule.validate(encoding)
         self.encoding = e
         self.set_lists(d)

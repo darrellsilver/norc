@@ -97,7 +97,7 @@ class SchedulerTest(TestCase):
             ((now.second - 1) % 60), 1)
         self._scheduler.flag.set()
         wait_until(lambda: self.scheduler.cronschedules.count() == 1, 5)
-        CronSchedule.objects.get(pk=s.pk).set_encoding('o*d*w*h*m*s*')
+        CronSchedule.objects.get(pk=s.pk).reschedule('o*d*w*h*m*s*')
         self.scheduler.make_request(Request.RELOAD)
         self._scheduler.flag.set()
         wait_until(lambda: s.instances.count() == 1, 10)
