@@ -132,10 +132,16 @@ class Executor(AbstractDaemon):
             # Clean up completed tasks before iterating.
             for pid, p in self.processes.items()[:]:
                 p.poll()
-                # self.log.debug(
-                #     "Checking pid %s: return code %s." % (pid, p.returncode))
+                self.log.debug(
+                    "Checking pid %s: return code %s." % (pid, p.returncode))
                 if not p.returncode == None:
                     i = type(p.instance).objects.get(pk=p.instance.pk)
+                    if not Status.is_final(i.status):
+                        self.log.info(("Instance '%s' ended with invalid " +
+                            "status %s, changing to ERROR.") %
+                            (i, Status.name(i.status)))
+                        i.status = Status.ERROR
+                        i.save()
                     self.log.info("Instance '%s' ended with status %s." %
                         (i, Status.name(i.status)))
                     del self.processes[pid]
