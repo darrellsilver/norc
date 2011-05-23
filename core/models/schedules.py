@@ -14,7 +14,7 @@ from django.db.models.query import QuerySet
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import GenericForeignKey
 
-from norc.core.constants import HEARTBEAT_FAILED
+from norc.core.constants import HEARTBEAT_FAILED, Request
 from norc.core.models.task import Instance
 from norc.norc_utils import search
 from norc.norc_utils.django_extras import QuerySetManager
@@ -284,10 +284,13 @@ class CronSchedule(AbstractSchedule):
     
     def reschedule(self, encoding):
         e, d = CronSchedule.validate(encoding)
+        self = CronSchedule.objects.get(pk=self.pk)
         self.encoding = e
         self.set_lists(d)
         self.changed = True
         self.save()
+        self.scheduler.make_request(Request.RELOAD)
+        return self
     
     def enqueued(self):
         """Called when the next instance has been enqueued."""
