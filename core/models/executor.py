@@ -23,6 +23,7 @@ from norc.core.models.daemon import AbstractDaemon
 from norc.core.constants import (Status, Request,
     EXECUTOR_PERIOD, HEARTBEAT_FAILED, INSTANCE_MODELS)
 from norc.norc_utils.django_extras import QuerySetManager, MultiQuerySet
+from norc.norc_utils.log import make_log
 from norc.norc_utils.parallel import ThreadPool
 from norc.norc_utils.backup import backup_log
 from norc import settings
@@ -172,8 +173,9 @@ class Executor(AbstractDaemon):
         # p = Process(target=self.execute, args=[instance.start])
         # p.start()
         ct = ContentType.objects.get_for_model(instance)
+        f = make_log(instance.log_path).file
         p = Popen('norc_taskrunner --ct_pk %s --target_pk %s' %
-            (ct.pk, instance.pk), shell=True)
+            (ct.pk, instance.pk), stdout=f, stderr=f, shell=True)
         p.instance = instance
         self.processes[p.pid] = p
     
