@@ -48,7 +48,7 @@ class QueueGroup(Queue):
     
 
 class QueueGroupItem(Model):
-    """An item in a QueueGroup."""
+    """Maps queues to QueueGroups."""
     
     class Meta:
         app_label = "core"
@@ -59,7 +59,6 @@ class QueueGroupItem(Model):
     
     group = ForeignKey(QueueGroup, related_name="items")
     
-    # The queue this executor draws task instances from.
     queue_type = ForeignKey(ContentType)
     queue_id = PositiveIntegerField()
     queue = GenericForeignKey("queue_type", "queue_id")
@@ -69,7 +68,3 @@ class QueueGroupItem(Model):
     def __unicode__(self):
         return u'<G:%s Q:%s P:%s>' % (self.group, self.queue, self.priority)
     
-
-
-
-
