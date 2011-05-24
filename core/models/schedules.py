@@ -289,7 +289,8 @@ class CronSchedule(AbstractSchedule):
         self.set_lists(d)
         self.changed = True
         self.save()
-        self.scheduler.make_request(Request.RELOAD)
+        if self.scheduler != None:
+            self.scheduler.make_request(Request.RELOAD)
         return self
     
     def enqueued(self):
