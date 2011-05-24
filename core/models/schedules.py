@@ -218,7 +218,6 @@ class CronSchedule(AbstractSchedule):
     
     @staticmethod
     def decode(encoding):
-        SYNS = CronSchedule.SYNONYMS.values()
         regex = r'([a-zA-Z])+(\*|\d+(?:,\d+)*)'
         encoding = ''.join(encoding.split()) # Strip whitespace.
         results = {}
@@ -227,7 +226,7 @@ class CronSchedule(AbstractSchedule):
         for k, ls in re.findall(regex, encoding):
             choices = map(int, ls.split(',')) if ls != '*' else '*'
             found = False
-            for names, valid_range in SYNS:
+            for names, valid_range in CronSchedule.SYNONYMS.values():
                 if k in names:
                     if choices == '*':
                         choices = valid_range
@@ -269,7 +268,6 @@ class CronSchedule(AbstractSchedule):
     
     def __init__(self, *args, **kwargs):
         AbstractSchedule.__init__(self, *args, **kwargs)
-        self.set_lists()
         self._next = None
     
     def set_lists(self, d=None):
@@ -321,7 +319,8 @@ class CronSchedule(AbstractSchedule):
         return self._next
     
     def calculate_next(self, dt=None):
-        # self.read_encoding()
+        if not hasattr(self, "months"):
+            self.set_lists()
         if not dt:
             dt = self.base
         dt = dt.replace(microsecond=0)

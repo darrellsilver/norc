@@ -114,11 +114,15 @@ class Scheduler(AbstractDaemon):
                 cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
                 simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
                 for schedule in itertools.chain(cron, simple):
-                    self.log.info('Claiming %s.' % schedule)
-                    schedule.scheduler = self
-                    schedule.save()
-                    self.add(schedule)
-            
+                    try:
+                        self.log.info('Claiming %s.' % schedule)
+                        schedule.scheduler = self
+                        schedule.save()
+                        self.add(schedule)
+                    except:
+                        self.log.error(
+                            "Invalid schedule %s found, deleting." % schedule)
+                        schedule.soft_delete()
             if not Status.is_final(self.status):
                 self.wait()
                 self.request = Scheduler.objects.get(pk=self.pk).request
