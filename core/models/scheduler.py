@@ -122,14 +122,6 @@ class Scheduler(AbstractDaemon):
             if not Status.is_final(self.status):
                 self.wait()
                 self.request = Scheduler.objects.get(pk=self.pk).request
-        
-        cron = self.cronschedules.all()
-        simple = self.schedules.all()
-        claimed_count = cron.count() + simple.count()
-        if claimed_count > 0:
-            self.log.info("Cleaning up %s schedules." % claimed_count)
-            cron.update(scheduler=None)
-            simple.update(scheduler=None)
     
     def wait(self):
         """Waits on the flag."""
@@ -138,6 +130,13 @@ class Scheduler(AbstractDaemon):
     def clean_up(self):
         self.timer.cancel()
         self.timer.join()
+        cron = self.cronschedules.all()
+        simple = self.schedules.all()
+        claimed_count = cron.count() + simple.count()
+        if claimed_count > 0:
+            self.log.info("Cleaning up %s schedules." % claimed_count)
+            cron.update(scheduler=None)
+            simple.update(scheduler=None)
     
     def handle_request(self):
         """Called when a request is found."""
