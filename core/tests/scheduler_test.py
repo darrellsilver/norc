@@ -114,6 +114,15 @@ class SchedulerTest(TestCase):
         self._scheduler.flag.set()
         wait_until(lambda: s.instances.count() == 2, 5)
     
+    def test_bad_schedule(self):
+        task = make_task()
+        queue = make_queue()
+        s = CronSchedule.create(task, queue, "o*d*w*h*m*s*")
+        s.encoding = "gibberish"
+        s.save()
+        self._scheduler.flag.set()
+        wait_until(lambda: CronSchedule.objects.get(pk=s.pk).deleted, 2)
+    
     #def test_stress(self):
     #    task = make_task()
     #    queue = make_queue()
