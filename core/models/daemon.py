@@ -154,7 +154,6 @@ class AbstractDaemon(Model):
     def signal_handler(self, signum, frame=None):
         """Handles signal interruption."""
         sig_name = None
-        print signum
         # A reverse lookup to find the signal name.
         for attr in dir(signal):
             if attr.startswith('SIG') and getattr(signal, attr) == signum:

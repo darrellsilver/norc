@@ -19,7 +19,7 @@ class LogHook(object):
     def __init__(self, log):
         self.log = log
     
-    def write(self, string):    
+    def write(self, string):
         self.log.write(string, False)
     
     def writelines(seq):

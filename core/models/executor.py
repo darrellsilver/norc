@@ -1,5 +1,5 @@
 
-"""The Norc Executor (norcd) is defined here."""
+"""The Norc Executor is defined here."""
 
 import os
 import signal

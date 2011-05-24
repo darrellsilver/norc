@@ -4,6 +4,7 @@ v2.1 -> v2.2
 
   - Task "name" field is now nullable.
   - New table norc_revisions
+
 ### SQL Statements
 __Norc must be completely stopped before making these changes.__
 
