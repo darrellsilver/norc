@@ -200,6 +200,9 @@ class Scheduler(AbstractDaemon):
         self.set.remove(schedule)
         if updated_schedule == None or updated_schedule.deleted:
             self.log.info('%s was removed.' % schedule)
+            if updated_schedule != None:
+                updated_schedule.scheduler = None
+                updated_schedule.save()
             return
         schedule = updated_schedule
         
