@@ -114,15 +114,10 @@ class Scheduler(AbstractDaemon):
                 cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
                 simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
                 for schedule in itertools.chain(cron, simple):
-                    try:
-                        self.log.info('Claiming %s.' % schedule)
-                        schedule.scheduler = self
-                        schedule.save()
-                        self.add(schedule)
-                    except:
-                        self.log.error(
-                            "Invalid schedule %s found, deleting." % schedule)
-                        schedule.soft_delete()
+                    self.log.info('Claiming %s.' % schedule)
+                    schedule.scheduler = self
+                    schedule.save()
+                    self.add(schedule)
             if not Status.is_final(self.status):
                 self.wait()
                 self.request = Scheduler.objects.get(pk=self.pk).request
@@ -185,14 +180,19 @@ class Scheduler(AbstractDaemon):
     
     def add(self, schedule):
         """Adds the schedule to the timer."""
-        if schedule in self.set:
-            self.log.error("%s has already been added to this Scheduler." %
-                schedule)
-            return
-        self.log.debug('Adding %s to timer for %s.' %
-            (schedule, schedule.next))
-        self.timer.add_task(schedule.next, self._enqueue, [schedule])
-        self.set.add(schedule)
+        try:
+            if schedule in self.set:
+                self.log.error("%s has already been added to this Scheduler." %
+                    schedule)
+                return
+            self.log.debug('Adding %s to timer for %s.' %
+                (schedule, schedule.next))
+            self.timer.add_task(schedule.next, self._enqueue, [schedule])
+            self.set.add(schedule)
+        except:
+            self.log.error(
+                "Invalid schedule %s found, deleting." % schedule)
+            schedule.soft_delete()
     
     def _enqueue(self, schedule):
         """Called by the timer to add an instance to the queue."""
