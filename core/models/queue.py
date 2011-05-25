@@ -58,6 +58,13 @@ class Queue(Model):
     def validate(item):
         assert isinstance(item, AbstractInstance), "Invalid queue item."
     
+    def save(self, *args, **kwargs):
+        """Performs a name uniqueness check before saving a new queue."""
+        if not self.pk and Queue.get(self.name) != None:
+            raise ValueError(
+                "A queue with name %s already exists." % self.name)
+        return super(Queue, self).save(*args, **kwargs)
+    
     # TODO: Unique names for queues should be enforced somehow around here.
     # def __init__(self, *args, **kwargs):
     #     print type(self)
