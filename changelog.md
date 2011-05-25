@@ -5,11 +5,25 @@ Norc Release v2.2
 ## Features
   - Added "handle" option to norc_control and the front end that sets
     status to HANDLED and sets the end date.
-  - Ability to set a memory limit for tasks.
+  - Added queue groups, which allow an executor to handle multiple
+    prioritized queues.
+  - Added a hook for revision tracking implementations.
 
 ## Tweaks
   - Added a set to Scheduler to ensure that duplicate schedules never get
     claimed.
+  - In CronSchedule, set_encoding() has been renamed to reschedule() to
+    better reflect its purpose.  It also now automatically requests a
+    reload in the scheduler.
+  - Improved stdout/stderr redirection to logs for tasks; now all output
+    goes to a log file even before the logging library loads.
+
+## Bug Fixes
+  - Executors now check that a completed instance's status is "final",
+    and change it to ERROR if not.
+  - Some cleanup code in Scheduler was in the wrong place.
+  - Scheduler.add() is now wrapped in a try block to protect against bad
+    data crashing the scheduler.
 
 
 Norc Release v2.1.1

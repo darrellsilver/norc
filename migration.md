@@ -20,7 +20,7 @@ This must be run for each instance implementation:
     ALTER TABLE norc_jobnodeinstance ADD COLUMN revision_id INT(11) DEFAULT NULL;
     ...
 
-Create the revision table:
+Create the new tables:
 
     CREATE TABLE `norc_revision` (
       `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -28,7 +28,24 @@ Create the revision table:
       PRIMARY KEY (`id`),
       UNIQUE KEY `info` (`info`)
     );
-
+    CREATE TABLE `norc_queuegroup` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `name` varchar(64) NOT NULL,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `name` (`name`)
+    );
+    CREATE TABLE `norc_queuegroupitem` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `group_id` int(11) NOT NULL,
+      `queue_type_id` int(11) NOT NULL,
+      `queue_id` int(10) unsigned NOT NULL,
+      `priority` int(10) unsigned NOT NULL,
+      PRIMARY KEY (`id`),
+      UNIQUE KEY `queue_type_id` (`queue_type_id`,`queue_id`),
+      UNIQUE KEY `queue_type_id_2` (`queue_type_id`,`queue_id`,`priority`),
+      KEY `norc_queuegroupitem_group_id` (`group_id`),
+      KEY `norc_queuegroupitem_queue_type_id` (`queue_type_id`)
+    );
 
 v2.0 -> v2.1
 ============
