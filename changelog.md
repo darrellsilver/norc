@@ -17,6 +17,8 @@ Norc Release v2.2
     reload in the scheduler.
   - Improved stdout/stderr redirection to logs for tasks; now all output
     goes to a log file even before the logging library loads.
+  - Queue name uniqueness across implementations is now enforced
+    in the Queue.save() method.
 
 ## Bug Fixes
   - Executors now check that a completed instance's status is "final",
