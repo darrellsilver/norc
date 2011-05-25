@@ -59,7 +59,7 @@ class Task(Model):
         content_type_field='task_type', object_id_field='task_id')
     
     def start(self, instance):
-        """A hook function for easily changing the parameters to run().
+        """ A hook function for easily changing the parameters to run().
         
         This is useful because some types of task (such as Job) need access
         to the instance object that is currently running, but we don't want
@@ -77,6 +77,12 @@ class Task(Model):
             else False) or "<nameless>"
     
     def get_revision(self):
+        """ Hook to provide revision tracking functionality for instances.
+        
+        The value returned by this function will be retrieved and set for
+        each instance of the task that is run.
+        
+        """
         return None
     
     def __unicode__(self):
@@ -200,7 +206,12 @@ class AbstractInstance(Model):
         raise NorcTimeoutException()
     
     def get_revision(self):
-        """Hook to provide revision tracking functionality."""
+        """ Hook to provide revision tracking functionality for instances.
+        
+        Defaults to None because other instances implementations might not
+        have task attributes.
+        
+        """
         return None
     
     @property
@@ -262,7 +273,12 @@ class Instance(AbstractInstance):
             self.task.get_name(), self.task.get_name(), self.id)
     
     def get_revision(self):
-        """Hook to provide revision tracking functionality."""
+        """ Hook to provide revision tracking functionality.
+        
+        Redirects to Task.get_revision() for ease with normal task/instance
+        setups.  Other instances implementations might need to customize.
+        
+        """
         return self.task.get_revision()
     
     def __unicode__(self):
