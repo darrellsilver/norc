@@ -12,7 +12,7 @@ class DBQueueTest(TestCase):
         self.queue = DBQueue.objects.create(name='test')
         self.item = make_instance()
     
-    def test_push_pop(self):
+    def test_push_peek_pop(self):
         self.queue.push(self.item)
         self.assertEqual(self.queue.peek(), self.item)
         self.assertEqual(self.queue.pop(), self.item)
@@ -40,14 +40,17 @@ class QueueGroupTest(TestCase):
     def new_instance(self):
         return Instance.objects.create(task=self.task)
     
-    def test_push_pop(self):
+    def test_push_peek_pop(self):
         """Test that all three queues work."""
         item = self.new_instance()
         self.q1.push(item)
+        self.assertEqual(self.group.peek(), item)
         self.assertEqual(self.group.pop(), item)
         self.q2.push(item)
+        self.assertEqual(self.group.peek(), item)
         self.assertEqual(self.group.pop(), item)
         self.q3.push(item)
+        self.assertEqual(self.group.peek(), item)
         self.assertEqual(self.group.pop(), item)
     
     def test_priority(self):
