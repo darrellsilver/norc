@@ -43,6 +43,9 @@ class QueueGroup(Queue):
                 pass
         return None
     
+    def push(self):
+        raise NotImplementedError("Cannot push to a queue group.")
+    
     def count(self):
         return sum([q.count() for q in self.queues])
     
