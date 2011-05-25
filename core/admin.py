@@ -23,6 +23,20 @@ class DBQueueItemAdmin(admin.ModelAdmin):
 
 admin.site.register(models.DBQueueItem, DBQueueItemAdmin)
 
+class QueueGroupAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'count_']
+    
+    def count_(self, qg):
+        return qg.count()
+    count_.short_description = "# Enqueued"
+
+admin.site.register(models.QueueGroup, QueueGroupAdmin)
+
+class QueueGroupItemAdmin(admin.ModelAdmin):
+    list_display = ['id', 'group', 'queue', 'priority']
+
+admin.site.register(models.QueueGroupItem, QueueGroupItemAdmin)
+
 class JobAdmin(admin.ModelAdmin):
     list_display = ['id', 'name', 'description', 
         'timeout', 'date_added']
