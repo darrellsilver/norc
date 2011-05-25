@@ -161,10 +161,7 @@ class AbstractInstance(Model):
         self.log.info('Starting %s.' % self)
         self.log.start_redirect()
         self.status = Status.RUNNING
-        try:
-            self.revision = self.get_revision()
-        except:
-            self.log.error("Error getting revision information.", trace=True)
+        self.revision = self.get_revision()
         self.started = datetime.utcnow()
         self.save()
         try:
