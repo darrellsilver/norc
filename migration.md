@@ -27,13 +27,13 @@ Create the new tables:
       `info` varchar(64) NOT NULL,
       PRIMARY KEY (`id`),
       UNIQUE KEY `info` (`info`)
-    );
+    ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
     CREATE TABLE `norc_queuegroup` (
       `id` int(11) NOT NULL AUTO_INCREMENT,
       `name` varchar(64) NOT NULL,
       PRIMARY KEY (`id`),
       UNIQUE KEY `name` (`name`)
-    );
+    ) ENGINE=MyISAM AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
     CREATE TABLE `norc_queuegroupitem` (
       `id` int(11) NOT NULL AUTO_INCREMENT,
       `group_id` int(11) NOT NULL,
@@ -45,7 +45,7 @@ Create the new tables:
       UNIQUE KEY `queue_type_id_2` (`queue_type_id`,`queue_id`,`priority`),
       KEY `norc_queuegroupitem_group_id` (`group_id`),
       KEY `norc_queuegroupitem_queue_type_id` (`queue_type_id`)
-    );
+    ) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
 
 v2.0 -> v2.1
 ============
