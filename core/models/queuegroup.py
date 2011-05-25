@@ -25,7 +25,7 @@ class QueueGroup(Queue):
         """
         for q in self.queues:
             try:
-                i = q.pop()
+                i = q.peek()
                 if i != None:
                     return i
             except:
