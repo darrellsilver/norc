@@ -102,7 +102,7 @@ class Executor(AbstractDaemon):
     def run(self):
         """Core executor function."""
         if settings.BACKUP_SYSTEM:
-            self.pool = ThreadPool(self.concurrent * 2)
+            self.pool = ThreadPool(self.concurrent + 1)
         self.log.info("%s is now running on host %s." % (self, self.host))
         
         if self.log.debug_on:
