@@ -26,14 +26,26 @@ class TestTask(TestCase):
             pass
         return Instance.objects.get(pk=instance.pk)
     
-    def test_status(self):
-        """Tests that a task can run successfully."""
+    def test_success(self):
+        """Tests that a task can end with status SUCCESS."""
         self.assertEqual(Status.SUCCESS, self.run_task('echo "Success!"'))
+    
+    def test_failure(self):
+        """Tests that a task can end with status FAILURE."""
         self.assertEqual(Status.FAILURE, self.run_task('exit 1'))
+    
+    def test_error(self):
+        "Tests that a task can end with status ERROR."
         self.assertEqual(Status.ERROR, self.run_task('asd78sad7ftaoq'))
+    
+    def test_timedout(self):
+        "Tests that a task can end with status TIMEDOUT."
         self.assertEqual(Status.TIMEDOUT, self.run_task(
             CommandTask.objects.create(
                 name='Timeout', command='sleep 5', timeout=1)))
+    
+    def test_overflow(self):
+        "Tests that a task can end with status OVERFLOW."
         def boom():
             print "test"
             l = []
