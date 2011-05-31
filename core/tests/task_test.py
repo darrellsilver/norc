@@ -19,7 +19,7 @@ class TestTask(TestCase):
         return self.run_instance(Instance.objects.create(task=task)).status
     
     def run_instance(self, instance):
-        instance.log = log.Log(os.devnull)
+        instance.log = log.Log(os.devnull, echo=True)
         try:
             instance.start()
         except SystemExit:
@@ -46,18 +46,30 @@ class TestTask(TestCase):
     
     def test_overflow(self):
         "Tests that a task can end with status OVERFLOW."
+        import resource
         def boom():
             print "test"
             l = []
             class Foo(object):
-                bar = 13
-            for i in range(10000000):
-                l.append(Foo())
+                def __init__(self, bar):
+                    self.bar = bar
+            for i in range(1000000):
+                l.append(Foo(i))
+            def rec(n):
+                print resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                if n == 0: return
+                print n
+                l=[]
+                for i in range(1000):
+                    l.append(Foo(i))
+                return rec(n-1)
+            rec(500)
         overflow = Instance.objects.create(task=CommandTask.objects.create(
-            name='Overflow', command='', mem_limit=10000))
+            name='Overflow', command='echo "hi"'))
         overflow.run = boom
         # overflow.run(1)
-        self.assertEqual(Status.OVERFLOW, self.run_instance(overflow))
+        print resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        self.assertEqual(Status.OVERFLOW, self.run_instance(overflow).status)
     
     def test_nameless(self):
         "Tests that a task can be nameless."

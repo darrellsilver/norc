@@ -160,18 +160,18 @@ class AbstractInstance(Model):
         if self.status != Status.CREATED:
             self.log.error("Can't start an instance more than once.")
             return
-        try:
-            for signum in [signal.SIGINT, signal.SIGTERM]:
-                signal.signal(signum, self.kill_handler)
-        except ValueError:
-            pass
+        for signum in [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV]:
+            signal.signal(signum, self.kill_handler)
         if self.timeout > 0:
             signal.signal(signal.SIGALRM, self.timeout_handler)
             signal.alarm(self.timeout)
         if self.mem_limit > 0:
-            HARD_CAP = self.mem_limit * 2
-            self.log.info("Setting memory cap to %s bytes." % self.mem_limit)
-            resource.setrlimit(resource.RLIMIT_AS, (self.mem_limit, HARD_CAP))
+            r = resource.RLIMIT_STACK
+            soft, hard = resource.getrlimit(r)
+            print (soft, hard)
+            limit = self.mem_limit # min(self.mem_limit, hard)
+            self.log.info("Setting memory cap to %s bytes." % limit)
+            resource.setrlimit(r, (limit, hard - 1))
         self.log.info('Starting %s in process %s.' % (self, os.getpid()))
         self.log.start_redirect()
         self.status = Status.RUNNING
@@ -182,7 +182,7 @@ class AbstractInstance(Model):
             success = self.run()
         except MemoryError:
             # Up the cap so cleanup doesn't explode.
-            resource.setrlimit(resource.RLIMIT_AS, (HARD_CAP, HARD_CAP))
+            resource.setrlimit(resource.RLIMIT_STACK, (HARD_CAP, HARD_CAP))
             self.log.error("Task exceeded the memory limit!")
             self.status = Status.OVERFLOW
         except Exception:
@@ -213,6 +213,7 @@ class AbstractInstance(Model):
         raise NotImplementedError
     
     def kill_handler(self, *args, **kwargs):
+        print args, kwargs
         raise NorcInterruptException()
     
     def timeout_handler(self, *args, **kwargs):
