@@ -2,10 +2,12 @@
 """All basic task related models."""
 
 import sys
+import os
 from datetime import datetime
 import re
 import subprocess
 import signal
+import resource
 
 from django.db.models import (Model, query, base,
     BooleanField,
@@ -50,6 +52,7 @@ class Task(Model):
     description = CharField(max_length=512, blank=True, default='')
     date_added = DateTimeField(default=datetime.utcnow)
     timeout = PositiveIntegerField(default=0)
+    mem_limit = PositiveIntegerField(default=0)
     instances = GenericRelation('Instance',
         content_type_field='task_type', object_id_field='task_id')
     
@@ -126,6 +129,7 @@ class AbstractInstance(Model):
         Status.ERROR,
         Status.TIMEDOUT,
         Status.INTERRUPTED,
+        Status.OVERFLOW,
     ]
     
     # The status of the execution.
@@ -164,7 +168,11 @@ class AbstractInstance(Model):
         if self.timeout > 0:
             signal.signal(signal.SIGALRM, self.timeout_handler)
             signal.alarm(self.timeout)
-        self.log.info('Starting %s.' % self)
+        if self.mem_limit > 0:
+            HARD_CAP = self.mem_limit * 2
+            self.log.info("Setting memory cap to %s bytes." % self.mem_limit)
+            resource.setrlimit(resource.RLIMIT_AS, (self.mem_limit, HARD_CAP))
+        self.log.info('Starting %s in process %s.' % (self, os.getpid()))
         self.log.start_redirect()
         self.status = Status.RUNNING
         self.revision = self.get_revision()
@@ -172,6 +180,11 @@ class AbstractInstance(Model):
         self.save()
         try:
             success = self.run()
+        except MemoryError:
+            # Up the cap so cleanup doesn't explode.
+            resource.setrlimit(resource.RLIMIT_AS, (HARD_CAP, HARD_CAP))
+            self.log.error("Task exceeded the memory limit!")
+            self.status = Status.OVERFLOW
         except Exception:
             self.log.error("Task failed with an exception!", trace=True)
             self.status = Status.ERROR
@@ -213,6 +226,14 @@ class AbstractInstance(Model):
         
         """
         return None
+    
+    @property
+    def timeout(self):
+        return 0
+    
+    @property
+    def mem_limit(self):
+        return 0
     
     @property
     def source(self):
@@ -262,6 +283,10 @@ class Instance(AbstractInstance):
     @property
     def timeout(self):
         return self.task.timeout
+    
+    @property
+    def mem_limit(self):
+        return self.task.mem_limit
     
     @property
     def source(self):

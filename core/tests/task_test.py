@@ -14,7 +14,7 @@ class TestTask(TestCase):
     """Tests for Norc tasks."""
     
     def run_task(self, task):
-        if type(task) == str:
+        if isinstance(task, basestring):
             task = CommandTask.objects.create(name=task, command=task)
         return self.run_instance(Instance.objects.create(task=task)).status
     
@@ -34,6 +34,18 @@ class TestTask(TestCase):
         self.assertEqual(Status.TIMEDOUT, self.run_task(
             CommandTask.objects.create(
                 name='Timeout', command='sleep 5', timeout=1)))
+        def boom():
+            print "test"
+            l = []
+            class Foo(object):
+                bar = 13
+            for i in range(10000000):
+                l.append(Foo())
+        overflow = Instance.objects.create(task=CommandTask.objects.create(
+            name='Overflow', command='', mem_limit=10000))
+        overflow.run = boom
+        # overflow.run(1)
+        self.assertEqual(Status.OVERFLOW, self.run_instance(overflow))
     
     def test_nameless(self):
         "Tests that a task can be nameless."

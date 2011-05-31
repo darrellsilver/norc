@@ -81,6 +81,7 @@ class Status(object):
     ERROR = 14          # There was an error during execution.
     TIMEDOUT = 15       # The execution timed out.
     INTERRUPTED = 16    # Execution was interrupted before completion.
+    OVERFLOW = 17       # The task overflowed its memory limit.
     
     @staticmethod
     def is_final(status):
