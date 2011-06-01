@@ -166,7 +166,7 @@ class AbstractInstance(Model):
             signal.signal(signal.SIGALRM, self.timeout_handler)
             signal.alarm(self.timeout)
         if self.mem_limit > 0:
-            r = resource.RLIMIT_STACK
+            r = resource.RLIMIT_DATA
             soft, hard = resource.getrlimit(r)
             print (soft, hard)
             limit = self.mem_limit # min(self.mem_limit, hard)
@@ -180,11 +180,11 @@ class AbstractInstance(Model):
         self.save()
         try:
             success = self.run()
-        except MemoryError:
-            # Up the cap so cleanup doesn't explode.
-            resource.setrlimit(resource.RLIMIT_STACK, (HARD_CAP, HARD_CAP))
-            self.log.error("Task exceeded the memory limit!")
-            self.status = Status.OVERFLOW
+        # except MemoryError:
+        #     # Up the cap so cleanup doesn't explode.
+        #     resource.setrlimit(resource.RLIMIT_STACK, (HARD_CAP, HARD_CAP))
+        #     self.log.error("Task exceeded the memory limit!")
+        #     self.status = Status.OVERFLOW
         except Exception:
             self.log.error("Task failed with an exception!", trace=True)
             self.status = Status.ERROR

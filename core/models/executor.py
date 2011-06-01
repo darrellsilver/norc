@@ -105,6 +105,10 @@ class Executor(AbstractDaemon):
             self.pool = ThreadPool(self.concurrent + 1)
         self.log.info("%s is now running on host %s." % (self, self.host))
         
+        self.memory_watcher = Thread(target=self.watch_memory)
+        self.memory_watcher.daemon = True
+        self.memory_watcher.start()
+        
         if self.log.debug_on:
             self.resource_reporter = Thread(target=self.report_resources)
             self.resource_reporter.daemon = True
@@ -157,6 +161,21 @@ class Executor(AbstractDaemon):
         if settings.BACKUP_SYSTEM:
             self.pool.joinAll()
     
+    def watch_memory(self):
+        import psutil
+        while not Status.is_final(self.status):
+            for pid, p in self.processes.items():
+                ps = psutil.Process(pid)
+                print ps.get_memory_info()
+            # # self.log.info(resource.getrusage(resource.RUSAGE_CHILDREN))
+            #     ls = commands.getoutput("ps u | grep %s" % pid).splitlines()
+            #     for l in ls:
+            #         l = l.split()
+            #         if int(l[1]) == pid:
+            #             print l[4]
+            #     # print s
+            time.sleep(1)
+    
     def report_resources(self):
         while not Status.is_final(self.status):
             time.sleep(10)
@@ -174,8 +193,11 @@ class Executor(AbstractDaemon):
         # p.start()
         ct = ContentType.objects.get_for_model(instance)
         f = make_log(instance.log_path).file
-        p = Popen('norc_taskrunner --ct_pk %s --target_pk %s' %
-            (ct.pk, instance.pk), stdout=f, stderr=f, shell=True)
+        cmd = 'norc_taskrunner --ct_pk %s --target_pk %s' % \
+            (ct.pk, instance.pk)
+        if instance.mem_limit > 0:
+            cmd = ('ulimit -S -m %s; ' % instance.mem_limit) + cmd
+        p = Popen(cmd, stdout=f, stderr=f, shell=True)
         p.instance = instance
         self.processes[p.pid] = p
     
