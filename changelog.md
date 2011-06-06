@@ -1,4 +1,21 @@
 
+Norc Release v2.2.1
+===================
+
+## Features
+  - New SUSPENDED state for executors; if a task fails during initializing
+    (a sign something is wrong with the system), the executor will enter
+    SUSPENDED, which is exactly like PAUSED except considered an error state.
+
+## Tweaks
+  - Add log_url property to AbstractInstance.
+
+## Bug Fixes
+  - PAUSED is now correctly colored as a good status.
+  - The AWS_ settings are no longer imported by backup.py if BACKUP_SYSTEM is
+    not "AmazonS3".
+
+
 Norc Release v2.2
 =================
 
