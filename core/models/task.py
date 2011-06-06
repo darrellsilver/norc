@@ -1,7 +1,7 @@
 
 """All basic task related models."""
 
-import sys
+import os, sys
 from datetime import datetime
 import re
 import subprocess
@@ -24,12 +24,6 @@ from norc.core.constants import Status, TASK_MODELS, INSTANCE_MODELS
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import QuerySetManager
 from norc.norc_utils.parsing import parse_since
-
-class NorcInterruptException(BaseException):
-    pass
-
-class NorcTimeoutException(BaseException):
-    pass
 
 class MetaTask(base.ModelBase):
     def __init__(self, name, bases, dct):
@@ -175,35 +169,40 @@ class AbstractInstance(Model):
         except Exception:
             self.log.error("Task failed with an exception!", trace=True)
             self.status = Status.ERROR
-        except NorcInterruptException:
-            self.log.error("Interrupt signal received!")
-            self.status = Status.INTERRUPTED
-        except NorcTimeoutException:
-            self.log.info("Task timed out!  Ceasing execution.")
-            self.status = Status.TIMEDOUT
         else:
             if success or success == None:
                 self.status = Status.SUCCESS
             else:
                 self.status = Status.FAILURE
         finally:
-            self.ended = datetime.utcnow()
-            self.save()
-            self.log.info("Task ended with status %s." %
-                Status.name(self.status))
-            self.log.stop_redirect()
-            self.log.close()
+            self.cleanup()
             sys.exit(0 if self.status == Status.SUCCESS else 1)
+    
+    def cleanup(self):
+        self.ended = datetime.utcnow()
+        self.save()
+        self.log.info("Task ended with status %s." %
+            Status.name(self.status))
+        self.log.stop_redirect()
     
     def run(self):
         """Runs the instance."""
         raise NotImplementedError
     
     def kill_handler(self, *args, **kwargs):
-        raise NorcInterruptException()
+        self.log.error("Interrupt signal received!")
+        self.status = Status.INTERRUPTED
+        self.cleanup()
+        self._nuke()
     
     def timeout_handler(self, *args, **kwargs):
-        raise NorcTimeoutException()
+        self.log.info("Task timed out!  Ceasing execution.")
+        self.status = Status.TIMEDOUT
+        self.cleanup()
+        self._nuke()
+    
+    def _nuke(self):
+        os._exit(1)
     
     def get_revision(self):
         """ Hook to provide revision tracking functionality for instances.
