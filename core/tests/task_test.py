@@ -1,7 +1,7 @@
 
 """Module for testing CommandTasks."""
 
-import os
+import os, sys
 import time
 
 from django.test import TestCase
@@ -26,14 +26,28 @@ class TestTask(TestCase):
             pass
         return Instance.objects.get(pk=instance.pk)
     
-    def test_status(self):
-        """Tests that a task can run successfully."""
+    def test_success(self):
+        """Tests that a task can end with status SUCCESS."""
         self.assertEqual(Status.SUCCESS, self.run_task('echo "Success!"'))
+    
+    def test_failure(self):
+        """Tests that a task can end with status FAILURE."""
         self.assertEqual(Status.FAILURE, self.run_task('exit 1'))
+    
+    def test_error(self):
+        "Tests that a task can end with status ERROR."
         self.assertEqual(Status.ERROR, self.run_task('asd78sad7ftaoq'))
-        self.assertEqual(Status.TIMEDOUT, self.run_task(
-            CommandTask.objects.create(
-                name='Timeout', command='sleep 5', timeout=1)))
+    
+    def test_timedout(self):
+        "Tests that a task can end with status TIMEDOUT."
+        task = CommandTask.objects.create(
+            name='Timeout', command='sleep 5', timeout=1)
+        instance = Instance.objects.create(task=task)
+        # Have to soften _nuke or the test process will die.
+        def _nuke():
+            sys.exit(1)
+        instance._nuke = _nuke
+        self.assertEqual(Status.TIMEDOUT, self.run_instance(instance).status)
     
     def test_nameless(self):
         "Tests that a task can be nameless."
