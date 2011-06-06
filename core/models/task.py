@@ -225,6 +225,11 @@ class AbstractInstance(Model):
         except AttributeError:
             return None
     
+    @property
+    def log_url(self):
+        return ('/logs/instances/%s_%s/' %
+            (ContentType.objects.get_for_model(self).id, self.id))
+    
     def __unicode__(self):
         return u"<%s #%s>" % (type(self).__name__, self.id)
     
