@@ -28,7 +28,7 @@ for path in settings.EXTERNAL_CLASSES:
 all = {}
 
 def make_status_color(status, alive):
-    if status in map(Status.name, Status.GROUPS("failed")):
+    if status in map(Status.name, Status.GROUPS("error")):
         return "status_error"
     elif status in map(Status.name, Status.GROUPS("succeeded")):
         return "status_good"
@@ -37,6 +37,8 @@ def make_status_color(status, alive):
             return "status_good"
         else:
             return "status_error"
+    elif status in map(Status.name, Status.GROUPS("active")):
+        return "status_good"
     else:
         return "status_error"
 
@@ -123,9 +125,6 @@ def _parse_content_ids(id_str):
     ct_id, obj_id = map(int, id_str.split('_'))
     ct = ContentType.objects.get(id=ct_id)
     return ct.get_object_for_this_type(id=obj_id)
-
-def _find_ct(obj):
-    return ContentType.objects.get_for_model(obj).id
 
 class BaseReport(object):
     """Ideally, this would be replaced with a class decorator in 2.6."""
@@ -242,7 +241,8 @@ class instances(BaseReport):
     
     headers = ['ID#', 'Type', 'Source', 'Started', 'Ended', 'Status']
     data = {
-        'id': lambda obj, **kws: '%s_%s' % (_find_ct(obj), obj.id),
+        'id': lambda obj, **kws: '%s_%s' %
+            (ContentType.objects.get_for_model(obj).id, obj.id),
         'id#': lambda obj, **kws: obj.id,
         'type': lambda obj, **kws: type(obj).__name__,
         'source': lambda i, **kws: i.source or 'n/a',
