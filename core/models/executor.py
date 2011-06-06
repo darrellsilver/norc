@@ -65,6 +65,7 @@ class Executor(AbstractDaemon):
         Status.ENDED,
         Status.ERROR,
         Status.KILLED,
+        Status.SUSPENDED,
     ]
     
     VALID_REQUESTS = [
@@ -137,13 +138,18 @@ class Executor(AbstractDaemon):
                     "Checking pid %s: return code %s." % (pid, p.returncode))
                 if not p.returncode == None:
                     i = type(p.instance).objects.get(pk=p.instance.pk)
+                    if i.status == Status.CREATED:
+                        self.log.info(("%s fail to initialize properly; " +
+                            "entering suspension to avoid more errors.") % i)
+                        self.set_status(Status.SUSPENDED)
+                        self.save()
                     if not Status.is_final(i.status):
-                        self.log.info(("Instance '%s' ended with invalid " +
+                        self.log.info(("%s ended with invalid " +
                             "status %s, changing to ERROR.") %
                             (i, Status.name(i.status)))
                         i.status = Status.ERROR
                         i.save()
-                    self.log.info("Instance '%s' ended with status %s." %
+                    self.log.info("%s ended with status %s." %
                         (i, Status.name(i.status)))
                     del self.processes[pid]
                     if settings.BACKUP_SYSTEM:
@@ -169,7 +175,7 @@ class Executor(AbstractDaemon):
         """Starts a given instance in a new process."""
         instance.executor = self
         instance.save()
-        self.log.info("Starting instance '%s'..." % instance)
+        self.log.info("Starting %s..." % instance)
         # p = Process(target=self.execute, args=[instance.start])
         # p.start()
         ct = ContentType.objects.get_for_model(instance)
@@ -201,8 +207,9 @@ class Executor(AbstractDaemon):
             self.set_status(Status.PAUSED)
         
         elif request == Request.RESUME:
-            if self.status != Status.PAUSED:
-                self.log.info("Must be paused to resume; clearing request.")
+            if self.status not in (Status.PAUSED, Status.SUSPENDED):
+                self.log.info("Must be paused or suspended to resume; " + 
+                    "clearing request.")
             else:
                 self.set_status(Status.RUNNING)
         

@@ -69,6 +69,7 @@ class Status(object):
     RUNNING = 2         # Is currently running.
     PAUSED = 3          # Currently paused.
     STOPPING = 4        # In the process of stopping; should become ENDED.
+    SUSPENDED = 5       # Errors need addressing before a restart.
     
     # Final states.
     SUCCESS = 7         # Succeeded.
