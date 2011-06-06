@@ -545,22 +545,19 @@ function initSection(dataKey) {
 
 function startWarningPulse() {
     if (!state.pulsing) {
-        var pulseOn = function(callback) {
+        var pulse = function() {
             if (state.scheduler_count == 0) {
                 $('body').animate({
                     backgroundColor: '#CC0000',
-                }, 2000, callback);
+                }, 2000).delay(1000).animate({
+                    backgroundColor: '#F6FFF9',
+                }, 1500, pulse).delay(3000);
             } else {
                 state.pulsing = false;
             }
-        }
-        var pulseOff = function() {
-            $('body').animate({
-                backgroundColor: '#F6FFF9',
-            }, 1500, pulseOn(pulseOff));
-        }    
+        };
         state.pulsing = true;
-        pulseOn(pulseOff);
+        pulse();
     }
 }
 
