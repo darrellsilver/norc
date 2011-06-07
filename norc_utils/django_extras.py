@@ -88,3 +88,5 @@ class MultiQuerySet(object):
         return MultiQuerySet(*[getattr(qs, attr, *args)
             for qs in self.querysets])
     
+    def __str__(self):
+        return "%s(%s)" % (self.__class__.__name__, self.querysets)
