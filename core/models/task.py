@@ -168,7 +168,7 @@ class AbstractInstance(Model):
             success = self.run()
         except Exception:
             self.log.error("Task failed with an exception!", trace=True)
-            self.status = Status.ERROR
+            self.status = Status.FAILURE
         else:
             if success or success == None:
                 self.status = Status.SUCCESS
