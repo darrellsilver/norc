@@ -14,8 +14,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
-from norc.core import TimedoutException
-from norc.norc_utils.django_extras import queryset_exists
 from norc.core.models.task import AbstractInstance
 
 class MetaQueue(ModelBase):

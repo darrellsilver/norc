@@ -1,3 +1,0 @@
-
-class TimedoutException(Exception):
-    pass
