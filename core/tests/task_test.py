@@ -33,10 +33,7 @@ class TestTask(TestCase):
     def test_failure(self):
         """Tests that a task can end with status FAILURE."""
         self.assertEqual(Status.FAILURE, self.run_task('exit 1'))
-    
-    def test_error(self):
-        "Tests that a task can end with status ERROR."
-        self.assertEqual(Status.ERROR, self.run_task('asd78sad7ftaoq'))
+        self.assertEqual(Status.FAILURE, self.run_task('asd78sad7ftaoq'))
     
     def test_timedout(self):
         "Tests that a task can end with status TIMEDOUT."
