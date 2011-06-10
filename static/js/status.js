@@ -203,7 +203,7 @@ var TABLE_CUSTOMIZATION = {
         if (!row.data('click_rewritten')) {
             row.unbind('click');
             row.click(function() {
-                if (!row.data('overruled')) {
+                if (!row.data('suppress_click')) {
                     row.children('td').removeClass('selected');
                     toggleDetails(chain, id);
                 }
@@ -223,9 +223,9 @@ var TABLE_CUSTOMIZATION = {
                 }
             });
             cell.hover(function() {
-                row.data('overruled', true);
+                row.data('suppress_click', true);
             }, function() {
-                row.data('overruled', false);
+                row.data('suppress_click', false);
             });
         }
     },
@@ -275,6 +275,7 @@ function makeDataTable(chain, data) {
                 TABLE_CUSTOMIZATION[dataKey](chain, id, header, cell, row);
             }
             if (header == 'status') {
+                cell.addClass("status");
                 var color = rowData["status_color"];
                 if (color) {
                     cell.addClass(color);
@@ -288,31 +289,38 @@ function makeDataTable(chain, data) {
                 if (dataKey in HAS_LOGS) {
                     cell.addClass('clickable')
                     cell.hover(function() {
-                        row.data('overruled', true);
+                        row.data('suppress_click', true);
                     }, function() {
-                        row.data('overruled', false);
+                        row.data('suppress_click', false);
                     });
                     cell.click(function() {
-                        window.open(
-                            'logs/' + HAS_LOGS[dataKey] + '/' + id,
-                            HAS_LOGS[dataKey] + '-' + id + '-log',
-                            'menubar=no, innerWidth=700, innerHeight=700');
+                        if (!cell.data('suppress_click')) {
+                            window.open(
+                                'logs/' + HAS_LOGS[dataKey] + '/' + id,
+                                HAS_LOGS[dataKey] + '-' + id + '-log',
+                                'menubar=no, innerWidth=700, innerHeight=700');
+                        }
                     });
                 }
                 if (IS_SUPERUSER && dataKey in VALID_REQUESTS) {
                     cell.addClass('clickable');
                     var controls = makeControls(dataKey, id);
                     cell.hover(function() {
-                        row.data('overruled', true);
+                        row.data('suppress_click', true);
                         var ul = controls.find('ul');
                         cell.append(controls);
                         ul.animate({width: 'hide'}, 0);
                         ul.animate({width: 'show'}, 300);
                     }, function() {
-                        row.data('overruled', false);
+                        row.data('suppress_click', false);
                         controls.find('ul').animate({width: 'hide'}, 0,
                             function() { controls.detach(); }
                         );
+                    });
+                    controls.hover(function() {
+                        cell.data('suppress_click', true);
+                    }, function() {
+                        cell.data('suppress_click', false);
                     });
                 }
             }

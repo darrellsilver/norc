@@ -199,28 +199,20 @@ ul.timeframe li.selected {
     height:16px;
 }
 .slideout {
-    display:inline-block;
-    float:right;
     height:0px;
     margin:0px;
-    overflow:visible;
     padding:0px;
-/*    position:relative;*/
-    width:1px;
-/*    left:0px;*/
-/*    top:0px;*/
+    position:absolute;
+    width:80px;
+    right:-80px;
+    top: 0px;
 }
 .slideout ul {
     background-color:#B8DBB9;
-    bottom:12px;
-    display:inline-block;
     list-style:none;
     margin:0px;
     overflow:hidden;
     padding:0px;
-    position:relative;
-    right:-10px;
-/*    top:0px;*/
 }
 .slideout li {
     cursor:pointer;
@@ -229,6 +221,10 @@ ul.timeframe li.selected {
 }
 .slideout li:hover {
     background-color:#A0CAA4;
+}
+.status {
+    position:relative;
+    display:block;
 }
 .status_good {
     background-color:#AF6;
