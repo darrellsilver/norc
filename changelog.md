@@ -1,4 +1,24 @@
 
+Norc Release v2.2.2
+===================
+
+## Changes
+  - The meaning of the ERROR and FAILURE statuses has changed.  ERROR now
+    explicitly means that something went wrong with the Norc system, whereas
+    FAILURE encompasses any issue coming from the task itself.  Previously,
+    the task run() letting an exception escape would result in an ERROR.
+
+## Tweaks
+  - The warning "pulse" for when no schedulers are found is now less frequent.
+  - Caching is disabled for the status view.
+  - The controls popup for executors is now positioned slightly better.
+
+## Bug Fixes
+  - Task timeouts and kill commands now call os._exit(1) after cleaning up
+    to force the process to end.
+  - Clicking on a control for an executor now no longer also pops up the log.
+
+
 Norc Release v2.2.1
 ===================
 
