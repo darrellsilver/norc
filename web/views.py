@@ -18,6 +18,14 @@ from norc.norc_utils.formatting import untitle
 if settings.BACKUP_SYSTEM == "AmazonS3":
     from norc.norc_utils.aws import get_s3_key
 
+def no_cache(view_func):
+    def no_cache_wrapper(*args, **kwargs):
+        response = view_func(*args, **kwargs)
+        response['Cache-Control'] = 'no-cache'
+        return response
+    return no_cache_wrapper
+
+@no_cache
 def index(request):
     """Returns the index.html template."""
     return render_to_response('index.html', {
@@ -36,6 +44,7 @@ def get_counts(request):
     json = simplejson.dumps(s_count, cls=JSONObjectEncoder)
     return http.HttpResponse(json, mimetype="json")
 
+@no_cache
 def get_data(request, content_type, content_id=None, detail_type=None):
     """Retrieves and structures data, then returns it as a JSON object.
     
