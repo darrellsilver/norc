@@ -28,7 +28,7 @@ def no_cache(view_func):
 @no_cache
 def index(request):
     """Returns the index.html template."""
-    return render_to_response('index.html', {
+    return render_to_response('norc/index.html', {
         'sqs': 'norc.sqs' in settings.INSTALLED_APPS,
         'is_superuser': request.user.is_superuser,
         'reports': reports.all,
@@ -112,7 +112,7 @@ def get_log(request, content_type, content_id):
             log = "Error retrieving log from S3."
     else:
         log = "Could not retrieve log file from local machine."
-    return render_to_response('log.html', {
+    return render_to_response('norc/log.html', {
         'key': content_type,
         'log': log,
         'headers': report.headers,
