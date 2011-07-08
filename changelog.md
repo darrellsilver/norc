@@ -18,6 +18,13 @@ Norc Release v2.2.2
     to force the process to end.
   - Clicking on a control for an executor now no longer also pops up the log.
 
+## Optional
+  - As of v2.2.2, it is recommended that the following index be made for any
+    large table of instances:
+
+    create index <instance_table>_executor_id_ended_status on
+    <instance_table> (`executor_id`,`ended`,`status`);
+
 
 Norc Release v2.2.1
 ===================
