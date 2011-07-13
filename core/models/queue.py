@@ -43,7 +43,7 @@ class Queue(Model):
         for QueueClass in MetaQueue.IMPLEMENTATIONS:
             try:
                 return QueueClass.objects.get(name=name)
-            except Exception:
+            except QueueClass.DoesNotExist:
                 pass
     
     @staticmethod
