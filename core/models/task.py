@@ -225,6 +225,10 @@ class AbstractInstance(Model):
             return None
     
     @property
+    def log_path(self):
+        return "instances/%s/%s" % (type(self).__name__, self.id)
+    
+    @property
     def log_url(self):
         return ('/logs/instances/%s_%s/' %
             (ContentType.objects.get_for_model(self).id, self.id))
