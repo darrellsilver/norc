@@ -33,6 +33,8 @@ def main():
     
     model_name = args[0].lower()  
     try:
+        if args[1].startswith("#"):
+            args[1] = args[1][1:]
         obj_id = int(args[1])
     except ValueError:
         bad_args("Invalid id '%s', must be an integer." % args[1])
