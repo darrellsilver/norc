@@ -214,6 +214,10 @@ class AbstractInstance(Model):
         return None
     
     @property
+    def timeout(self):
+        return 0
+    
+    @property
     def source(self):
         return None
     
