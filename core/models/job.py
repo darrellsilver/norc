@@ -57,7 +57,7 @@ class JobNode(Model):
     job = ForeignKey(Job, related_name='nodes')
     
     def __unicode__(self):
-        return u"JobNode #%s in %s for %s" % (self.id, self.job, self.task)
+        return u"[JobNode #%s in %s for %s]" % (self.id, self.job, self.task)
     
     __repr__ = __unicode__
     
@@ -120,7 +120,11 @@ class JobNodeInstance(AbstractInstance):
         return True
     
     def __unicode__(self):
-        return 'NodeInstance for %s' % self.node.task
+        return u'[NodeInstance #%s of %s]' % \
+            (self.id, str(self.node.task)[1:-1])
+    
+    __repr__ = __unicode__
+    
 
 class Dependency(Model):
     """One task Node's dependency on another.
@@ -140,7 +144,7 @@ class Dependency(Model):
         assert self.parent.job == self.child.job
     
     def __unicode__(self):
-        return u"Dependency: '%s ->- %s'" % (self.parent, self.child)
+        return u"[Dependency %s -> %s]" % (self.parent, self.child)
     
     __repr__ = __unicode__
     

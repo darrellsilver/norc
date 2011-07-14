@@ -142,7 +142,7 @@ class Schedule(AbstractSchedule):
         self.save()
     
     def __unicode__(self):
-        return u'<Schedule #%s, %s:%ss>' % \
+        return u'[Schedule #%s, %s:%ss]' % \
             (self.id, self.task, self.period)
     
     __repr__ = __unicode__
@@ -374,7 +374,7 @@ class CronSchedule(AbstractSchedule):
         return self.encoding
     
     def __unicode__(self):
-        return u'<CronSchedule #%s, %s:%s>' % \
+        return u'[CronSchedule #%s, %s:%s]' % \
             (self.id, self.task, self.encoding)
     
     __repr__ = __unicode__

@@ -68,7 +68,7 @@ class Task(Model):
     
     def get_name(self):
         return self.name or ("#%s" % self.id if self.id
-            else False) or "<nameless>"
+            else False) or "(nameless)"
     
     def get_revision(self):
         """ Hook to provide revision tracking functionality for instances.
@@ -80,15 +80,18 @@ class Task(Model):
         return None
     
     def __unicode__(self):
-        return u"%s %s" % (type(self).__name__, self.get_name())
+        return u"[%s %s]" % (type(self).__name__, self.get_name())
     
     __repr__ = __unicode__
+    
 
 class MetaInstance(base.ModelBase):
+    
     def __init__(self, name, bases, dct):
         base.ModelBase.__init__(self, name, bases, dct)
         if not self._meta.abstract:
             INSTANCE_MODELS.append(self)
+    
 
 class AbstractInstance(Model):
     """One instance (run) of a Task."""
@@ -110,6 +113,7 @@ class AbstractInstance(Model):
             if isinstance(statuses, basestring):
                 statuses = Status.GROUPS(statuses)
             return self.filter(status__in=statuses) if statuses else self
+        
     
     VALID_STATUSES = [
         Status.CREATED,
@@ -238,7 +242,7 @@ class AbstractInstance(Model):
             (ContentType.objects.get_for_model(self).id, self.id))
     
     def __unicode__(self):
-        return u"<%s #%s>" % (type(self).__name__, self.id)
+        return u"[%s #%s]" % (type(self).__name__, self.id)
     
     __repr__ = __unicode__
     
@@ -294,7 +298,7 @@ class Instance(AbstractInstance):
         return self.task.get_revision()
     
     def __unicode__(self):
-        return u'<Instance #%s of %s>' % (self.id, self.task)
+        return u'[Instance #%s of %s]' % (self.id, str(self.task)[1:-1])
     
     __repr__ = __unicode__
     

@@ -235,8 +235,3 @@ class Executor(AbstractDaemon):
     def log_path(self):
         return 'executors/executor-%s' % self.id
     
-    def __unicode__(self):
-        return u"<Executor #%s on %s>" % (self.id, self.host)
-    
-    __repr__ = __unicode__
-    

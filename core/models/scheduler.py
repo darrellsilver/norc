@@ -226,8 +226,3 @@ class Scheduler(AbstractDaemon):
     def log_path(self):
         return 'schedulers/scheduler-%s' % self.id
     
-    def __unicode__(self):
-        return u"Scheduler #%s on host %s" % (self.id, self.host)
-    
-    __repr__ = __unicode__
-    
