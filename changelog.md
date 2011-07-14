@@ -1,6 +1,5 @@
-
-Norc Release v2.2.2
-===================
+Norc v2.2.2
+===========
 
 ## Changes
   - The meaning of the ERROR and FAILURE statuses has changed.  ERROR now
@@ -26,8 +25,8 @@ Norc Release v2.2.2
     <instance_table> (`executor_id`,`ended`,`status`);
 
 
-Norc Release v2.2.1
-===================
+Norc v2.2.1
+===========
 
 ## Features
   - New SUSPENDED state for executors; if a task fails during initializing
@@ -43,8 +42,8 @@ Norc Release v2.2.1
     not "AmazonS3".
 
 
-Norc Release v2.2
-=================
+Norc v2.2
+=========
 
 ## Features
   - Added "handle" option to norc_control and the front end that sets
@@ -72,8 +71,8 @@ Norc Release v2.2
     data crashing the scheduler.
 
 
-Norc Release v2.1.1
-===================
+Norc v2.1.1
+===========
 
 ## Features
   - Added host-wide functionality to norc_control, as well as a wait option.
@@ -91,8 +90,8 @@ Norc Release v2.1.1
   - Added missing SQL commands to the migration doc.
 
 
-Norc Release v2.1
-=================
+Norc v2.1
+=========
 
 __SCHEMA CHANGES__, please see migration.md.
 
@@ -120,15 +119,15 @@ __SCHEMA CHANGES__, please see migration.md.
   - Fixed signal registering in both Executor and Scheduler.
 
 
-Norc Release v2.0
-=================
+Norc v2.0
+=========
 
 ## Features:
   - Full rewrite of Norc.  See design documentation, if it ever gets written.
 
 
-Norc Release v1.1.2
-===================
+Norc v1.1.2
+===========
 
 ## Tweaks:
   - Fixed (or at least greatly improved) the horrible slowness of the
@@ -139,8 +138,8 @@ Norc Release v1.1.2
   - Fixed the norc utility's displaying of SQS task counts.
 
 
-Norc Release v1.1.1
-===================
+Norc v1.1.1
+===========
 
 ## Tweaks:
   - Improved FileLog in log_new.py to handle echoing to stdout and
@@ -153,8 +152,8 @@ Norc Release v1.1.1
     slideout.  Now there may be a 1px shift.
 
 
-Norc Release v1.1
-=================
+Norc v1.1
+=========
 
 ## Features:
   - (DEV) New function init_test_db creates a suitable test database.
@@ -171,8 +170,8 @@ Norc Release v1.1
   - Renamed init_db.py to just db.py.
 
 
-Norc Release v1.0.2
-===================
+Norc v1.0.2
+===========
 
 ## Features:
   - Rudimentary version of daemon control through the status page.  Hover
@@ -194,8 +193,8 @@ Norc Release v1.0.2
   - Added ordering to failed tasks.
 
 
-Norc Release v1.0.1
-===================
+Norc v1.0.1
+===========
 
 ## Features:
   - Added 'Failed Tasks' table, which shows all tasks with an error status.
@@ -220,8 +219,8 @@ Norc Release v1.0.1
     more settings than that to run, a custom environment is now enforced.
 
 
-Norc Release v1.0
-=================
+Norc v1.0
+=========
 
 ## Features:
   - populate_db.py script in utils can fill your DB with large amounts of
@@ -248,8 +247,8 @@ Norc Release v1.0
     SQSTASK_IMPLEMENTATIONS, that was not supposed to be committed.
 
 
-Norc Release v0.9
-=================
+Norc v0.9
+=========
 
 ## Features:
   - Proper pagination of all subtables!
