@@ -114,6 +114,10 @@ class AbstractInstance(Model):
                 statuses = Status.GROUPS(statuses)
             return self.filter(status__in=statuses) if statuses else self
         
+        def from_queue(self, q):
+            return self.filter(executor__queue_id=q.id,
+                executor__queue_type=ContentType.objects.get_for_model(q).id)
+        
     
     VALID_STATUSES = [
         Status.CREATED,
@@ -255,12 +259,6 @@ class Instance(AbstractInstance):
         db_table = 'norc_instance'
     
     objects = QuerySetManager()
-    
-    class QuerySet(AbstractInstance.QuerySet):
-        
-        def from_queue(self, q):
-            return self.filter(executor__queue_id=q.id,
-                executor__queue_type=ContentType.objects.get_for_model(q).id)
     
     # The object that spawned this instance.
     task_type = ForeignKey(ContentType, related_name='instances')
