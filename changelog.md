@@ -1,3 +1,19 @@
+Norc v2.2.3
+===========
+
+## Tweaks
+  - The __unicode__ methods for all models have been unified to a new
+    pattern: "[class_name info...]".
+  - Templates have been moved to a subdirectory to avoid naming conflicts.
+  - AbstractInstance now has defaults for timeout (0) and log_path
+    (instances/class_name/id).  
+  - The norc_log_viewer script now accepts a leading # for IDs to support
+    copy/paste from log files.
+
+## Bug Fixes
+  - More specific exception catching in Queue so bad exceptions aren't hidden.
+
+
 Norc v2.2.2
 ===========
 
