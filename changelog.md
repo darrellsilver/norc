@@ -12,6 +12,7 @@ Norc v2.2.3
 
 ## Bug Fixes
   - More specific exception catching in Queue so bad exceptions aren't hidden.
+  - Fixed --handle option of norc_control.
 
 
 Norc v2.2.2

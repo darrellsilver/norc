@@ -38,7 +38,7 @@ def _wait(ds, req):
 
 def main():
     usage = "norc_control [executor | scheduler | host] <id | host> " + \
-        "--[stop | kill | pause | resume | reload] [--wait]"
+        "--[stop | kill | pause | resume | reload | handle] [--wait]"
     
     def bad_args(message):
         print message
@@ -71,7 +71,7 @@ def main():
     
     requests = filter(lambda a: getattr(options, a.lower()),
         Request.NAMES.values())
-    if len(requests) != 1 or (len(requests) == 1 and options.handle):
+    if  len(requests) + (1 if options.handle else 0) != 1:
         bad_args("Must request exactly one action.")
     if not options.handle:
         request = requests[0]
