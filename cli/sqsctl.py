@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import sys, datetime, pickle, time
 from optparse import OptionParser
