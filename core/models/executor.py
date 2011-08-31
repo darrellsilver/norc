@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from threading import Thread
 # from multiprocessing import Process
 # Alas, 2.5 doesn't have multiprocessing...
-from subprocess import Popen
+from subprocess import Popen, STDOUT
 import resource
 
 from django.db.models import (
@@ -181,7 +181,7 @@ class Executor(AbstractDaemon):
         ct = ContentType.objects.get_for_model(instance)
         f = make_log(instance.log_path).file
         p = Popen('norc_taskrunner --ct_pk %s --target_pk %s' %
-            (ct.pk, instance.pk), stdout=f, stderr=f, shell=True)
+            (ct.pk, instance.pk), stdout=f, stderr=STDOUT, shell=True)
         p.instance = instance
         self.processes[p.pid] = p
     
