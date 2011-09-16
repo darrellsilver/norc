@@ -26,6 +26,12 @@ class TestTask(TestCase):
             pass
         return Instance.objects.get(pk=instance.pk)
     
+    def disarm(self, instance):
+        """Have to soften _nuke sometimes or the test process will die."""
+        def _nuke():
+            sys.exit(1)
+        instance._nuke = _nuke
+    
     def test_success(self):
         """Tests that a task can end with status SUCCESS."""
         self.assertEqual(Status.SUCCESS, self.run_task('echo "Success!"'))
@@ -35,15 +41,54 @@ class TestTask(TestCase):
         self.assertEqual(Status.FAILURE, self.run_task('exit 1'))
         self.assertEqual(Status.FAILURE, self.run_task('asd78sad7ftaoq'))
     
-    def test_timedout(self):
+    def test_timeout(self):
         "Tests that a task can end with status TIMEDOUT."
         task = CommandTask.objects.create(
             name='Timeout', command='sleep 5', timeout=1)
         instance = Instance.objects.create(task=task)
-        # Have to soften _nuke or the test process will die.
-        def _nuke():
-            sys.exit(1)
-        instance._nuke = _nuke
+        self.disarm(instance)
+        self.assertEqual(Status.TIMEDOUT, self.run_instance(instance).status)
+    
+    def test_final(self):
+        task = CommandTask.objects.create(name='Nothing', command='sleep 0')
+        instance = Instance.objects.create(task=task)
+        self.disarm(instance)
+        def final():
+            instance.status = Status.ERROR
+        instance.final = final
+        self.assertEqual(Status.ERROR, self.run_instance(instance).status)
+    
+    def test_final_timeout(self):
+        t = CommandTask.objects.create(name='Nothing', command='sleep 0')
+        instance = Instance.objects.create(task=t)
+        self.disarm(instance)
+        from norc.core.models import task
+        task.FINALLY_TIMEOUT = 1
+        def final():
+            import time
+            time.sleep(2)
+        instance.final = final
+        self.assertEqual(Status.TIMEDOUT, self.run_instance(instance).status)
+    
+    def test_double_timeout(self):
+        """Tests a task timing out and then its final block timing out.
+        
+        NOTE: because the "nuking" of the process can't occur in a test
+        environment, this test actually results in the final clause being
+        run twice.  This won't happen in a real setting because _nuke()
+        is aptly named.
+        
+        """
+        t = CommandTask.objects.create(
+            name='Nothing', command='sleep 2', timeout=1)
+        instance = Instance.objects.create(task=t)
+        self.disarm(instance)
+        from norc.core.models import task
+        task.FINALLY_TIMEOUT = 1
+        def final():
+            import time
+            time.sleep(2)
+        instance.final = final
         self.assertEqual(Status.TIMEDOUT, self.run_instance(instance).status)
     
     def test_nameless(self):

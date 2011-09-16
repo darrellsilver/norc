@@ -20,7 +20,8 @@ from django.contrib.contenttypes.generic import (GenericRelation,
                                                  GenericForeignKey)
 
 from norc import settings
-from norc.core.constants import Status, TASK_MODELS, INSTANCE_MODELS
+from norc.core.constants import (Status,
+    TASK_MODELS, INSTANCE_MODELS, FINALLY_TIMEOUT)
 from norc.norc_utils.log import make_log
 from norc.norc_utils.django_extras import QuerySetManager
 from norc.norc_utils.parsing import parse_since
@@ -183,10 +184,21 @@ class AbstractInstance(Model):
             else:
                 self.status = Status.FAILURE
         finally:
+            self.run_finally()
             self.cleanup()
             sys.exit(0 if self.status == Status.SUCCESS else 1)
     
+    def run_finally(self):
+        signal.alarm(0)
+        if hasattr(self, "finally_") and callable(self.finally_):
+            signal.signal(signal.SIGALRM, self.finally_timeout_handler)
+            signal.alarm(FINALLY_TIMEOUT)
+            self.log.info("Executing final block...")
+            self.finally_()
+            signal.alarm(0)
+    
     def cleanup(self):
+        """Cleanup code that should be executed last."""
         self.ended = datetime.utcnow()
         self.save()
         self.log.info("Task ended with status %s." %
@@ -198,18 +210,27 @@ class AbstractInstance(Model):
         raise NotImplementedError
     
     def kill_handler(self, *args, **kwargs):
-        self.log.error("Interrupt signal received!")
+        self.log.info("Interrupt signal received!")
         self.status = Status.INTERRUPTED
+        self.run_finally()
         self.cleanup()
         self._nuke()
     
     def timeout_handler(self, *args, **kwargs):
-        self.log.info("Task timed out!  Ceasing execution.")
+        self.log.error("Task timed out!")
+        self.status = Status.TIMEDOUT
+        self.run_finally()
+        self.cleanup()
+        self._nuke()
+    
+    def finally_timeout_handler(self, *args, **kwargs):
+        self.log.error("Final block timed out!")
         self.status = Status.TIMEDOUT
         self.cleanup()
         self._nuke()
     
-    def _nuke(self):
+    def _nuke(self, *args, **kwargs):
+        self.log.info("Ceasing execution.")
         os._exit(1)
     
     def get_revision(self):

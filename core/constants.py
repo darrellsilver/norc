@@ -32,6 +32,8 @@ HEARTBEAT_PERIOD = 3
 # cause failsafes to activate erroneously.
 HEARTBEAT_FAILED = HEARTBEAT_PERIOD + 20
 
+# Controls how long an instance's finally method has to run.
+FINALLY_TIMEOUT = 30
 
 class MetaConstant(type):
     """Generates the NAMES attribute of the Status class."""
