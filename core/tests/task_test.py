@@ -19,7 +19,7 @@ class TestTask(TestCase):
         return self.run_instance(Instance.objects.create(task=task)).status
     
     def run_instance(self, instance):
-        instance.log = log.Log(os.devnull)
+        instance.log = log.Log(os.devnull, echo=True)
         try:
             instance.start()
         except SystemExit:
@@ -49,25 +49,25 @@ class TestTask(TestCase):
         self.disarm(instance)
         self.assertEqual(Status.TIMEDOUT, self.run_instance(instance).status)
     
-    def test_final(self):
+    def test_finally(self):
         task = CommandTask.objects.create(name='Nothing', command='sleep 0')
         instance = Instance.objects.create(task=task)
         self.disarm(instance)
-        def final():
+        def finally_():
             instance.status = Status.ERROR
-        instance.final = final
+        instance.finally_ = finally_
         self.assertEqual(Status.ERROR, self.run_instance(instance).status)
     
-    def test_final_timeout(self):
+    def test_finally_timeout(self):
         t = CommandTask.objects.create(name='Nothing', command='sleep 0')
         instance = Instance.objects.create(task=t)
         self.disarm(instance)
         from norc.core.models import task
         task.FINALLY_TIMEOUT = 1
-        def final():
+        def finally_():
             import time
             time.sleep(2)
-        instance.final = final
+        instance.finally_ = finally_
         self.assertEqual(Status.TIMEDOUT, self.run_instance(instance).status)
     
     def test_double_timeout(self):
@@ -85,10 +85,10 @@ class TestTask(TestCase):
         self.disarm(instance)
         from norc.core.models import task
         task.FINALLY_TIMEOUT = 1
-        def final():
+        def finally_():
             import time
             time.sleep(2)
-        instance.final = final
+        instance.finally_ = finally_
         self.assertEqual(Status.TIMEDOUT, self.run_instance(instance).status)
     
     def test_nameless(self):
