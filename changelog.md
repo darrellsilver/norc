@@ -1,3 +1,16 @@
+Norc v2.2.4
+===========
+
+## Features
+  - Support for a new _finally() method on custom instance implementations
+    has been added.  This method will be executed after the main run()
+    function has exited, when the process is interrupted, or when the
+    task times out.
+
+## Bug Fixes
+  - More #! script fixes.
+
+
 Norc v2.2.3
 ===========
 
