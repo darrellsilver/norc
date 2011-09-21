@@ -1,3 +1,14 @@
+v2.2.4 -> v2.2.5
+================
+
+  - Queues can now be in multiple QueueGroups.
+
+### SQL Statements
+__Norc must be completely stopped before making these changes.__
+
+    ALTER TABLE norc_queuegroupitem DROP KEY queue_type_id;
+    ALTER TABLE norc_queuegroupitem DROP KEY queue_type_id_2;
+    ALTER TABLE norc_queuegroupitem ADD UNIQUE KEY `group_id` (`group_id`,`queue_type_id`,`queue_id`);
 
 v2.1 -> v2.2
 ============
