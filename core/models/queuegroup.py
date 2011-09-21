@@ -57,8 +57,7 @@ class QueueGroupItem(Model):
         app_label = "core"
         db_table = "norc_queuegroupitem"
         ordering = ["priority"]
-        unique_together = [["queue_type", "queue_id"],
-            ["queue_type", "queue_id", "priority"]]
+        unique_together = ("group", "queue_type", "queue_id")
     
     group = ForeignKey(QueueGroup, related_name="items")
     
