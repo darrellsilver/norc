@@ -1,6 +1,13 @@
 Norc v2.2.4
 ===========
 
+## Tweaks
+  - Queues can now be placed in multiple QueueGroups (see migration doc).
+
+
+Norc v2.2.4
+===========
+
 ## Features
   - Support for a new _finally() method on custom instance implementations
     has been added.  This method will be executed after the main run()
