@@ -61,20 +61,35 @@ class MultiQuerySet(object):
         return self.count()
     
     def __getitem__(self, item):
-        indices = (offset, stop, step) = item.indices(self.count())
-        items = []
-        total_len = stop - offset
-        for qs in self.querysets:
-            if len(qs) < offset:
-                offset -= len(qs)
-            else:
-                items += list(qs[offset:stop])
-                if len(items) >= total_len:
-                    return items
+        if type(item) == slice:
+            if item.step != None:
+                raise TypeError("Querysets do not support step.")
+            start = item.start
+            total = item.stop - start
+            items = []
+            querysets = list(self.querysets[:])
+            querysets.reverse()
+            while len(querysets) > 0 and start > 0:
+                qs = querysets.pop()
+                count = qs.count()
+                if count < start:
+                    start -= count
                 else:
-                    offset = 0
-                    stop = total_len - len(items)
-                    continue
+                    items.extend(qs[start:start+total])
+                    start = 0
+            while len(querysets) > 0 and len(items) < total:
+                qs = querysets.pop()
+                items.extend(qs[:total - len(items)])
+            return items
+        else:
+            i = item
+            for qs in self.querysets:
+                count = qs.count()
+                if count < i:
+                    i -= count
+                else:
+                    return qs[i]
+            raise IndexError()
     
     def __iter__(self):
         return itertools.chain(*self.querysets)
