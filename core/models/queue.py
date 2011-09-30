@@ -49,8 +49,7 @@ class Queue(Model):
     @staticmethod
     def all_queues():
         return reduce(lambda a, b: a + b,
-            [[q for q in QueueClass.objects.all()]
-                for QueueClass in MetaQueue.IMPLEMENTATIONS])
+            [list(Q.objects.all()) for Q in MetaQueue.IMPLEMENTATIONS])
     
     @staticmethod
     def validate(item):
