@@ -15,5 +15,5 @@ class Revision(Model):
         return Revision.objects.create(info=info)
     
     def __str__(self):
-        return "[Revision %s]" % self.info
+        return '<Revision %s>' % self.info
     

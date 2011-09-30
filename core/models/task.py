@@ -81,7 +81,7 @@ class Task(Model):
         return None
     
     def __unicode__(self):
-        return u"[%s %s]" % (type(self).__name__, self.get_name())
+        return u'<%s %s>' % (type(self).__name__, self.get_name())
     
     __repr__ = __unicode__
     
@@ -267,7 +267,7 @@ class AbstractInstance(Model):
             (ContentType.objects.get_for_model(self).id, self.id))
     
     def __unicode__(self):
-        return u"[%s #%s]" % (type(self).__name__, self.id)
+        return u'<%s #%s>' % (type(self).__name__, self.id)
     
     __repr__ = __unicode__
     
@@ -317,7 +317,7 @@ class Instance(AbstractInstance):
         return self.task.get_revision()
     
     def __unicode__(self):
-        return u'[Instance #%s of %s]' % (self.id, str(self.task)[1:-1])
+        return u'<Instance #%s of %s>' % (self.id, str(self.task)[1:-1])
     
     __repr__ = __unicode__
     

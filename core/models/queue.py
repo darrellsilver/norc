@@ -83,7 +83,7 @@ class Queue(Model):
         raise NotImplementedError
     
     def __unicode__(self):
-        return u"[%s %s]" % (type(self).__name__, self.name)
+        return u'<%s %s>' % (type(self).__name__, self.name)
     
     __repr__ = __unicode__
 
@@ -148,5 +148,5 @@ class DBQueueItem(Model):
     enqueued = DateTimeField(default=datetime.datetime.utcnow, db_index=True)
     
     def __unicode__(self):
-        return u'[DBQueueItem #%s, %s]' % (self.id, self.enqueued)
+        return u'<DBQueueItem #%s, %s>' % (self.id, self.enqueued)
         

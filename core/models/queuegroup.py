@@ -68,7 +68,7 @@ class QueueGroupItem(Model):
     priority = PositiveIntegerField()
     
     def __unicode__(self):
-        return u'[QueueGroupItem G:%s Q:%s P:%s]' % (self.group, self.queue, self.priority)
+        return u'<QueueGroupItem G:%s Q:%s P:%s>' % (self.group, self.queue, self.priority)
     
     __repr__ = __unicode__
     

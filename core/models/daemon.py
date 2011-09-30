@@ -217,7 +217,7 @@ class AbstractDaemon(Model):
         return Model.save(self, *args, **kwargs)
     
     def __unicode__(self):
-        return u"[%s #%s on %s]" % (type(self).__name__, self.id, self.host)
+        return u'<%s #%s on %s>' % (type(self).__name__, self.id, self.host)
     
     __repr__ = __unicode__
     
