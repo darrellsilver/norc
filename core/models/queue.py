@@ -81,6 +81,9 @@ class Queue(Model):
     def count(self):
         raise NotImplementedError
     
+    def clear(self):
+        raise NotImplementedError
+    
     def __unicode__(self):
         return u'<%s %s>' % (type(self).__name__, self.name)
     
@@ -125,6 +128,9 @@ class DBQueue(Queue):
     
     def count(self):
         return self.items.count()
+    
+    def clear(self):
+        self.items.all().delete()
 
 
 class DBQueueItem(Model):

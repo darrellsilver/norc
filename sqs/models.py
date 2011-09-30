@@ -49,3 +49,6 @@ class SQSQueue(Queue):
     def count(self):
         return self.queue.count()
     
+    def clear(self):
+        return self.queue.clear()
+    
