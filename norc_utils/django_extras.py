@@ -72,7 +72,7 @@ class MultiQuerySet(object):
             while len(querysets) > 0 and start > 0:
                 qs = querysets.pop()
                 count = qs.count()
-                if count < start:
+                if count <= start:
                     start -= count
                 else:
                     items.extend(qs[start:start+total])
@@ -85,7 +85,7 @@ class MultiQuerySet(object):
             i = item
             for qs in self.querysets:
                 count = qs.count()
-                if count < i:
+                if count <= i:
                     i -= count
                 else:
                     return qs[i]
