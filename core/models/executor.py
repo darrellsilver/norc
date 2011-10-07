@@ -205,6 +205,7 @@ class Executor(AbstractDaemon):
         
         if request == Request.PAUSE:
             self.set_status(Status.PAUSING)
+            self.save()
         
         elif request == Request.RESUME:
             if self.status not in (Status.PAUSING, Status.PAUSED, Status.SUSPENDED):
@@ -212,9 +213,11 @@ class Executor(AbstractDaemon):
                     "clearing request.")
             else:
                 self.set_status(Status.RUNNING)
+                self.save()
         
         elif request == Request.STOP:
             self.set_status(Status.STOPPING)
+            self.save()
         
         elif request == Request.KILL:
             # for p in self.processes.values():
@@ -223,6 +226,7 @@ class Executor(AbstractDaemon):
                 self.log.info("Killing process for %s." % p.instance)
                 os.kill(pid, signal.SIGTERM)
             self.set_status(Status.KILLED)
+            self.save()
     
     def backup_instance_log(self, instance):
         self.log.info("Attempting upload of log for %s..." % instance)
