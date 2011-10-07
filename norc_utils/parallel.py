@@ -17,7 +17,7 @@ class MultiTimer(Thread):
     
     def __init__(self):
         Thread.__init__(self)
-        self.tasks = [] # SortedList(reverse=True)
+        self.tasks = []
         self.cancelled = False
         self.interrupt = Event()
     
@@ -30,8 +30,6 @@ class MultiTimer(Thread):
                 self.interrupt.wait(self.tasks[0][0] - time.time())
                 if not self.interrupt.isSet():
                     func, args, kwargs = heappop(self.tasks)[1:]
-                    # self.tasks.pop()
-                    # assert item == self.tasks.pop()
                     try:
                         func(*args, **kwargs)
                     except Exception:
@@ -52,7 +50,6 @@ class MultiTimer(Thread):
         delay += time.time()
         item = (delay, func, args, kwargs)
         heappush(self.tasks, item)
-        # self.tasks.add(item)
         if item == self.tasks[0]: # .peek():
             self.interrupt.set()
     

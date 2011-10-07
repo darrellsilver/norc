@@ -118,13 +118,10 @@ class Executor(AbstractDaemon):
             
             if self.status == Status.RUNNING:
                 while len(self.processes) < self.concurrent:
-                    # self.log.debug("Popping instance...")
                     instance = self.queue.pop()
                     if instance:
-                        # self.log.debug("Popped %s" % instance)
                         self.start_instance(instance)
                     else:
-                        # self.log.debug("No instance in queue.")
                         break
             
             elif self.status == Status.STOPPING and len(self.processes) == 0:
@@ -176,8 +173,6 @@ class Executor(AbstractDaemon):
         instance.executor = self
         instance.save()
         self.log.info("Starting %s..." % instance)
-        # p = Process(target=self.execute, args=[instance.start])
-        # p.start()
         ct = ContentType.objects.get_for_model(instance)
         f = make_log(instance.log_path).file
         p = Popen('norc_taskrunner --ct_pk %s --target_pk %s' %
