@@ -60,6 +60,7 @@ class Executor(AbstractDaemon):
     VALID_STATUSES = [
         Status.CREATED,
         Status.RUNNING,
+        Status.PAUSING,
         Status.PAUSED,
         Status.STOPPING,
         Status.ENDED,
@@ -123,6 +124,10 @@ class Executor(AbstractDaemon):
                         self.start_instance(instance)
                     else:
                         break
+            
+            elif self.status == Status.PAUSING and len(self.processes) == 0:
+                self.set_status(Status.PAUSED)
+                self.save(safe=True)
             
             elif self.status == Status.STOPPING and len(self.processes) == 0:
                 self.set_status(Status.ENDED)
@@ -199,10 +204,10 @@ class Executor(AbstractDaemon):
         self.log.info("Request received: %s" % Request.name(request))
         
         if request == Request.PAUSE:
-            self.set_status(Status.PAUSED)
+            self.set_status(Status.PAUSING)
         
         elif request == Request.RESUME:
-            if self.status not in (Status.PAUSED, Status.SUSPENDED):
+            if self.status not in (Status.PAUSING, Status.PAUSED, Status.SUSPENDED):
                 self.log.info("Must be paused or suspended to resume; " + 
                     "clearing request.")
             else:
