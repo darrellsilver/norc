@@ -19,11 +19,12 @@ class MultiTimer(Thread):
         Thread.__init__(self)
         self.tasks = []
         self.cancelled = False
+        self.paused = False
         self.interrupt = Event()
     
     def run(self):
         while not self.cancelled:
-            if len(self.tasks) == 0:
+            if self.paused or len(self.tasks) == 0:
                 self.interrupt.wait()
                 self.interrupt.clear()
             else:
@@ -52,6 +53,14 @@ class MultiTimer(Thread):
         heappush(self.tasks, item)
         if item == self.tasks[0]: # .peek():
             self.interrupt.set()
+    
+    def pause(self):
+        self.paused = True
+        self.interrupt.set()
+    
+    def resume(self):
+        self.paused = False
+        self.interrupt.set()
     
 
 ## {{{ http://code.activestate.com/recipes/203871/ (r3)
