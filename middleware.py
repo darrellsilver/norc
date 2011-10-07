@@ -14,6 +14,3 @@ class ErrorHandlingMiddleware(object):
         if request.is_ajax():
             return HttpResponseServerError(traceback.format_exc(),
                 content_type='text/plain')
-        # else:
-        #     return HttpResponseServerError(render_to_string('500.html',
-        #         dict(message=traceback.format_exc())))

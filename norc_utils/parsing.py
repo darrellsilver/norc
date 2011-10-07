@@ -40,43 +40,7 @@ def parse_class(class_path):
         raise Exception(
             'Invalid path "%s".  Must be of the form "x.Y".' % class_path)
     try:
-        #exec("from %s import %s" % (module, class_name))
-        #return locals()[class_name]
         imported = __import__(module, globals(), locals(), [class_name])
         return getattr(imported, class_name)
     except ImportError:
         return None
-
-# DEPR
-# def _class_for_name(name, *args, **kw):
-#     try:
-#         ns = kw.get('namespace',globals())
-#         return ns[name]
-#     except KeyError, ke:
-#         #raise Exception("Could not find class by name '%s'" % (name))
-#         raise ImportError("Could not find class by name '%s'" % (name))
-# 
-# def _lib_by_name(library_name):
-#     try:
-#         lib_parts = library_name.split('.')
-#         import_base = '.'.join(lib_parts[:-1])
-#         to_import = lib_parts[-1]
-#         import_str = "from %s import %s" % (import_base, to_import)
-#         exec(import_str)
-#         return locals()[to_import]
-#     except ImportError:
-#         return None
-# 
-# def _get_task_class(path):
-#     # get the class for this library
-#     task_lib_parts = task_library.split('.')
-#     if len(task_lib_parts) < 2:
-#         raise Exception("--task_library must be of the form path.to.lib.ClassName")
-#     try:
-#         task_class_baselib = '.'.join(task_lib_parts[:-1])
-#         task_class_name = task_lib_parts[-1]
-#         library = _lib_by_name(task_class_baselib)
-#         task_class = _class_for_name(task_class_name, namespace=library.__dict__)
-#         return task_class
-#     except ImportError, ie:
-#         raise Exception("Could not find class '%s'" % (task_library))
