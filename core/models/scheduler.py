@@ -107,10 +107,6 @@ class Scheduler(AbstractDaemon):
                 self.handle_request()
             
             if self.status == Status.RUNNING:
-                # Clean up orphaned schedules and undead schedulers.
-                # Schedule.objects.orphaned().update(scheduler=None)
-                # CronSchedule.objects.orphaned().update(scheduler=None)
-                
                 cron = CronSchedule.objects.unclaimed()[:SCHEDULER_LIMIT]
                 simple = Schedule.objects.unclaimed()[:SCHEDULER_LIMIT]
                 for schedule in itertools.chain(cron, simple):
@@ -118,6 +114,7 @@ class Scheduler(AbstractDaemon):
                     schedule.scheduler = self
                     schedule.save()
                     self.add(schedule)
+            
             if not Status.is_final(self.status):
                 self.wait()
                 self.request = Scheduler.objects.get(pk=self.pk).request
@@ -148,19 +145,25 @@ class Scheduler(AbstractDaemon):
         self.log.info("Request received: %s" % Request.name(request))
         
         if request == Request.PAUSE:
+            self.timer.pause()
             self.set_status(Status.PAUSED)
+            self.save(safe=True)
         
         elif request == Request.RESUME:
-            if self.status != Status.PAUSED:
+            if self.status not in (Status.PAUSING, Status.PAUSED):
                 self.log.info("Must be paused to resume; clearing request.")
             else:
+                self.timer.resume()
                 self.set_status(Status.RUNNING)
+                self.save()
         
         elif request == Request.STOP:
             self.set_status(Status.ENDED)
+            self.save()
         
         elif request == Request.KILL:
             self.set_status(Status.KILLED)
+            self.save()
         
         elif request == Request.RELOAD:
             changed = MultiQuerySet(Schedule, CronSchedule)

@@ -4,6 +4,7 @@
 import os, sys
 from threading import Thread
 from datetime import timedelta, datetime
+import time
 
 from django.test import TestCase
 
@@ -29,6 +30,25 @@ class SchedulerTest(TestCase):
         self.scheduler.make_request(Request.STOP)
         self._scheduler.flag.set()
         wait_until(lambda: not self.scheduler.is_alive(), 3)
+    
+    def test_pause_resume(self):
+        task = make_task()
+        queue = make_queue()
+        s = Schedule.create(task, queue, start=2)
+        self._scheduler.flag.set()
+        wait_until(lambda: self.scheduler.schedules.count() == 1, 1)
+        self.scheduler.make_request(Request.PAUSE)
+        self._scheduler.flag.set()
+        wait_until(lambda: self.scheduler.status == Status.PAUSED, 1)
+        self.assertEqual(self.scheduler.status, Status.PAUSED)
+        time.sleep(2)
+        self.assertEqual(queue.count(), 0)
+        self.scheduler.make_request(Request.RESUME)
+        self._scheduler.flag.set()
+        wait_until(lambda: self.scheduler.status == Status.RUNNING, 1)
+        self.assertEqual(self.scheduler.status, Status.RUNNING)
+        wait_until(lambda: queue.count() == 1, 1)
+        self.assertEqual(queue.count(), 1)
     
     def test_schedule(self):
         task = make_task()
