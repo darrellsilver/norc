@@ -1,6 +1,7 @@
 
 """Test schedule handling cases in the SchedulableTask class."""
 
+from datetime import datetime
 import unittest
 import re
 
@@ -44,3 +45,10 @@ class CronScheduleTest(TestCase):
         self.assertEqual(make('WEEKLY').pretty_name(), 'WEEKLY')
         self.assertEqual(make('MONTHLY').pretty_name(), 'MONTHLY')
     
+    def test_monthly(self):
+        make = lambda p: CronSchedule.create(self.t, self.q, p)
+        dt = datetime
+        cs = make('o1,4,7,10d1w*h0m0s0')
+        self.assertEquals(cs.calculate_next(dt(2010, 01, 01)), dt(2010, 04, 01))
+        self.assertEquals(cs.calculate_next(dt(2010, 06, 01)), dt(2010, 07, 01))
+        self.assertEquals(cs.calculate_next(dt(2010, 11, 01)), dt(2011, 01, 01))

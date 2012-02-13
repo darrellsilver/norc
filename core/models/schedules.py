@@ -340,7 +340,9 @@ class CronSchedule(AbstractSchedule):
             hour = self.hours[0]
             dt += timedelta(days=1)
         dt = dt.replace(hour=hour)
-        cond = lambda d: d.day in self.days and d.weekday() in self.daysofweek
+        cond = lambda d: d.day in self.days and \
+            d.weekday() in self.daysofweek and \
+            d.month in self.months
         one_day = timedelta(days=1)
         while not cond(dt):
             dt += one_day
